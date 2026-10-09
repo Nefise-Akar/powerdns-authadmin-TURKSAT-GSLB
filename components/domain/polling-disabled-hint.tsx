@@ -35,7 +35,7 @@ export function PollingDisabledHint({ className }: { className?: string }) {
       title={TOOLTIP}
       aria-label="Background polling is disabled - click to see how to enable PDNS_BACKGROUND_POLLING"
       className={
-        "inline-flex h-5 w-5 items-center justify-center rounded-full text-[color:var(--color-fg-muted)] hover:bg-[color:var(--color-bg-muted)] hover:text-[color:var(--color-fg)] " +
+        "text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:shadow-focus-ring inline-flex size-5 items-center justify-center rounded-sm focus-visible:outline-hidden " +
         (className ?? "")
       }
     >

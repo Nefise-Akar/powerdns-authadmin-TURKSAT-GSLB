@@ -1,8 +1,9 @@
 /**
  * app/(app)/layout.tsx
  *
- * Chrome for every authenticated route: left sidebar with the wordmark + nav,
- * top bar with the theme toggle and the user menu on the right. Runs
+ * Chrome for every authenticated route: the navigation rail, the top bar
+ * (brand, health bell, theme toggle, settings, account menu) and the status
+ * bar - see components/ui/app-shell.tsx for the layout. Runs
  * `requireUser()` at the top - when there's no session, it redirects to
  * /login rather than throwing 401 (better UX than a JSON error for a browser).
  *
@@ -13,8 +14,8 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { BookText } from "lucide-react";
-import { APP_DOCS_URL, APP_SOURCE_TITLE, APP_SOURCE_URL, APP_VERSION_LABEL } from "@/lib/app-meta";
+import { Settings } from "lucide-react";
+import { APP_DOCS_URL, APP_SOURCE_URL, APP_VERSION_LABEL } from "@/lib/app-meta";
 import { getCurrentUser } from "@/lib/auth/get-current-user";
 import { checkMfaCompliance } from "@/lib/auth/mfa-compliance";
 import { listRoleMfaStatesForUser } from "@/lib/db/repositories/roles";
@@ -23,10 +24,10 @@ import { UserMenu } from "@/components/ui/user-menu";
 import { HealthBell } from "@/components/domain/health-bell";
 import { listActiveAdvisories } from "@/lib/db/repositories/backend-advisories";
 import { BrandMark } from "@/components/ui/brandmark";
-import { AppShell } from "@/components/ui/app-shell";
+import { AppShell, type NavGroup, type NavItem } from "@/components/ui/app-shell";
+import { iconButtonClass } from "@/components/ui/button";
 import { DialogProvider } from "@/components/ui/dialog";
 import { FlashListener } from "@/components/ui/flash-listener";
-import { NavLink } from "@/components/ui/nav-link";
 import { RealtimeProvider } from "@/components/realtime/realtime-provider";
 import { HeaderStatusProvider } from "@/components/realtime/header-status-chip";
 import { ComplianceGuardProvider } from "@/components/auth/compliance-guard";
@@ -126,105 +127,89 @@ export default async function AppLayout({ children }: Readonly<{ children: React
       }))
     : [];
 
-  // Sidebar is grouped by function (Infrastructure / Access / System) rather
-  // than one flat "Admin" pile. Each group renders only when the user can see
-  // at least one of its children. The PowerDNS section now also houses the
-  // Request log (moved from System), which is `audit.read`-gated.
-  const hasInfrastructure =
-    canReadServers ||
-    canReadTsig ||
-    canManageAutoprimary ||
-    canUseTemplates ||
-    canReadZones ||
-    canReadAudit;
-  const hasAccess = canReadUsers || canReadRoles || canReadTeams || canReadAuth;
-  const hasSystem = canReadSettings || canReadAudit;
+  // One rail entry per area; an area's pages show as tabs above the page. An
+  // entry renders only when the user can see at least one of its pages.
+  // Settings lives behind the top bar's gear and Profile in the account menu.
+  const powerdnsItems: NavItem[] = [
+    ...(canReadServers ? [{ href: "/admin/servers", label: "Servers" }] : []),
+    ...(canReadServers ? [{ href: "/admin/clusters", label: "Clusters" }] : []),
+    ...(canManageAutoprimary ? [{ href: "/admin/autoprimaries", label: "Autoprimaries" }] : []),
+    ...(canUseTemplates ? [{ href: "/admin/zone-templates", label: "Zone templates" }] : []),
+    ...(canReadZones ? [{ href: "/admin/import-export", label: "Import / Export" }] : []),
+    ...(canReadTsig ? [{ href: "/admin/tsig-keys", label: "TSIG keys" }] : []),
+    ...(canReadAudit ? [{ href: "/admin/requests", label: "Request log" }] : []),
+  ];
+  const accessItems: NavItem[] = [
+    ...(canReadUsers ? [{ href: "/admin/users", label: "Users" }] : []),
+    ...(canReadTeams ? [{ href: "/admin/teams", label: "Teams" }] : []),
+    ...(canReadRoles ? [{ href: "/admin/roles", label: "Roles" }] : []),
+    ...(canReadAuth ? [{ href: "/admin/authentication", label: "Authentication" }] : []),
+  ];
+  const nav: NavGroup[] = [
+    { key: "dashboard", label: "Dashboard", items: [{ href: "/dashboard", label: "Dashboard" }] },
+  ];
+  if (canReadZones) {
+    nav.push({ key: "zones", label: "Zones", items: [{ href: "/zones", label: "Zones" }] });
+  }
+  if (powerdnsItems.length) nav.push({ key: "powerdns", label: "PowerDNS", items: powerdnsItems });
+  if (accessItems.length) nav.push({ key: "access", label: "Access", items: accessItems });
+  if (canReadAudit) {
+    nav.push({
+      key: "audit",
+      label: "Audit log",
+      items: [{ href: "/admin/audit", label: "Audit log" }],
+    });
+  }
 
-  const sidebar = (
-    <>
-      <div className="flex h-20 shrink-0 items-center overflow-hidden border-b border-[color:var(--color-border)] px-4 pt-3">
-        <Link
-          href="/dashboard"
-          aria-label={`${appSettings.siteName} home`}
-          className="flex w-full items-center justify-center overflow-hidden"
-        >
-          <BrandMark
-            siteName={appSettings.siteName}
-            brandLogoUrl={appSettings.brandLogoUrl}
-            width={280}
-            maxHeight={56}
-          />
-        </Link>
-      </div>
-      <nav className="flex-1 space-y-1 overflow-y-auto p-3 text-base">
-        <NavLink href="/dashboard" label="Dashboard" />
-        {canReadZones ? <NavLink href="/zones" label="Zones" /> : null}
+  const mark = (
+    <Link
+      href="/dashboard"
+      aria-label={`${appSettings.siteName} home`}
+      className="focus-visible:shadow-focus-ring flex size-8 items-center justify-center rounded-md focus-visible:outline-hidden"
+    >
+      {/* The `{}` mark (also the favicon), or the operator's own logo. */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={appSettings.brandLogoUrl ?? "/icon.svg"}
+        alt=""
+        referrerPolicy="no-referrer"
+        className="max-h-8 max-w-8 object-contain"
+      />
+    </Link>
+  );
 
-        {hasInfrastructure ? (
-          <NavSection label="PowerDNS">
-            {canReadServers || canManageAutoprimary ? (
-              <>
-                <NavGroupLabel label="Backends" />
-                {canReadServers ? <NavLink nested href="/admin/servers" label="Servers" /> : null}
-                {canReadServers ? <NavLink nested href="/admin/clusters" label="Clusters" /> : null}
-                {canManageAutoprimary ? (
-                  <NavLink nested href="/admin/autoprimaries" label="Autoprimaries" />
-                ) : null}
-              </>
-            ) : null}
-            {canUseTemplates || canReadZones ? (
-              <>
-                <NavGroupLabel label="Zones" />
-                {canUseTemplates ? (
-                  <NavLink nested href="/admin/zone-templates" label="Zone templates" />
-                ) : null}
-                {canReadZones ? (
-                  <NavLink nested href="/admin/import-export" label="Import / Export" />
-                ) : null}
-              </>
-            ) : null}
-            {canReadTsig ? (
-              <>
-                <NavGroupLabel label="Security" />
-                <NavLink nested href="/admin/tsig-keys" label="TSIG keys" />
-              </>
-            ) : null}
-            {canReadAudit ? (
-              <>
-                <NavGroupLabel label="Activity" />
-                <NavLink nested href="/admin/requests" label="Request log" />
-              </>
-            ) : null}
-          </NavSection>
-        ) : null}
-
-        {hasAccess ? (
-          <NavSection label="Access">
-            {canReadUsers ? <NavLink nested href="/admin/users" label="Users" /> : null}
-            {canReadTeams ? <NavLink nested href="/admin/teams" label="Teams" /> : null}
-            {canReadRoles ? <NavLink nested href="/admin/roles" label="Roles" /> : null}
-            {canReadAuth ? (
-              <NavLink nested href="/admin/authentication" label="Authentication" />
-            ) : null}
-          </NavSection>
-        ) : null}
-
-        {hasSystem ? (
-          <NavSection label="System">
-            {canReadSettings ? <NavLink nested href="/admin/settings" label="Settings" /> : null}
-            {canReadAudit ? <NavLink nested href="/admin/audit" label="Audit log" /> : null}
-          </NavSection>
-        ) : null}
-      </nav>
-      <SidebarFooter />
-    </>
+  const brand = (
+    <Link
+      href="/dashboard"
+      aria-label={`${appSettings.siteName} home`}
+      className="focus-visible:shadow-focus-ring flex min-w-0 items-center rounded-md focus-visible:outline-hidden"
+    >
+      <BrandMark
+        siteName={appSettings.siteName}
+        brandLogoUrl={appSettings.brandLogoUrl}
+        width={184}
+        maxHeight={22}
+      />
+    </Link>
   );
 
   const headerControls = (
     <>
       {canReadServers ? <HealthBell advisories={advisories} /> : null}
       <ThemeToggle />
-      <UserMenu email={current.user.email} name={current.user.name} />
+      {canReadSettings ? (
+        <Link href="/admin/settings" aria-label="Settings" className={iconButtonClass("lg")}>
+          <Settings aria-hidden strokeWidth={1.75} />
+        </Link>
+      ) : null}
+      <span aria-hidden className="bg-border mx-1 h-6 w-px" />
+      <UserMenu
+        email={current.user.email}
+        name={current.user.name}
+        version={APP_VERSION_LABEL}
+        docsUrl={APP_DOCS_URL}
+        sourceUrl={APP_SOURCE_URL}
+      />
     </>
   );
 
@@ -264,7 +249,7 @@ export default async function AppLayout({ children }: Readonly<{ children: React
   });
 
   const shell = (
-    <AppShell sidebar={sidebar} headerControls={headerControls}>
+    <AppShell nav={nav} mark={mark} brand={brand} headerControls={headerControls}>
       {children}
     </AppShell>
   );
@@ -290,77 +275,5 @@ export default async function AppLayout({ children }: Readonly<{ children: React
         )}
       </ComplianceGuardProvider>
     </DialogProvider>
-  );
-}
-
-function NavSection({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="pt-5">
-      <div className="px-3 pb-1 text-[0.7rem] font-semibold tracking-wider text-[color:var(--color-fg)] uppercase">
-        {label}
-      </div>
-      <div className="space-y-0.5">{children}</div>
-    </div>
-  );
-}
-
-/**
- * Sub-grouping label rendered inside a NavSection - quieter than the
- * section heading itself, used to chunk the PowerDNS section into
- * Backends / Zones / Security / Activity without spawning four
- * top-level NavSections (which would lose the "PowerDNS" umbrella).
- */
-function NavGroupLabel({ label }: { label: string }) {
-  return (
-    <div className="mt-3 px-3 pb-0.5 text-[0.65rem] font-medium tracking-wider text-[color:var(--color-fg-muted)] uppercase first:mt-0">
-      {label}
-    </div>
-  );
-}
-
-/**
- * Pinned to the bottom of the sidebar (the aside is a flex column with a
- * scrollable nav above). Shows the running version linked to the source
- * repo, plus a docs shortcut. Version comes from package.json via
- * `lib/app-meta` so a release bump is a one-file change.
- */
-function SidebarFooter() {
-  return (
-    <div className="shrink-0 border-t border-[color:var(--color-border)] px-4 py-3">
-      <div className="flex items-center justify-between text-xs text-[color:var(--color-fg-muted)]">
-        <a
-          href={APP_SOURCE_URL}
-          target="_blank"
-          rel="noreferrer noopener"
-          title={APP_SOURCE_TITLE}
-          className="inline-flex items-center gap-1.5 hover:text-[color:var(--color-fg)]"
-        >
-          <GitHubMark className="h-3.5 w-3.5" />
-          <span className="tabular-nums">v{APP_VERSION_LABEL}</span>
-        </a>
-        <a
-          href={APP_DOCS_URL}
-          target="_blank"
-          rel="noreferrer noopener"
-          title="Documentation"
-          className="inline-flex items-center gap-1.5 hover:text-[color:var(--color-fg)]"
-        >
-          <BookText aria-hidden className="h-3.5 w-3.5" />
-          Docs
-        </a>
-      </div>
-    </div>
-  );
-}
-
-/**
- * GitHub mark - inlined because lucide-react dropped its brand icons over
- * licensing. Octicon path, scaled by the `className` height/width.
- */
-function GitHubMark({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 16 16" aria-hidden className={className} fill="currentColor">
-      <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.65-.89-3.65-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.6 7.6 0 012-.27c.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0016 8c0-4.42-3.58-8-8-8z" />
-    </svg>
   );
 }

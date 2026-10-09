@@ -48,10 +48,10 @@ export function NewProviderClient({ pickers }: Props) {
       <ProviderTypePicker selected={selected} onSelect={handleSelect} />
 
       {selected === "oidc" ? (
-        <section className="space-y-4 border-t border-[color:var(--color-border)] pt-6">
+        <section className="border-border space-y-4 border-t pt-6">
           <header>
             <h2 className="text-lg font-semibold">OIDC provider</h2>
-            <p className="mt-1 text-sm text-[color:var(--color-fg-muted)]">
+            <p className="text-muted-foreground mt-1 text-sm">
               Configure the identity provider below. Register the callback URL with the IdP before
               saving.
             </p>
@@ -59,10 +59,10 @@ export function NewProviderClient({ pickers }: Props) {
           <OidcProviderForm mode="create" pickers={pickers} />
         </section>
       ) : selected === "saml" ? (
-        <section className="space-y-4 border-t border-[color:var(--color-border)] pt-6">
+        <section className="border-border space-y-4 border-t pt-6">
           <header>
             <h2 className="text-lg font-semibold">SAML 2.0 provider</h2>
-            <p className="mt-1 text-sm text-[color:var(--color-fg-muted)]">
+            <p className="text-muted-foreground mt-1 text-sm">
               Configure the SAML identity provider below. After saving, copy the SP metadata URL
               from the provider detail page and register it in your IdP.
             </p>
@@ -70,10 +70,10 @@ export function NewProviderClient({ pickers }: Props) {
           <SamlProviderForm mode="create" pickers={pickers} />
         </section>
       ) : selected === "ldap" ? (
-        <section className="space-y-4 border-t border-[color:var(--color-border)] pt-6">
+        <section className="border-border space-y-4 border-t pt-6">
           <header>
             <h2 className="text-lg font-semibold">LDAP provider</h2>
-            <p className="mt-1 text-sm text-[color:var(--color-fg-muted)]">
+            <p className="text-muted-foreground mt-1 text-sm">
               Configure the directory below. Bind-then-search-then-rebind: we use the service
               account to look up the user, then re-bind as the user with the password they type.
               Strict TLS by default - see ADR-0020 for the security posture.

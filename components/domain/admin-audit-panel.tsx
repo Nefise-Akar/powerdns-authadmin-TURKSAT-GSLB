@@ -47,18 +47,16 @@ interface Props {
 
 export function AdminAuditPanel({ entries, fullHistoryHref }: Props) {
   return (
-    <section className="rounded-md border border-[color:var(--color-border)] p-4">
+    <section className="border-border rounded-md border p-4">
       <header className="mb-2 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <h2 className="text-sm font-medium tracking-wide text-[color:var(--color-fg-muted)] uppercase">
-            Recent admin activity ({entries.length})
-          </h2>
+          <h2 className="text-h3 text-foreground">Recent admin activity ({entries.length})</h2>
           <LiveFeedSubscriber eventTypes={["audit.appended"]} />
         </div>
         {fullHistoryHref ? (
           <Link
             href={fullHistoryHref}
-            className="text-xs text-[color:var(--color-accent)] hover:underline"
+            className="text-primary hover:text-primary-hover text-xs hover:underline"
           >
             See full audit log →
           </Link>
@@ -66,22 +64,22 @@ export function AdminAuditPanel({ entries, fullHistoryHref }: Props) {
       </header>
 
       {entries.length === 0 ? (
-        <p className="text-sm text-[color:var(--color-fg-muted)]">
+        <p className="text-muted-foreground text-sm">
           No admin activity recorded yet for this resource.
         </p>
       ) : (
-        <ul className="divide-y divide-[color:var(--color-border)] text-sm">
+        <ul className="divide-border divide-y text-sm">
           {entries.map((entry) => {
             const fresh = freshnessOf(entry.ts.toISOString());
             return (
               <li key={entry.id} className="flex items-baseline justify-between gap-3 py-2">
                 <div className="min-w-0 flex-1 truncate">
                   <code
-                    className={`rounded px-1.5 py-0.5 font-mono text-[0.6875rem] tracking-wide uppercase ${colorForAuditAction(entry.action)}`}
+                    className={`text-mono-xs inline-flex h-5 items-center rounded-sm px-1.5 font-mono ${colorForAuditAction(entry.action)}`}
                   >
                     {entry.action}
                   </code>{" "}
-                  <span className="text-[color:var(--color-fg-muted)]">
+                  <span className="text-muted-foreground">
                     by{" "}
                     {entry.actorEmail ? (
                       <span className="font-mono">{entry.actorEmail}</span>
@@ -92,9 +90,7 @@ export function AdminAuditPanel({ entries, fullHistoryHref }: Props) {
                     )}
                   </span>
                 </div>
-                <span className="shrink-0 text-xs text-[color:var(--color-fg-muted)]">
-                  {fresh.label}
-                </span>
+                <span className="text-muted-foreground shrink-0 text-xs">{fresh.label}</span>
               </li>
             );
           })}

@@ -10,18 +10,12 @@
  * Only `internal` gets a badge. `public` is the default horizon - badging it
  * would put a marker on nearly every row and stop the badge meaning anything.
  *
- * Same recipe as `capability-badges.tsx` and the CLUSTER badge (rounded, mono,
- * tracking-wide, uppercase, `bg-<tone>/15`) so every inline state badge in the
- * app reads as one family. Orange because it must not be confused with the
- * indigo CLUSTER badge beside it, nor with the green the Sync column uses for
- * "synced" - and because "you are not looking at the public copy" is worth a
- * second glance.
+ * A horizon is a category, so it's a plain Tag like the capability tags - the
+ * design system keeps color for status; the word itself is the signal.
  */
 
+import { Tag } from "@/components/ui/badge";
 import { type ZoneHorizon } from "@/lib/dns/zone-horizon";
-
-const BADGE =
-  "rounded bg-[color:var(--color-orange)]/15 px-1 py-0.5 font-mono text-[0.625rem] tracking-wide text-[color:var(--color-orange-fg)] uppercase";
 
 const TITLE =
   "Internal zone - listed separately from a public zone of the same name (split horizon)";
@@ -37,8 +31,8 @@ export function ZoneHorizonBadge({
 }) {
   if (horizon !== "internal") return null;
   return (
-    <span className={className ? `${BADGE} ${className}` : BADGE} title={TITLE}>
+    <Tag className={className} title={TITLE}>
       internal
-    </span>
+    </Tag>
   );
 }

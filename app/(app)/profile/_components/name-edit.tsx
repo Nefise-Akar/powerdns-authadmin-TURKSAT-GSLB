@@ -16,6 +16,8 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useDialog } from "@/components/ui/dialog";
 import { mutate } from "@/lib/client/api-fetch";
+import { buttonClass } from "@/components/ui/button";
+import { inputClass } from "@/components/ui/field";
 
 export function NameEdit({ initialName }: { initialName: string | null }) {
   const router = useRouter();
@@ -59,7 +61,7 @@ export function NameEdit({ initialName }: { initialName: string | null }) {
         <button
           type="button"
           onClick={() => setEditing(true)}
-          className="text-xs text-[color:var(--color-accent)] hover:underline"
+          className="text-primary hover:text-primary-hover text-xs hover:underline"
         >
           Edit
         </button>
@@ -76,21 +78,22 @@ export function NameEdit({ initialName }: { initialName: string | null }) {
         autoFocus
         disabled={busy}
         placeholder="Display name (leave empty to clear)"
-        className="min-w-0 flex-1 rounded border border-[color:var(--color-border)] bg-[color:var(--color-bg)] px-2 py-1 text-sm focus:ring-2 focus:ring-[color:var(--color-accent)] focus:outline-none"
+        className={`min-w-0 flex-1 ${inputClass}`}
       />
       <button
+        aria-busy={busy}
         type="button"
         onClick={handleSave}
         disabled={busy}
-        className="shrink-0 rounded bg-[color:var(--color-accent)] px-2 py-1 text-xs font-medium text-[color:var(--color-accent-fg)] hover:opacity-95 disabled:opacity-50"
+        className={buttonClass({ variant: "primary", size: "sm", className: "shrink-0" })}
       >
-        {busy ? "Saving…" : "Save"}
+        Save
       </button>
       <button
         type="button"
         onClick={handleCancel}
         disabled={busy}
-        className="shrink-0 rounded border border-[color:var(--color-border)] px-2 py-1 text-xs hover:bg-[color:var(--color-bg-muted)] disabled:opacity-50"
+        className={buttonClass({ size: "sm", className: "shrink-0" })}
       >
         Cancel
       </button>

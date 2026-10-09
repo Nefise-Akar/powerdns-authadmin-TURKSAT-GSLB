@@ -18,6 +18,15 @@
 import type { Metadata, Viewport } from "next";
 import { headers } from "next/headers";
 import { getAppSettings } from "@/lib/settings/app-settings";
+// Self-hosted fonts (no CDN - see CONTRIBUTING). The design system uses only
+// these three weights; each file carries the latin-ext subset for Turkish
+// and other accented characters.
+import "@fontsource/instrument-sans/400.css";
+import "@fontsource/instrument-sans/500.css";
+import "@fontsource/instrument-sans/600.css";
+import "@fontsource/geist-mono/400.css";
+import "@fontsource/geist-mono/500.css";
+import "@fontsource/geist-mono/600.css";
 import "./globals.css";
 
 /**
@@ -35,24 +44,26 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
+// Browser chrome sits against the top bar, which uses the `card` token; a
+// meta tag can't read CSS variables, so these mirror its two theme values.
 export const viewport: Viewport = {
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "#ffffff" },
-    { media: "(prefers-color-scheme: dark)", color: "#0a0a0a" },
+    { media: "(prefers-color-scheme: dark)", color: "#111923" },
   ],
 };
 
 /**
  * Pre-hydration theme initializer. Runs before React mounts, applies the
- * user's saved choice (or follows the OS preference) by toggling the `.dark`
- * class on <html>. Carries the per-request CSP nonce so it survives our
- * strict CSP (see ADR 0006).
+ * user's saved choice (or follows the OS preference) by setting `data-theme`
+ * on <html>. Carries the per-request CSP nonce so it survives our strict CSP
+ * (see ADR 0006).
  *
  * Source is intentionally compact, defensive (try/catch around localStorage
  * which throws in private-mode Safari and when storage is blocked), and
  * doesn't depend on any framework code.
  */
-const THEME_INIT_SCRIPT = `(function(){try{var k="pda-theme",t=localStorage.getItem(k)||"system",d=t==="dark"||(t==="system"&&matchMedia("(prefers-color-scheme: dark)").matches);document.documentElement.classList.toggle("dark",d);}catch(e){}})();`;
+const THEME_INIT_SCRIPT = `(function(){try{var k="pda-theme",t=localStorage.getItem(k)||"system",d=t==="dark"||(t==="system"&&matchMedia("(prefers-color-scheme: dark)").matches);document.documentElement.setAttribute("data-theme",d?"dark":"light");}catch(e){}})();`;
 
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   // CSP nonce is set per request in proxy.ts; thread it onto the inline

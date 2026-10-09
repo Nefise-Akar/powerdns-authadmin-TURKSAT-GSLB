@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { apiFetch } from "@/lib/client/api-fetch";
+import { buttonClass } from "@/components/ui/button";
+import { Alert } from "@/components/ui/alert";
 
 export function ConfirmEmailChangeForm({ token }: { token: string }) {
   const [status, setStatus] = useState<"confirming" | "done" | "error">("confirming");
@@ -47,16 +49,13 @@ export function ConfirmEmailChangeForm({ token }: { token: string }) {
   if (status === "error") {
     return (
       <div className="space-y-3">
-        <p
-          className="rounded border border-[color:var(--color-error)] bg-[color:var(--color-error)]/10 p-3 text-sm"
-          role="alert"
-        >
+        <Alert variant="destructive" live>
           {error}
-        </p>
+        </Alert>
         <button
           type="button"
           onClick={() => void confirm()}
-          className="block w-full rounded-md bg-[color:var(--color-accent)] px-4 py-2 text-sm font-medium text-[color:var(--color-accent-fg)] hover:opacity-95"
+          className={buttonClass({ variant: "primary", className: "w-full" })}
         >
           Try again
         </button>
@@ -66,20 +65,14 @@ export function ConfirmEmailChangeForm({ token }: { token: string }) {
 
   if (status === "done") {
     return (
-      <p
-        className="rounded border border-[color:var(--color-success)] bg-[color:var(--color-success)]/10 p-3 text-sm"
-        role="status"
-      >
+      <p className="border-success bg-background rounded border p-3 text-sm" role="status">
         Email changed to <code>{email}</code>. Sessions revoked - sign in again in a moment.
       </p>
     );
   }
 
   return (
-    <p
-      className="rounded border border-[color:var(--color-border)] bg-[color:var(--color-bg-subtle)] p-3 text-sm"
-      role="status"
-    >
+    <p className="border-border bg-background rounded border p-3 text-sm" role="status">
       Confirming your new email…
     </p>
   );

@@ -14,6 +14,8 @@ import { useRef, useState, type FormEvent } from "react";
 import { TurnstileWidget } from "@/components/ui/turnstile-widget";
 import { apiFetch } from "@/lib/client/api-fetch";
 import { readFormFields, useDomFieldSync } from "@/lib/client/form-dom";
+import { buttonClass } from "@/components/ui/button";
+import { inputClass } from "@/components/ui/field";
 
 interface Props {
   slug: string;
@@ -109,7 +111,7 @@ export function LdapLoginForm({
     >
       <div className="flex items-baseline gap-2">
         <span className="text-sm font-medium">{providerName}</span>
-        <span className="rounded bg-[color:var(--color-bg-muted)] px-1.5 py-0.5 text-[0.625rem] font-medium tracking-wide text-[color:var(--color-fg-muted)] uppercase">
+        <span className="bg-tag text-mono-xs text-tag-foreground inline-flex h-5 items-center rounded-sm px-1.5 font-mono whitespace-nowrap">
           LDAP
         </span>
       </div>
@@ -125,7 +127,7 @@ export function LdapLoginForm({
           required
           value={username}
           onChange={(e) => setUsername(e.target.value)}
-          className="mt-1 block w-full rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg)] px-3 py-2 text-sm focus:ring-2 focus:ring-[color:var(--color-accent)] focus:outline-none"
+          className={`mt-1 w-full ${inputClass}`}
           placeholder="alice"
         />
       </div>
@@ -142,7 +144,7 @@ export function LdapLoginForm({
           required
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="mt-1 block w-full rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg)] px-3 py-2 text-sm focus:ring-2 focus:ring-[color:var(--color-accent)] focus:outline-none"
+          className={`mt-1 w-full ${inputClass}`}
         />
       </div>
 
@@ -153,17 +155,18 @@ export function LdapLoginForm({
       />
 
       {error ? (
-        <p className="text-sm text-[color:var(--color-error)]" role="alert">
+        <p className="text-destructive text-sm" role="alert">
           {error}
         </p>
       ) : null}
 
       <button
+        aria-busy={loading}
         type="submit"
         disabled={submitDisabled}
-        className="block w-full rounded-md bg-[color:var(--color-accent)] px-4 py-2 text-sm font-medium text-[color:var(--color-accent-fg)] hover:opacity-95 disabled:opacity-50"
+        className={buttonClass({ variant: "primary", className: "block w-full" })}
       >
-        {loading ? "Signing in…" : "Sign in"}
+        Sign in
       </button>
     </form>
   );

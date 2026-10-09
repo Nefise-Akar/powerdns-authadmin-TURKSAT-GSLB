@@ -15,6 +15,7 @@ import { useState } from "react";
 import { useDialog } from "@/components/ui/dialog";
 import { mutate } from "@/lib/client/api-fetch";
 import { displayZoneName } from "@/lib/dns/zone-name";
+import { buttonClass } from "@/components/ui/button";
 
 interface Props {
   sourceName: string;
@@ -74,12 +75,13 @@ export function CloneZoneButton({ sourceName, serverSlug }: Props) {
 
   return (
     <button
+      aria-busy={cloning}
       type="button"
       onClick={handleClick}
       disabled={cloning}
-      className="rounded border border-[color:var(--color-border)] px-3 py-1 text-xs hover:bg-[color:var(--color-bg-muted)] disabled:opacity-50"
+      className={buttonClass({ size: "sm" })}
     >
-      {cloning ? "Cloning…" : "Clone zone"}
+      Clone zone
     </button>
   );
 }

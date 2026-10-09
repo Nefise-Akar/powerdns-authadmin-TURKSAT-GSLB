@@ -14,7 +14,7 @@
 
 import { extractQuotedStrings } from "@/lib/dns/txt";
 import type { RREditor } from "./types";
-import { Field, inputClass } from "./_form";
+import { Field, textareaClass } from "./_form";
 
 export interface TxtStruct {
   /** The unquoted, fully-concatenated payload. */
@@ -82,7 +82,7 @@ export const txtEditor: RREditor<TxtStruct> = {
           onChange={(e) => onChange({ blob: e.target.value })}
           rows={4}
           placeholder="v=spf1 ip4:192.0.2.0/24 -all"
-          className={`${inputClass} font-mono`}
+          className={`${textareaClass} font-mono`}
           spellCheck={false}
         />
       </Field>

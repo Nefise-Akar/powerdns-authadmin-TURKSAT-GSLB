@@ -57,14 +57,12 @@ export default async function ZoneTemplateEditPage({ params, searchParams }: Pag
   return (
     <div className="mx-auto max-w-4xl space-y-6">
       <header className="space-y-1">
-        <h1 className="text-2xl font-semibold tracking-tight">{t.name}</h1>
-        <p className="text-sm text-[color:var(--color-fg-muted)]">
-          Slug <code className="rounded bg-[color:var(--color-bg-subtle)] px-1">{t.slug}</code> -
-          slug can&apos;t be renamed.
+        <h1 className="text-h1">{t.name}</h1>
+        <p className="text-muted-foreground text-sm">
+          Slug <code className="bg-background rounded px-1">{t.slug}</code> - slug can&apos;t be
+          renamed.
         </p>
-        {t.description ? (
-          <p className="text-sm text-[color:var(--color-fg-muted)]">{t.description}</p>
-        ) : null}
+        {t.description ? <p className="text-muted-foreground text-sm">{t.description}</p> : null}
       </header>
 
       <ZoneTemplateTabs active={tab} templateId={id} />
@@ -106,9 +104,9 @@ export default async function ZoneTemplateEditPage({ params, searchParams }: Pag
       ) : null}
 
       {canManage ? (
-        <section className="rounded-md border border-[color:var(--color-error)] bg-[color:var(--color-error)]/5 p-4">
-          <h2 className="text-base font-medium text-[color:var(--color-error)]">Danger zone</h2>
-          <p className="mt-1 text-sm text-[color:var(--color-fg-muted)]">
+        <section className="border-destructive bg-destructive-muted rounded-md border p-4">
+          <h2 className="text-destructive text-base font-medium">Danger zone</h2>
+          <p className="text-muted-foreground mt-1 text-sm">
             Deleting the template doesn&apos;t touch zones already created from it - those zones own
             their records independently after creation.
           </p>

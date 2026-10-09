@@ -17,6 +17,7 @@ import Link from "next/link";
 import { Bell } from "lucide-react";
 import { apiFetch } from "@/lib/client/api-fetch";
 import { useRealtimeEvent } from "@/components/realtime/realtime-provider";
+import { buttonClass, iconButtonClass } from "@/components/ui/button";
 
 export interface BellAdvisory {
   id: string;
@@ -29,10 +30,12 @@ export interface BellAdvisory {
   acknowledged: boolean;
 }
 
+// Severity is a status, so it gets a status color - but always next to the
+// advisory's title, never as the only signal.
 function dotClass(severity: string): string {
-  if (severity === "error") return "bg-[color:var(--color-error)]";
-  if (severity === "warn") return "bg-[color:var(--color-warn)]";
-  return "bg-[color:var(--color-fg-muted)]";
+  if (severity === "error") return "bg-destructive";
+  if (severity === "warn") return "bg-warning";
+  return "bg-info";
 }
 
 export function HealthBell({ advisories }: { advisories: BellAdvisory[] }) {
@@ -55,7 +58,6 @@ export function HealthBell({ advisories }: { advisories: BellAdvisory[] }) {
   );
 
   const unacked = advisories.filter((a) => !a.acknowledged);
-  const hasError = unacked.some((a) => a.severity === "error");
   const count = unacked.length;
 
   async function acknowledge(id: string) {
@@ -73,16 +75,17 @@ export function HealthBell({ advisories }: { advisories: BellAdvisory[] }) {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        aria-label={`Backend health: ${count} active ${count === 1 ? "issue" : "issues"}`}
+        aria-label={`Backend health, ${count} active ${count === 1 ? "issue" : "issues"}`}
         aria-expanded={open}
-        className="relative flex h-9 w-9 items-center justify-center rounded-md hover:bg-[color:var(--color-bg-subtle)]"
+        className={iconButtonClass("lg", "relative")}
       >
-        <Bell aria-hidden className="h-5 w-5 text-[color:var(--color-fg-muted)]" />
+        <Bell aria-hidden strokeWidth={1.75} />
         {count > 0 ? (
+          // The count is in the button's name; the badge is decoration. The
+          // 1.5px card-colored ring separates it from the bell glyph.
           <span
-            className={`absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[0.6rem] font-semibold text-white ${
-              hasError ? "bg-[color:var(--color-error)]" : "bg-[color:var(--color-warn)]"
-            }`}
+            aria-hidden
+            className="bg-primary text-mono-meta text-primary-foreground ring-card absolute top-1 right-1 flex h-4 min-w-4 items-center justify-center rounded-sm px-1 font-mono font-medium tabular-nums ring-[1.5px]"
           >
             {count}
           </span>
@@ -102,51 +105,51 @@ export function HealthBell({ advisories }: { advisories: BellAdvisory[] }) {
           {/* Mobile: fixed to the viewport with small gutters so the dropdown
               can't overflow the right edge (the bell sits near it). sm+: back
               to absolute-anchored under the bell at a fixed 24rem width. */}
-          <div className="fixed inset-x-3 top-14 z-20 mt-2 overflow-hidden rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg)] shadow-lg sm:absolute sm:inset-x-auto sm:top-auto sm:right-0 sm:w-96">
-            <div className="border-b border-[color:var(--color-border)] px-3 py-2 text-xs font-semibold tracking-wide text-[color:var(--color-fg-muted)] uppercase">
-              Backend health
-            </div>
+          <div className="border-border bg-popover text-popover-foreground fixed inset-x-3 top-14 z-20 mt-1 overflow-hidden rounded-md border sm:absolute sm:inset-x-auto sm:top-auto sm:right-0 sm:w-96">
+            <div className="border-border text-h3 border-b px-3 py-2">Backend health</div>
             {advisories.length === 0 ? (
-              <p className="px-3 py-6 text-center text-sm text-[color:var(--color-fg-muted)]">
-                All backends healthy.
+              <p className="text-body text-muted-foreground px-3 py-6 text-center">
+                All backends are healthy.
               </p>
             ) : (
-              <ul className="max-h-[60vh] divide-y divide-[color:var(--color-border)] overflow-y-auto">
+              <ul className="divide-border max-h-[60vh] divide-y overflow-y-auto">
                 {advisories.map((a) => (
-                  <li
-                    key={a.id}
-                    className={`px-3 py-2.5 text-sm ${a.acknowledged ? "opacity-50" : ""}`}
-                  >
+                  <li key={a.id} className="text-body px-3 py-2.5">
                     <div className="flex items-start gap-2">
                       <span
                         aria-hidden
-                        className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${dotClass(a.severity)}`}
+                        className={`mt-[7px] size-1.5 shrink-0 rounded-full ${dotClass(a.severity)}`}
                       />
                       <div className="min-w-0 flex-1">
                         <div className="flex items-baseline justify-between gap-2">
-                          <span className="font-medium">{a.title}</span>
+                          <span
+                            className={
+                              a.acknowledged ? "text-muted-foreground" : "text-body-strong"
+                            }
+                          >
+                            {a.title}
+                          </span>
                           <Link
                             href={`/admin/servers/${a.backendId}`}
-                            className="shrink-0 text-xs text-[color:var(--color-accent)] hover:underline"
+                            className="text-meta text-primary hover:text-primary-hover shrink-0 hover:underline"
                             onClick={() => setOpen(false)}
                           >
                             {a.backendName}
                           </Link>
                         </div>
-                        <p className="mt-0.5 text-xs text-[color:var(--color-fg-muted)]">
-                          {a.detail}
-                        </p>
+                        <p className="text-body-sm text-muted-foreground mt-0.5">{a.detail}</p>
                         {!a.acknowledged ? (
                           <button
                             type="button"
                             onClick={() => acknowledge(a.id)}
                             disabled={busy === a.id}
-                            className="mt-1 text-xs text-[color:var(--color-fg-muted)] hover:text-[color:var(--color-fg)] hover:underline disabled:opacity-50"
+                            aria-busy={busy === a.id}
+                            className={buttonClass({ variant: "link", size: "xs" })}
                           >
-                            {busy === a.id ? "Dismissing…" : "Dismiss"}
+                            Dismiss
                           </button>
                         ) : (
-                          <span className="mt-1 inline-block text-xs text-[color:var(--color-fg-subtle)]">
+                          <span className="text-meta text-muted-foreground mt-1 inline-block">
                             Dismissed
                           </span>
                         )}

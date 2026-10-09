@@ -53,7 +53,7 @@ export function AuditTable({ rows }: { rows: AuditRowClient[] }) {
         cell: (ctx) => (
           <LocalTime
             ts={ctx.getValue<string>()}
-            className="font-mono text-[0.6875rem] whitespace-nowrap text-[color:var(--color-fg-muted)]"
+            className="text-muted-foreground text-mono-xs font-mono whitespace-nowrap"
           />
         ),
         meta: { className: "w-44" },
@@ -70,7 +70,7 @@ export function AuditTable({ rows }: { rows: AuditRowClient[] }) {
                 row.actorHref ? (
                   <Link
                     href={row.actorHref}
-                    className="block truncate text-[color:var(--color-accent)] hover:underline"
+                    className="text-primary hover:text-primary-hover block truncate hover:underline"
                     title={row.actorEmail}
                   >
                     {row.actorEmail}
@@ -83,10 +83,10 @@ export function AuditTable({ rows }: { rows: AuditRowClient[] }) {
               ) : (
                 <div>{row.actorType}</div>
               )}
-              <div className="text-xs text-[color:var(--color-fg-muted)]">
+              <div className="text-muted-foreground text-xs">
                 {row.actorType}
                 {row.actorId ? (
-                  <span className="ml-1 font-mono text-[0.625rem]">{row.actorId}</span>
+                  <span className="text-mono-xs ml-1 font-mono">{row.actorId}</span>
                 ) : null}
               </div>
             </div>
@@ -110,21 +110,18 @@ export function AuditTable({ rows }: { rows: AuditRowClient[] }) {
                 row.resourceHref ? (
                   <Link
                     href={row.resourceHref}
-                    className="block truncate text-[color:var(--color-accent)] hover:underline"
+                    className="text-primary hover:text-primary-hover block truncate hover:underline"
                     title={row.resourceId}
                   >
                     {row.resourceDisplay ?? row.resourceId}
                   </Link>
                 ) : (
-                  <div
-                    className="truncate font-mono text-[color:var(--color-fg-muted)]"
-                    title={row.resourceId}
-                  >
+                  <div className="text-muted-foreground truncate font-mono" title={row.resourceId}>
                     {row.resourceDisplay ?? row.resourceId}
                   </div>
                 )
               ) : null}
-              <div className="text-xs text-[color:var(--color-fg-muted)]">{row.resourceType}</div>
+              <div className="text-muted-foreground text-xs">{row.resourceType}</div>
             </div>
           );
         },
@@ -158,15 +155,13 @@ export function AuditTable({ rows }: { rows: AuditRowClient[] }) {
                   <PdnsHttpLog entries={row.httpEntries} collapsible={false} />
                 </Disclosure>
               ) : null}
-              {row.ip ? (
-                <div className="text-[color:var(--color-fg-muted)]">ip: {row.ip}</div>
-              ) : null}
+              {row.ip ? <div className="text-muted-foreground">ip: {row.ip}</div> : null}
               {row.requestId ? (
-                <div className="text-[color:var(--color-fg-muted)]">
+                <div className="text-muted-foreground">
                   req:{" "}
                   <Link
                     href={`/admin/audit?${new URLSearchParams({ requestId: row.requestId }).toString()}`}
-                    className="font-mono text-[color:var(--color-accent)] hover:underline"
+                    className="text-primary hover:text-primary-hover font-mono hover:underline"
                     title="Filter to all rows from this request"
                   >
                     {row.requestId}

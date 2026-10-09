@@ -24,6 +24,7 @@ import { AdminAuditPanel } from "@/components/domain/admin-audit-panel";
 import { PdnsConfView } from "@/components/domain/pdns-conf-view";
 import { ServerForm } from "../_components/server-form";
 import { ServerActions } from "../_components/server-actions";
+import { buttonClass } from "@/components/ui/button";
 
 export const metadata: Metadata = { title: "Edit PowerDNS server" };
 
@@ -75,16 +76,16 @@ export default async function EditPdnsServerPage({ params }: PageProps) {
   return (
     <div className="mx-auto max-w-2xl space-y-8">
       <header className="space-y-1">
-        <h1 className="text-2xl font-semibold tracking-tight">{row.name}</h1>
-        <p className="text-sm text-[color:var(--color-fg-muted)]">
+        <h1 className="text-h1">{row.name}</h1>
+        <p className="text-muted-foreground text-sm">
           {row.disabledAt ? (
             <>Disabled.</>
           ) : reachability === "auth" ? (
-            <span className="text-[color:var(--color-error)]">
+            <span className="text-destructive">
               API rejected the key - check the X-API-Key and the webserver/api ACL.
             </span>
           ) : reachability === "down" ? (
-            <span className="text-[color:var(--color-error)]">
+            <span className="text-destructive">
               Unreachable - the app hasn&apos;t reached this backend&apos;s API recently.
             </span>
           ) : reachFresh ? (
@@ -96,8 +97,8 @@ export default async function EditPdnsServerPage({ params }: PageProps) {
           )}
         </p>
         {row.capabilities ? (
-          <p className="flex flex-wrap items-center gap-2 text-xs text-[color:var(--color-fg-muted)]">
-            <span className="font-medium text-[color:var(--color-fg)]">Observed:</span>
+          <p className="text-muted-foreground flex flex-wrap items-center gap-2 text-xs">
+            <span className="text-foreground font-medium">Observed:</span>
             <CapabilityBadges capabilities={row.capabilities} writeMode={row.writeMode} />
             {row.capabilities.backends.length > 0 ? (
               <> · {row.capabilities.backends.join(", ")}</>
@@ -106,10 +107,10 @@ export default async function EditPdnsServerPage({ params }: PageProps) {
           </p>
         ) : null}
         {canReadAudit ? (
-          <p className="text-xs text-[color:var(--color-fg-muted)]">
+          <p className="text-muted-foreground text-xs">
             {lastEdit ? (
               <>
-                <span className="font-medium text-[color:var(--color-fg)]">Last admin edit:</span>{" "}
+                <span className="text-foreground font-medium">Last admin edit:</span>{" "}
                 {freshnessOf(lastEdit.ts.toISOString()).label}
                 {lastEdit.actorEmail ? (
                   <>
@@ -120,7 +121,7 @@ export default async function EditPdnsServerPage({ params }: PageProps) {
                   <> by system</>
                 ) : null}
                 {" · action: "}
-                <code className="rounded bg-[color:var(--color-bg-subtle)] px-1 text-[0.625rem]">
+                <code className="bg-tag text-mono-xs text-tag-foreground inline-flex h-5 items-center rounded-sm px-1.5 font-mono whitespace-nowrap">
                   {lastEdit.action}
                 </code>
               </>
@@ -150,12 +151,10 @@ export default async function EditPdnsServerPage({ params }: PageProps) {
       />
 
       {daemonSettings.length > 0 ? (
-        <section className="rounded-md border border-[color:var(--color-border)] p-4">
+        <section className="border-border rounded-md border p-4">
           <header className="mb-3">
-            <h2 className="text-sm font-medium tracking-wide text-[color:var(--color-fg-muted)] uppercase">
-              Daemon configuration
-            </h2>
-            <p className="mt-1 text-xs text-[color:var(--color-fg-muted)]">
+            <h2 className="text-h3 text-foreground">Daemon configuration</h2>
+            <p className="text-muted-foreground mt-1 text-xs">
               Read-only, from the server&apos;s <code>/config</code>. PowerDNS settings are
               file-based - change them in <code>pdns.conf</code>, not here. Secrets are redacted.
             </p>
@@ -165,13 +164,11 @@ export default async function EditPdnsServerPage({ params }: PageProps) {
       ) : null}
 
       {isServerWriteTarget(row) ? (
-        <section className="rounded-md border border-[color:var(--color-border)] p-4">
+        <section className="border-border rounded-md border p-4">
           <header className="mb-3 flex items-center justify-between">
             <div>
-              <h2 className="text-sm font-medium tracking-wide text-[color:var(--color-fg-muted)] uppercase">
-                Secondaries ({secondaries.length})
-              </h2>
-              <p className="mt-1 text-xs text-[color:var(--color-fg-muted)]">
+              <h2 className="text-h3 text-foreground">Secondaries ({secondaries.length})</h2>
+              <p className="text-muted-foreground mt-1 text-xs">
                 Read-only mirrors sharing this primary&apos;s group - polled for stats + sync state.
               </p>
             </div>
@@ -181,29 +178,29 @@ export default async function EditPdnsServerPage({ params }: PageProps) {
                   ? `/admin/servers/new?group=${encodeURIComponent(row.clusterId)}`
                   : "/admin/servers/new"
               }
-              className="rounded-md bg-[color:var(--color-accent)] px-3 py-1.5 text-xs font-medium text-[color:var(--color-accent-fg)] hover:opacity-95"
+              className={buttonClass({ variant: "primary", size: "sm" })}
             >
               + Add secondary
             </Link>
           </header>
           {secondaries.length === 0 ? (
-            <p className="text-xs text-[color:var(--color-fg-muted)]">
+            <p className="text-muted-foreground text-xs">
               {row.clusterId
                 ? "No secondaries in this group yet. Add one to enable sync-status checks + per-server stat graphs."
                 : "Put this primary in a group (above), then add secondaries to that group to enable sync-status checks."}
             </p>
           ) : (
-            <ul className="divide-y divide-[color:var(--color-border)] text-sm">
+            <ul className="divide-border divide-y text-sm">
               {secondaries.map((s) => (
                 <li key={s.id} className="flex items-baseline justify-between py-2">
                   <div>
                     <Link
                       href={`/admin/servers/${s.id}`}
-                      className="font-medium text-[color:var(--color-accent)] hover:underline"
+                      className="text-primary hover:text-primary-hover font-medium hover:underline"
                     >
                       {s.name}
                     </Link>
-                    <span className="ml-2 text-xs text-[color:var(--color-fg-muted)]">
+                    <span className="text-muted-foreground ml-2 text-xs">
                       {s.slug} · {s.baseUrl}
                     </span>
                   </div>
@@ -226,7 +223,7 @@ export default async function EditPdnsServerPage({ params }: PageProps) {
           <p className="text-xs">
             <Link
               href={`/admin/requests?serverSlug=${encodeURIComponent(row.slug)}`}
-              className="text-[color:var(--color-accent)] hover:underline"
+              className="text-primary hover:text-primary-hover hover:underline"
             >
               View PowerDNS HTTP requests for this server →
             </Link>

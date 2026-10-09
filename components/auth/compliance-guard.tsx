@@ -37,6 +37,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { Alert } from "@/components/ui/alert";
 
 export type ComplianceReason = "mfa" | "password";
 
@@ -165,12 +166,8 @@ export function ComplianceBanner() {
   return (
     // `key={shakeKey}` re-mounts this node on every blocked attempt, which
     // restarts the CSS animation cleanly (no need to toggle a class).
-    <div
-      key={shakeKey}
-      className="animate-shake rounded-md border border-[color:var(--color-warn)] bg-[color:var(--color-warn)]/10 p-4 text-sm"
-      role="alert"
-    >
-      <strong>{title}</strong> {detail}
-    </div>
+    <Alert key={shakeKey} className="animate-shake" title={title} live>
+      {detail}
+    </Alert>
   );
 }

@@ -64,10 +64,7 @@ export function OidcProvidersTable({ rows, canManage, canReadAudit }: Props) {
               style={{ width: 20, height: 20, objectFit: "contain", display: "block" }}
             />
           ) : (
-            <span
-              className="block h-5 w-5 rounded bg-[color:var(--color-bg-muted)]"
-              title="No icon set"
-            />
+            <span className="bg-muted block h-5 w-5 rounded" title="No icon set" />
           );
         },
       },
@@ -81,7 +78,7 @@ export function OidcProvidersTable({ rows, canManage, canReadAudit }: Props) {
               {row.name}
               {row.isEnvManaged ? (
                 <span
-                  className="rounded-full border border-[color:var(--color-border)] bg-[color:var(--color-bg-muted)] px-2 py-0.5 text-[0.625rem] font-medium tracking-wide text-[color:var(--color-fg-muted)] uppercase"
+                  className="bg-tag text-mono-xs text-tag-foreground inline-flex h-5 items-center rounded-sm px-1.5 font-mono whitespace-nowrap"
                   title="Configured via OIDC_* environment variables. Edit by changing env vars, not the UI."
                 >
                   Configured by ENV
@@ -95,28 +92,24 @@ export function OidcProvidersTable({ rows, canManage, canReadAudit }: Props) {
         accessorKey: "slug",
         header: "Slug",
         cell: (ctx) => (
-          <code className="rounded bg-[color:var(--color-bg-subtle)] px-1 text-xs">
-            {ctx.getValue<string>()}
-          </code>
+          <code className="bg-background rounded px-1 text-xs">{ctx.getValue<string>()}</code>
         ),
       },
       {
         accessorKey: "issuerUrl",
         header: "Issuer",
-        cell: (ctx) => (
-          <span className="text-[color:var(--color-fg-muted)]">{ctx.getValue<string>()}</span>
-        ),
+        cell: (ctx) => <span className="text-muted-foreground">{ctx.getValue<string>()}</span>,
       },
       {
         accessorKey: "enabled",
         header: "Enabled",
         cell: (ctx) =>
           ctx.getValue<boolean>() ? (
-            <span className="rounded-full bg-[color:var(--color-success)]/15 px-2 py-0.5 text-xs">
+            <span className="bg-tag text-mono-xs text-tag-foreground inline-flex h-5 items-center rounded-sm px-1.5 font-mono">
               Yes
             </span>
           ) : (
-            <span className="rounded-full bg-[color:var(--color-fg-muted)]/15 px-2 py-0.5 text-xs">
+            <span className="bg-tag text-mono-xs text-tag-foreground inline-flex h-5 items-center rounded-sm px-1.5 font-mono">
               No
             </span>
           ),
@@ -134,7 +127,7 @@ export function OidcProvidersTable({ rows, canManage, canReadAudit }: Props) {
         cell: (ctx) => {
           const row = ctx.row.original;
           if (row.isEnvManaged) {
-            return <span className="text-xs text-[color:var(--color-fg-muted)]">-</span>;
+            return <span className="text-muted-foreground text-xs">-</span>;
           }
           return <DiscoveryBadge cache={row.discoveryCache} failHint={row.discoveryFailHint} />;
         },
@@ -148,11 +141,11 @@ export function OidcProvidersTable({ rows, canManage, canReadAudit }: Props) {
         cell: (ctx) => {
           const row = ctx.row.original;
           if (row.isEnvManaged || !row.lastAdminEditLabel) {
-            return <span className="text-xs text-[color:var(--color-fg-muted)]">-</span>;
+            return <span className="text-muted-foreground text-xs">-</span>;
           }
           return (
             <span
-              className="text-xs text-[color:var(--color-fg-muted)]"
+              className="text-muted-foreground text-xs"
               title={row.lastAdminEditTitle ?? undefined}
             >
               {row.lastAdminEditLabel}
@@ -170,7 +163,7 @@ export function OidcProvidersTable({ rows, canManage, canReadAudit }: Props) {
         if (row.isEnvManaged) {
           return (
             <span
-              className="text-xs text-[color:var(--color-fg-muted)]"
+              className="text-muted-foreground text-xs"
               title="Read-only - edit via OIDC_* environment variables"
             >
               Read-only
@@ -215,20 +208,14 @@ export function OidcProvidersTable({ rows, canManage, canReadAudit }: Props) {
 function DomainsCell({ allowedEmailDomains }: { allowedEmailDomains: string[] | null }) {
   if (allowedEmailDomains === null) {
     return (
-      <span
-        className="text-[color:var(--color-fg-muted)]"
-        title="Inherits OIDC_ALLOWED_EMAIL_DOMAINS from env."
-      >
+      <span className="text-muted-foreground" title="Inherits OIDC_ALLOWED_EMAIL_DOMAINS from env.">
         (inherited)
       </span>
     );
   }
   if (allowedEmailDomains.length === 0) {
     return (
-      <span
-        className="text-[color:var(--color-fg-muted)]"
-        title="Override: no restriction at this provider."
-      >
+      <span className="text-muted-foreground" title="Override: no restriction at this provider.">
         (unrestricted)
       </span>
     );
@@ -255,7 +242,7 @@ function DiscoveryBadge({
   if (!cache) {
     return (
       <span
-        className="text-xs text-[color:var(--color-fg-muted)]"
+        className="text-muted-foreground text-xs"
         title="Click Test to probe the issuer's discovery endpoint."
       >
         (not yet probed)
@@ -276,12 +263,12 @@ function DiscoveryBadge({
     const endSessionMissing = cache.endSessionEndpoint === null;
     return (
       <span className="inline-flex items-center gap-1 text-xs">
-        <span className="h-1.5 w-1.5 rounded-full bg-[color:var(--color-success)]" />
+        <span className="bg-success h-1.5 w-1.5 rounded-full" />
         Reachable
-        <span className="text-[color:var(--color-fg-muted)]">· {label}</span>
+        <span className="text-muted-foreground">· {label}</span>
         {endSessionMissing ? (
           <span
-            className="ml-1 inline-flex items-center gap-1 rounded-full bg-[color:var(--color-warn)]/15 px-1.5 py-0.5 text-[0.625rem] font-medium text-[color:var(--color-warn)]"
+            className="bg-tag text-mono-xs text-tag-foreground ml-1 inline-flex h-5 items-center rounded-sm px-1.5 font-mono whitespace-nowrap"
             title="IdP doesn't advertise end_session_endpoint. RP-initiated sign-out can't reach the IdP - users will see the local sign-out screen instead of the IdP's. Fix: enable Front Channel / Back Channel Logout on the IdP."
           >
             no end-session
@@ -295,9 +282,9 @@ function DiscoveryBadge({
       className="inline-flex items-center gap-1 text-xs"
       title={failHint ?? "Discovery probe failed."}
     >
-      <span className="h-1.5 w-1.5 rounded-full bg-[color:var(--color-error)]" />
+      <span className="bg-destructive h-1.5 w-1.5 rounded-full" />
       Failed
-      <span className="text-[color:var(--color-fg-muted)]">· {label}</span>
+      <span className="text-muted-foreground">· {label}</span>
     </span>
   );
 }

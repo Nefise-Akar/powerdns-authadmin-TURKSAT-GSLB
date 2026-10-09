@@ -687,9 +687,11 @@ this baseline.
 
 ### 19.1 Mobile-first responsive shell
 
-- **What.** Off-canvas hamburger drawer for navigation under `md`; full sidebar from `md+`.
-  Drawer closes on backdrop tap, Esc, and route changes (no in-drawer close button needed).
-  The top bar reflows: hamburger + status chip + bell + theme + avatar, all reachable at
+- **What.** From `md+`: a 72 px navigation rail (Dashboard, Zones, PowerDNS, Access, Audit
+  log), a top bar (brand, health bell, theme, settings, account menu) and a 28 px status bar;
+  areas with several pages (PowerDNS, Access) show them as tabs above the page. Under `md`
+  the rail becomes an off-canvas drawer opened from the top bar's menu button; it closes on
+  backdrop tap, Esc, its close button, and route changes. Everything stays reachable at
   320 px.
 - **Where.** `components/ui/app-shell.tsx`, `app/(app)/layout.tsx`.
 
@@ -712,17 +714,20 @@ this baseline.
 - **What.** Every list view (zones, users, roles, teams, OIDC providers, TSIG keys,
   autoprimaries, zone templates, audit log, PDNS request log, sessions, profile sessions,
   servers, dashboard sub-tables, role assignments, team members, zone change history) uses
-  the same `<DataTable>` recipe. Desktop: `bg-bg-muted` thead, `even:bg-bg-subtle` striping,
-  accent-tinted hover wash, sticky search + sort + per-column meta widths. Mobile (< md):
+  the same `<DataTable>` recipe. Desktop: 36 px header and rows, `background` header row,
+  rows split by 1 px borders, `background` hover (accent is reserved for selection), an inset
+  ring on the keyboard-focused row, a 12 px arrow on the sorted column, numbered pagination,
+  search + sort + per-column meta widths. Mobile (< md):
   each row reflows to a labelled card automatically - no horizontal scroll, no truncated
   cells.
 - **Where.** `components/ui/data-table.tsx`. The Audit Log + Profile Sessions + OIDC
   Providers + TSIG Keys + Autoprimaries were the final hold-outs converted in v1.1.4.
 
-### 19.3 Live header status chip
+### 19.3 Live connection status
 
-- **What.** Single pill in the top bar showing `CONNECTING / CONNECTED / OFFLINE / PAUSED`
-  (SSE connection state) plus a trailing `· SYNCED / · DESYNCED` whenever the page has a
+- **What.** One status at the right of the status bar showing `Connecting / Connected /
+Offline / Paused` (SSE connection state; click to pause or resume) plus a trailing
+  `· synced / · desynced` whenever the page has a
   notion of sync state. Off-the-shelf default is the fleet-wide `globalAnyLagging()` verdict
   computed from the in-process zone-state cache (no extra PDNS hit); per-page
   `<HeaderStatusMode/>` overrides on zone-detail, zones-list, and the servers page. A 5 s
@@ -745,7 +750,7 @@ this baseline.
 
 - **What.** Was three buttons (sun / monitor / moon). Now one button whose icon mirrors the
   active preference and cycles `light → dark → system → light` on click. The pre-hydration
-  script in `app/layout.tsx` still applies the `.dark` class before React mounts so there's
+  script in `app/layout.tsx` still sets `data-theme` on `<html>` before React mounts so there's
   no flash of wrong theme.
 - **Where.** `components/ui/theme-toggle.tsx`.
 
@@ -795,7 +800,7 @@ errors are gated behind an explicit "Save anyway" checkbox so an override is nev
 
 - **What.** Operators with `must_change_password = true` or unmet MFA-per-role requirements
   are pinned to `/profile` (or an allow-list of self-service routes) on every navigation -
-  not just the initial render. The header status chip is suppressed in that state because
+  not just the initial render. The connection status is suppressed in that state because
   the SSE endpoint would 403 the request, which would otherwise leave the chip stuck on
   `CONNECTING`.
 - **Where.** `lib/auth/require-user.ts` (page gate), `app/(app)/layout.tsx` (compliance

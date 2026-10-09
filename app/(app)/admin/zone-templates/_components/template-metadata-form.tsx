@@ -19,6 +19,7 @@ import {
   isKindApiWritable,
 } from "@/app/(app)/zones/[zoneId]/metadata/_components/kind-specs";
 import { MetadataValuesInput } from "@/app/(app)/zones/[zoneId]/metadata/_components/metadata-values-input";
+import { buttonClass } from "@/components/ui/button";
 
 interface Props {
   templateId: string;
@@ -108,7 +109,7 @@ export function TemplateMetadataForm({ templateId, initial, canEdit }: Props) {
   return (
     <section className="space-y-4">
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <p className="text-xs text-[color:var(--color-fg-muted)]">
+        <p className="text-muted-foreground text-xs">
           Metadata kinds applied as defaults when a zone is created from this template.
         </p>
         {canEdit && !adding ? (
@@ -116,7 +117,7 @@ export function TemplateMetadataForm({ templateId, initial, canEdit }: Props) {
             type="button"
             onClick={() => setAdding(true)}
             disabled={availableToAdd.length === 0}
-            className="rounded bg-[color:var(--color-accent)] px-3 py-1.5 text-xs font-medium text-[color:var(--color-accent-fg)] hover:opacity-95 disabled:opacity-50"
+            className={buttonClass({ variant: "primary", size: "sm" })}
           >
             + Add metadata kind
           </button>
@@ -128,7 +129,7 @@ export function TemplateMetadataForm({ templateId, initial, canEdit }: Props) {
       ) : null}
 
       {sortedKinds.length === 0 ? (
-        <div className="rounded border border-dashed border-[color:var(--color-border)] bg-[color:var(--color-bg-subtle)] p-4 text-center text-xs text-[color:var(--color-fg-muted)]">
+        <div className="border-border bg-background text-muted-foreground rounded border border-dashed p-4 text-center text-xs">
           No metadata defaults yet. Add a kind above to seed it on every zone created from this
           template.
         </div>
@@ -137,22 +138,17 @@ export function TemplateMetadataForm({ templateId, initial, canEdit }: Props) {
           {sortedKinds.map((kind) => {
             const spec = getKindSpec(kind);
             return (
-              <li
-                key={kind}
-                className="rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg)] p-4"
-              >
+              <li key={kind} className="border-border bg-card rounded-md border p-4">
                 <header className="flex flex-wrap items-baseline justify-between gap-2">
                   <div>
                     <h3 className="font-mono text-sm font-medium">{kind}</h3>
-                    <p className="mt-1 text-[0.6875rem] text-[color:var(--color-fg-muted)]">
-                      {spec.description}
-                    </p>
+                    <p className="text-muted-foreground text-caption mt-1">{spec.description}</p>
                   </div>
                   {canEdit ? (
                     <button
                       type="button"
                       onClick={() => handleDelete(kind)}
-                      className="text-[0.6875rem] text-[color:var(--color-error)] hover:underline"
+                      className="text-destructive text-caption hover:underline"
                     >
                       Remove
                     </button>
@@ -174,17 +170,16 @@ export function TemplateMetadataForm({ templateId, initial, canEdit }: Props) {
       {canEdit ? (
         <div className="flex items-center gap-3">
           <button
+            aria-busy={saving}
             type="button"
             onClick={handleSave}
             disabled={saving || !dirty}
-            className="rounded bg-[color:var(--color-accent)] px-3 py-1.5 text-xs font-medium text-[color:var(--color-accent-fg)] hover:opacity-95 disabled:opacity-50"
+            className={buttonClass({ variant: "primary", size: "sm" })}
           >
-            {saving ? "Saving…" : "Save metadata"}
+            Save metadata
           </button>
           {!dirty ? (
-            <span className="text-[0.6875rem] text-[color:var(--color-fg-muted)]">
-              No unsaved changes
-            </span>
+            <span className="text-muted-foreground text-caption">No unsaved changes</span>
           ) : null}
         </div>
       ) : null}
@@ -232,10 +227,7 @@ function KindPicker({
   );
 
   return (
-    <div
-      ref={ref}
-      className="overflow-hidden rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg)] shadow-sm"
-    >
+    <div ref={ref} className="border-border bg-card overflow-hidden rounded-md border">
       <input
         ref={inputRef}
         type="text"
@@ -259,12 +251,12 @@ function KindPicker({
           }
         }}
         placeholder="Filter kinds…"
-        className="block w-full border-b border-[color:var(--color-border)] bg-[color:var(--color-bg)] px-2 py-1.5 text-xs outline-none"
+        className="border-border bg-card block w-full border-b px-2 py-1.5 text-xs outline-none"
         aria-controls={listId}
       />
       <ul id={listId} className="max-h-60 overflow-auto py-1 text-xs">
         {filtered.length === 0 ? (
-          <li className="px-2 py-2 text-[color:var(--color-fg-muted)]">No kinds match.</li>
+          <li className="text-muted-foreground px-2 py-2">No kinds match.</li>
         ) : (
           filtered.map((o, i) => (
             <li
@@ -275,15 +267,11 @@ function KindPicker({
                 onPick(o.kind);
               }}
               className={`cursor-pointer px-2 py-1.5 ${
-                i === highlight
-                  ? "bg-[color:var(--color-bg-subtle)]"
-                  : "hover:bg-[color:var(--color-bg-subtle)]"
+                i === highlight ? "bg-background" : "hover:bg-background"
               }`}
             >
               <div className="font-mono">{o.kind}</div>
-              <div className="text-[0.625rem] text-[color:var(--color-fg-muted)]">
-                {o.description}
-              </div>
+              <div className="text-muted-foreground text-caption">{o.description}</div>
             </li>
           ))
         )}

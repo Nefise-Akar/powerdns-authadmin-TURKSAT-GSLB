@@ -30,6 +30,8 @@ import { LocalTime } from "@/components/ui/local-time";
 import { Disclosure } from "@/components/ui/disclosure";
 import { useRealtimeEvent } from "@/components/realtime/realtime-provider";
 import { PdnsHttpLog } from "@/app/(app)/zones/[zoneId]/_components/pdns-http-log";
+import { buttonClass } from "@/components/ui/button";
+import { inputClass } from "@/components/ui/field";
 
 export interface PdnsRequestRowClient {
   id: string;
@@ -146,7 +148,7 @@ export function PdnsRequestsTable(props: Props) {
         cell: (ctx) => (
           <LocalTime
             ts={ctx.getValue<string>()}
-            className="font-mono text-[0.6875rem] whitespace-nowrap text-[color:var(--color-fg-muted)]"
+            className="text-muted-foreground text-mono-xs font-mono whitespace-nowrap"
           />
         ),
         meta: { className: "w-44" },
@@ -162,7 +164,7 @@ export function PdnsRequestsTable(props: Props) {
             return (
               <Link
                 href={`/admin/servers/${row.serverDbId}`}
-                className="text-[color:var(--color-accent)] hover:underline"
+                className="text-primary hover:text-primary-hover hover:underline"
               >
                 {label}
               </Link>
@@ -199,7 +201,7 @@ export function PdnsRequestsTable(props: Props) {
           const isFailure =
             row.error !== null || (row.responseStatus !== null && row.responseStatus >= 400);
           return (
-            <span className={`font-mono ${isFailure ? "text-[color:var(--color-error)]" : ""}`}>
+            <span className={`font-mono ${isFailure ? "text-destructive" : ""}`}>
               {row.responseStatus ?? (row.error ? "ERR" : "-")}
             </span>
           );
@@ -217,7 +219,7 @@ export function PdnsRequestsTable(props: Props) {
               <Disclosure
                 label="POWERDNS HTTP REQUESTS (1)"
                 className="space-y-1"
-                summaryClassName="uppercase tracking-wide"
+                summaryClassName="text-body-sm"
                 bodyClassName="mt-1"
               >
                 <PdnsHttpLog
@@ -241,11 +243,11 @@ export function PdnsRequestsTable(props: Props) {
                 />
               </Disclosure>
               {row.requestId ? (
-                <div className="text-[color:var(--color-fg-muted)]">
+                <div className="text-muted-foreground">
                   req:{" "}
                   <Link
                     href={`/admin/requests?${new URLSearchParams({ requestId: row.requestId }).toString()}`}
-                    className="font-mono text-[color:var(--color-accent)] hover:underline"
+                    className="text-primary hover:text-primary-hover font-mono hover:underline"
                     title="Filter to all rows from this request"
                   >
                     {row.requestId}
@@ -268,7 +270,7 @@ export function PdnsRequestsTable(props: Props) {
           e.preventDefault();
           applyFilters();
         }}
-        className="grid gap-3 rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg-subtle)] p-3 text-xs sm:grid-cols-4"
+        className="border-border bg-background grid gap-3 rounded-md border p-3 text-xs sm:grid-cols-4"
       >
         <Field label="Server">
           <SelectMenu
@@ -295,7 +297,7 @@ export function PdnsRequestsTable(props: Props) {
             value={status}
             onChange={(e) => setStatus(e.target.value)}
             placeholder="200, 422, …"
-            className="block w-full rounded border border-[color:var(--color-border)] bg-[color:var(--color-bg)] px-2 py-1 text-xs"
+            className={`w-full ${inputClass}`}
           />
         </Field>
         <Field label="Request ID">
@@ -303,7 +305,7 @@ export function PdnsRequestsTable(props: Props) {
             value={requestId}
             onChange={(e) => setRequestId(e.target.value)}
             placeholder="opaque id"
-            className="block w-full rounded border border-[color:var(--color-border)] bg-[color:var(--color-bg)] px-2 py-1 font-mono text-xs"
+            className={`w-full font-mono ${inputClass}`}
           />
         </Field>
         <Field label="From">
@@ -311,34 +313,25 @@ export function PdnsRequestsTable(props: Props) {
             value={fromIso}
             onChange={setFromIso}
             side="from"
-            className="block w-full rounded border border-[color:var(--color-border)] bg-[color:var(--color-bg)] px-2 py-1 text-xs"
+            className={inputClass}
           />
         </Field>
         <Field label="To">
-          <DateTimePicker
-            value={toIso}
-            onChange={setToIso}
-            side="to"
-            className="block w-full rounded border border-[color:var(--color-border)] bg-[color:var(--color-bg)] px-2 py-1 text-xs"
-          />
+          <DateTimePicker value={toIso} onChange={setToIso} side="to" className={inputClass} />
         </Field>
         <div className="flex items-center gap-2 sm:col-span-4">
           <button
             type="submit"
             disabled={!filtersDirty}
-            className="rounded bg-[color:var(--color-accent)] px-3 py-1 text-xs font-medium text-[color:var(--color-accent-fg)] hover:opacity-95 disabled:opacity-50"
+            className={buttonClass({ variant: "primary", size: "sm" })}
           >
             Apply
           </button>
-          <button
-            type="button"
-            onClick={clearFilters}
-            className="rounded border border-[color:var(--color-border)] px-3 py-1 text-xs hover:bg-[color:var(--color-bg-muted)]"
-          >
+          <button type="button" onClick={clearFilters} className={buttonClass({ size: "sm" })}>
             Clear
           </button>
           {props.windowCapped ? (
-            <span className="ml-auto text-[0.625rem] text-[color:var(--color-warn)]">
+            <span className="text-warning text-caption ml-auto">
               Showing the most recent {props.rows.length} rows - narrow with filters to see older
               entries.
             </span>
@@ -351,7 +344,7 @@ export function PdnsRequestsTable(props: Props) {
         columns={columns}
         pageSize={50}
         pageSizeOptions={[25, 50, 100, 200]}
-        searchPlaceholder="Search URLs, ops, methods…"
+        searchPlaceholder="Search requests"
         emptyMessage="No requests match the current filter."
         noDataMessage="No PowerDNS HTTP traffic recorded yet."
         sortParam="sort"
@@ -364,9 +357,7 @@ export function PdnsRequestsTable(props: Props) {
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="space-y-1">
-      <span className="block text-[0.625rem] tracking-wide text-[color:var(--color-fg-muted)] uppercase">
-        {label}
-      </span>
+      <span className="text-caption text-muted-foreground block">{label}</span>
       {children}
     </label>
   );

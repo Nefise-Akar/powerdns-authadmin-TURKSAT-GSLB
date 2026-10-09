@@ -43,14 +43,14 @@ import { ensurePollerRunning, ensureBackendsObserved } from "@/lib/realtime/zone
 import { pdnsBackgroundPollingEnabled } from "@/lib/env";
 import { PollingDisabledHint } from "@/components/domain/polling-disabled-hint";
 import { getBackendStatus } from "@/lib/realtime/backend-status";
-import { CounterRateChart, MapPieChart, ValueLineChart } from "@/components/domain/pdns-stat-chart";
+import { CounterRateChart, MapBarChart, ValueLineChart } from "@/components/domain/pdns-stat-chart";
 import { Chart } from "@/components/ui/chart";
 import { LocalTime } from "@/components/ui/local-time";
 import { UnverifiedEmailBanner } from "./_components/unverified-email-banner";
 import { DashboardLiveFeed } from "./_components/dashboard-live-feed";
 import { countActiveSessions } from "@/lib/db/repositories/sessions";
 import {
-  actionPieOption,
+  actionBarsOption,
   bucketResponseSizes,
   hourlyLineOption,
   multiSeriesOption,
@@ -64,6 +64,7 @@ import {
   DASHBOARD_METRIC_SAMPLES_WINDOW_MS,
   DASHBOARD_PDNS_STATS_WINDOW_MS,
 } from "@/lib/metrics/dashboard-windows";
+import { Alert } from "@/components/ui/alert";
 
 export const metadata: Metadata = { title: "Dashboard" };
 export const dynamic = "force-dynamic";
@@ -195,13 +196,11 @@ export default async function DashboardPage({ searchParams }: DashboardProps) {
       <header className="flex items-end justify-between">
         <div>
           <div className="flex items-baseline gap-3">
-            <h1 className="text-3xl font-semibold tracking-tight">
-              Welcome, {user.name ?? user.email.split("@")[0]}
-            </h1>
+            <h1 className="text-h1">Welcome, {user.name ?? user.email.split("@")[0]}</h1>
             {!pdnsBackgroundPollingEnabled && canReadServers ? <PollingDisabledHint /> : null}
             {canReadAudit ? <DashboardLiveFeed /> : null}
           </div>
-          <p className="mt-1 text-sm text-[color:var(--color-fg-muted)]">
+          <p className="text-muted-foreground mt-1 text-sm">
             Operational snapshot of every backend, every actor, every action.
           </p>
         </div>
@@ -218,14 +217,12 @@ export default async function DashboardPage({ searchParams }: DashboardProps) {
       {/* Forced password change - surfaced right below the header, above the
           KPIs, so it's the first thing the operator acts on. */}
       {user.mustChangePassword ? (
-        <section className="rounded-md border border-[color:var(--color-warn)] bg-[color:var(--color-warn)]/10 p-4 text-sm">
-          <strong>Change your password.</strong> Your account was set up with a temporary password.
-          Update it from your{" "}
-          <Link href="/profile" className="underline">
-            profile
-          </Link>
-          .
-        </section>
+        <Alert
+          title="temporary password"
+          action={<Link href="/profile">Change your password</Link>}
+        >
+          Your account was set up with a temporary password.
+        </Alert>
       ) : null}
 
       {/* KPI cards - each one is conditional on the perm needed to derive it. */}
@@ -281,7 +278,7 @@ export default async function DashboardPage({ searchParams }: DashboardProps) {
             <PdnsStatsSection />
           </Suspense>
         ) : (
-          <p className="rounded-md border border-dashed border-[color:var(--color-border)] bg-[color:var(--color-bg-subtle)] p-6 text-center text-sm text-[color:var(--color-fg-muted)]">
+          <p className="border-border bg-background text-muted-foreground rounded-md border border-dashed p-6 text-center text-sm">
             You don&apos;t have permission to view PowerDNS server statistics.
           </p>
         )
@@ -300,7 +297,10 @@ export default async function DashboardPage({ searchParams }: DashboardProps) {
                 title="Successful logins - last 24h"
                 subtitle="Per-hour bucket of auth.login.success events"
               >
-                <Chart option={hourlyLineOption(loginsHourly, HOURS_24, "Logins")} height={260} />
+                <Chart
+                  option={hourlyLineOption(loginsHourly, HOURS_24, "Logins", "var(--success)")}
+                  height={260}
+                />
               </ChartCard>
             </div>
           ) : null}
@@ -342,7 +342,7 @@ export default async function DashboardPage({ searchParams }: DashboardProps) {
                 title="Action breakdown - last 7 days"
                 subtitle="Top 8 actions by frequency"
               >
-                <Chart option={actionPieOption(actionPie)} height={260} />
+                <Chart option={actionBarsOption(actionPie)} height={260} />
               </ChartCard>
             </div>
           ) : null}
@@ -360,14 +360,14 @@ export default async function DashboardPage({ searchParams }: DashboardProps) {
               ) : null}
               {canReadServers ? (
                 <Card title="Backends snapshot">
-                  <div className="overflow-hidden rounded-lg border border-[color:var(--color-border)] text-sm">
+                  <div className="overflow-hidden text-sm">
                     <table className="w-full">
-                      <thead className="bg-[color:var(--color-bg-muted)] text-left text-xs font-medium tracking-wide text-[color:var(--color-fg-muted)] uppercase">
+                      <thead className="border-border bg-background text-label text-muted-foreground border-y text-left">
                         <tr>
-                          <th className="px-3 py-2.5">Backend</th>
-                          <th className="px-3 py-2.5">Zones</th>
-                          <th className="px-3 py-2.5">p50</th>
-                          <th className="px-3 py-2.5">p95</th>
+                          <th className="h-9 px-2 font-medium first:pl-3">Backend</th>
+                          <th className="h-9 px-2 font-medium first:pl-3">Zones</th>
+                          <th className="h-9 px-2 font-medium first:pl-3">p50</th>
+                          <th className="h-9 px-2 font-medium first:pl-3">p95</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -375,7 +375,7 @@ export default async function DashboardPage({ searchParams }: DashboardProps) {
                           <tr>
                             <td
                               colSpan={4}
-                              className="px-3 py-6 text-center text-xs text-[color:var(--color-fg-muted)]"
+                              className="text-muted-foreground px-3 py-6 text-center text-xs"
                             >
                               No active backends.
                               {canCreateServer ? (
@@ -383,7 +383,7 @@ export default async function DashboardPage({ searchParams }: DashboardProps) {
                                   {" "}
                                   <Link
                                     href="/admin/servers/new"
-                                    className="text-[color:var(--color-accent)] hover:underline"
+                                    className="text-primary hover:text-primary-hover hover:underline"
                                   >
                                     Add one
                                   </Link>
@@ -396,23 +396,23 @@ export default async function DashboardPage({ searchParams }: DashboardProps) {
                           backendsLatest.map((b) => (
                             <tr
                               key={b.serverId}
-                              className="border-t border-[color:var(--color-border)] transition-colors even:bg-[color:var(--color-bg-subtle)] hover:bg-[color-mix(in_oklch,var(--color-accent)_14%,transparent)]"
+                              className="border-border even:bg-background hover:bg-background border-t transition-colors"
                             >
-                              <td className="px-3 py-3 align-top font-medium">
+                              <td className="px-2 py-2 align-top font-medium first:pl-3">
                                 <Link
                                   href={`/admin/servers/${b.serverId}`}
-                                  className="text-[color:var(--color-accent)] hover:underline"
+                                  className="text-primary hover:text-primary-hover hover:underline"
                                 >
                                   {b.serverName}
                                 </Link>
                               </td>
-                              <td className="px-3 py-3 align-top font-mono text-xs">
+                              <td className="px-2 py-2 align-top font-mono text-xs first:pl-3">
                                 {b.zoneCount ?? "-"}
                               </td>
-                              <td className="px-3 py-3 align-top font-mono text-xs">
+                              <td className="px-2 py-2 align-top font-mono text-xs first:pl-3">
                                 {b.latencyP50Ms === null ? "-" : `${Math.round(b.latencyP50Ms)}ms`}
                               </td>
-                              <td className="px-3 py-3 align-top font-mono text-xs">
+                              <td className="px-2 py-2 align-top font-mono text-xs first:pl-3">
                                 {b.latencyP95Ms === null ? "-" : `${Math.round(b.latencyP95Ms)}ms`}
                               </td>
                             </tr>
@@ -433,44 +433,44 @@ export default async function DashboardPage({ searchParams }: DashboardProps) {
               action={
                 <Link
                   href="/admin/audit"
-                  className="text-xs text-[color:var(--color-accent)] hover:underline"
+                  className="text-primary hover:text-primary-hover text-xs hover:underline"
                 >
                   View all →
                 </Link>
               }
             >
               {recent.length === 0 ? (
-                <p className="text-sm text-[color:var(--color-fg-muted)]">No audit entries yet.</p>
+                <p className="text-muted-foreground text-sm">No audit entries yet.</p>
               ) : (
-                <div className="overflow-hidden rounded-lg border border-[color:var(--color-border)] text-sm">
+                <div className="overflow-hidden text-sm">
                   <table className="w-full">
-                    <thead className="bg-[color:var(--color-bg-muted)] text-left text-xs font-medium tracking-wide text-[color:var(--color-fg-muted)] uppercase">
+                    <thead className="border-border bg-background text-label text-muted-foreground border-y text-left">
                       <tr>
-                        <th className="px-3 py-2.5">When</th>
-                        <th className="px-3 py-2.5">Actor</th>
-                        <th className="px-3 py-2.5">Action</th>
-                        <th className="px-3 py-2.5">Resource</th>
+                        <th className="h-9 px-2 font-medium first:pl-3">When</th>
+                        <th className="h-9 px-2 font-medium first:pl-3">Actor</th>
+                        <th className="h-9 px-2 font-medium first:pl-3">Action</th>
+                        <th className="h-9 px-2 font-medium first:pl-3">Resource</th>
                       </tr>
                     </thead>
                     <tbody>
                       {recent.map((row, idx) => (
                         <tr
                           key={idx}
-                          className="border-t border-[color:var(--color-border)] transition-colors even:bg-[color:var(--color-bg-subtle)] hover:bg-[color-mix(in_oklch,var(--color-accent)_14%,transparent)]"
+                          className="border-border even:bg-background hover:bg-background border-t transition-colors"
                         >
-                          <td className="px-3 py-3 align-top font-mono text-[0.6875rem] text-[color:var(--color-fg-muted)]">
+                          <td className="text-muted-foreground text-mono-xs px-2 py-2 align-top font-mono first:pl-3">
                             <LocalTime ts={row.ts} />
                           </td>
-                          <td className="px-3 py-3 align-top text-xs">
+                          <td className="px-2 py-2 align-top text-xs first:pl-3">
                             {row.actorEmail ?? "system"}
                           </td>
-                          <td className="px-3 py-3 align-top font-mono text-xs">{row.action}</td>
-                          <td className="px-3 py-3 align-top text-xs">
-                            <span className="text-[color:var(--color-fg-muted)]">
-                              {row.resourceType}
-                            </span>
+                          <td className="px-2 py-2 align-top font-mono text-xs first:pl-3">
+                            {row.action}
+                          </td>
+                          <td className="px-2 py-2 align-top text-xs first:pl-3">
+                            <span className="text-muted-foreground">{row.resourceType}</span>
                             {row.resourceId ? (
-                              <span className="ml-2 font-mono text-[0.7rem]">
+                              <span className="text-mono-xs ml-2 font-mono">
                                 {row.resourceId.slice(0, 32)}
                                 {row.resourceId.length > 32 ? "…" : ""}
                               </span>
@@ -488,7 +488,7 @@ export default async function DashboardPage({ searchParams }: DashboardProps) {
       )}
 
       {!hasAnyPanel ? (
-        <section className="rounded-md border border-dashed border-[color:var(--color-border)] bg-[color:var(--color-bg-subtle)] p-8 text-center text-sm text-[color:var(--color-fg-muted)]">
+        <section className="border-border bg-background text-muted-foreground rounded-md border border-dashed p-8 text-center text-sm">
           You&apos;re signed in but no panels are visible to your role yet. An administrator can
           grant additional permissions if you should see zones, audit history, or server health
           here.
@@ -515,24 +515,20 @@ function KpiCard({
 }) {
   const inner = (
     <>
-      <div className="text-xs font-medium tracking-wide text-[color:var(--color-fg-muted)] uppercase">
-        {label}
-      </div>
+      <div className="text-caption text-muted-foreground">{label}</div>
       <div className="mt-2 text-2xl font-semibold tabular-nums">{value}</div>
-      {sub ? <div className="mt-1 text-xs text-[color:var(--color-fg-muted)]">{sub}</div> : null}
+      {sub ? <div className="text-muted-foreground mt-1 text-xs">{sub}</div> : null}
     </>
   );
   return href ? (
     <Link
       href={href}
-      className="block rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg-subtle)] p-4 transition-colors hover:bg-[color:var(--color-bg-muted)]"
+      className="border-border bg-background hover:bg-muted block rounded-md border p-4 transition-colors"
     >
       {inner}
     </Link>
   ) : (
-    <div className="rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg-subtle)] p-4">
-      {inner}
-    </div>
+    <div className="border-border bg-background rounded-md border p-4">{inner}</div>
   );
 }
 
@@ -546,10 +542,10 @@ function ChartCard({
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg)] p-4">
+    <section className="border-border bg-card rounded-md border p-4">
       <header className="mb-2">
         <h2 className="text-sm font-medium">{title}</h2>
-        {subtitle ? <p className="text-xs text-[color:var(--color-fg-muted)]">{subtitle}</p> : null}
+        {subtitle ? <p className="text-muted-foreground text-xs">{subtitle}</p> : null}
       </header>
       {children}
     </section>
@@ -587,14 +583,12 @@ function AttentionWidget({
 }) {
   return (
     <section
-      className="rounded-md border border-[color:var(--color-warn)] bg-[color:var(--color-warn)]/5 p-4"
+      className="border-warning-border bg-warning-muted rounded-md border p-4"
       aria-label="Items needing attention"
     >
       <header className="mb-2 flex items-center gap-2">
-        <h2 className="text-sm font-medium tracking-wide text-[color:var(--color-fg-muted)] uppercase">
-          Attention required
-        </h2>
-        <span className="text-xs text-[color:var(--color-fg-muted)]">
+        <h2 className="text-h3 text-foreground">Attention required</h2>
+        <span className="text-muted-foreground text-xs">
           Users in a state worth a second look. Click a tile to jump to the list.
         </span>
       </header>
@@ -645,26 +639,20 @@ function AttentionTile({
   // when at least one other tile is non-zero.
   if (count === 0) {
     return (
-      <div className="rounded border border-[color:var(--color-border)] bg-[color:var(--color-bg)] p-3 opacity-60">
-        <div className="text-xs tracking-wide text-[color:var(--color-fg-muted)] uppercase">
-          {label}
-        </div>
+      <div className="border-border bg-card rounded border p-3 opacity-60">
+        <div className="text-caption text-muted-foreground">{label}</div>
         <div className="mt-1 text-xl font-semibold tabular-nums">0</div>
       </div>
     );
   }
   const dotColor =
-    tone === "error"
-      ? "bg-[color:var(--color-error)]"
-      : tone === "warn"
-        ? "bg-[color:var(--color-warn)]"
-        : "bg-[color:var(--color-accent)]";
+    tone === "error" ? "bg-destructive" : tone === "warn" ? "bg-warning" : "bg-primary";
   return (
     <Link
       href={href}
-      className="block rounded border border-[color:var(--color-border)] bg-[color:var(--color-bg)] p-3 transition-colors hover:bg-[color:var(--color-bg-muted)]"
+      className="border-border bg-card hover:bg-muted block rounded border p-3 transition-colors"
     >
-      <div className="flex items-center gap-2 text-xs tracking-wide text-[color:var(--color-fg-muted)] uppercase">
+      <div className="text-caption text-muted-foreground flex items-center gap-2">
         <span className={`h-1.5 w-1.5 rounded-full ${dotColor}`} />
         {label}
       </div>
@@ -691,14 +679,12 @@ function hasPdnsAttention(c: { neverProbed: number; unreachable: number }): bool
 function PdnsAttentionWidget({ counts }: { counts: { neverProbed: number; unreachable: number } }) {
   return (
     <section
-      className="rounded-md border border-[color:var(--color-warn)] bg-[color:var(--color-warn)]/5 p-4"
+      className="border-warning-border bg-warning-muted rounded-md border p-4"
       aria-label="PDNS backends needing attention"
     >
       <header className="mb-2 flex items-center gap-2">
-        <h2 className="text-sm font-medium tracking-wide text-[color:var(--color-fg-muted)] uppercase">
-          PDNS backends needing attention
-        </h2>
-        <span className="text-xs text-[color:var(--color-fg-muted)]">
+        <h2 className="text-h3 text-foreground">PDNS backends needing attention</h2>
+        <span className="text-muted-foreground text-xs">
           Live reachability across configured backends. Click a tile to jump to the list and Test.
         </span>
       </header>
@@ -736,14 +722,12 @@ function hasOidcAttention(c: { neverProbed: number; failing: number }): boolean 
 function OidcAttentionWidget({ counts }: { counts: { neverProbed: number; failing: number } }) {
   return (
     <section
-      className="rounded-md border border-[color:var(--color-warn)] bg-[color:var(--color-warn)]/5 p-4"
+      className="border-warning-border bg-warning-muted rounded-md border p-4"
       aria-label="OIDC providers needing attention"
     >
       <header className="mb-2 flex items-center gap-2">
-        <h2 className="text-sm font-medium tracking-wide text-[color:var(--color-fg-muted)] uppercase">
-          OIDC providers needing attention
-        </h2>
-        <span className="text-xs text-[color:var(--color-fg-muted)]">
+        <h2 className="text-h3 text-foreground">OIDC providers needing attention</h2>
+        <span className="text-muted-foreground text-xs">
           Discovery probe state across enabled providers. Click a tile to inspect the failure
           reason.
         </span>
@@ -776,11 +760,9 @@ function Card({
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg)] p-4">
+    <section className="border-border bg-card rounded-md border p-4">
       <header className="mb-3 flex items-center justify-between">
-        <h2 className="text-sm font-medium tracking-wide text-[color:var(--color-fg-muted)] uppercase">
-          {title}
-        </h2>
+        <h2 className="text-h3 text-foreground">{title}</h2>
         {action}
       </header>
       {children}
@@ -800,11 +782,11 @@ async function PdnsStatsSection() {
   const active = primaries.filter((p) => p.disabledAt === null);
   if (active.length === 0) {
     return (
-      <section className="rounded-md border border-dashed border-[color:var(--color-border)] bg-[color:var(--color-bg-subtle)] p-6 text-center text-sm text-[color:var(--color-fg-muted)]">
+      <section className="border-border bg-background text-muted-foreground rounded-md border border-dashed p-6 text-center text-sm">
         No active PowerDNS primaries configured.{" "}
         <Link
           href="/admin/servers/new"
-          className="text-[color:var(--color-accent)] hover:underline"
+          className="text-primary hover:text-primary-hover hover:underline"
         >
           Add one
         </Link>
@@ -824,7 +806,7 @@ async function PdnsStatsSection() {
     <section className="space-y-3">
       <header>
         <h2 className="text-xl font-semibold tracking-tight">PowerDNS statistics</h2>
-        <p className="mt-1 text-sm text-[color:var(--color-fg-muted)]">
+        <p className="text-muted-foreground mt-1 text-sm">
           Live counters polled from every primary and secondary every ~60s. Each card plots query
           rate, latency, cache hit ratio, and response composition.
         </p>
@@ -847,20 +829,17 @@ function PdnsStatsSectionFallback() {
   return (
     <section className="animate-pulse space-y-3">
       <header>
-        <div className="h-6 w-56 rounded bg-[color:var(--color-bg-subtle)]" />
-        <div className="mt-2 h-4 w-96 rounded bg-[color:var(--color-bg-subtle)]" />
+        <div className="bg-background h-6 w-56 rounded" />
+        <div className="bg-background mt-2 h-4 w-96 rounded" />
       </header>
       {Array.from({ length: 2 }).map((_, i) => (
-        <div key={i} className="space-y-3 rounded-md border border-[color:var(--color-border)] p-4">
-          <div className="h-5 w-48 rounded bg-[color:var(--color-bg-subtle)]" />
+        <div key={i} className="border-border space-y-3 rounded-md border p-4">
+          <div className="bg-background h-5 w-48 rounded" />
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {Array.from({ length: 6 }).map((_, j) => (
-              <div
-                key={j}
-                className="rounded border border-[color:var(--color-border)] bg-[color:var(--color-bg-subtle)] p-3"
-              >
-                <div className="h-3 w-32 rounded bg-[color:var(--color-bg-muted)]" />
-                <div className="mt-3 h-40 rounded bg-[color:var(--color-bg-muted)]" />
+              <div key={j} className="border-border bg-background rounded border p-3">
+                <div className="bg-muted h-3 w-32 rounded" />
+                <div className="bg-muted mt-3 h-40 rounded" />
               </div>
             ))}
           </div>
@@ -939,14 +918,14 @@ async function PdnsStatsCard({
     : [];
 
   return (
-    <div className="space-y-3 rounded-md border border-[color:var(--color-border)] p-4">
+    <div className="border-border space-y-3 rounded-md border p-4">
       <header className="flex items-center gap-2">
         <h3 className="font-medium">{serverName}</h3>
         <span
           className={
             role === "primary"
-              ? "inline-flex items-center rounded-full border border-[color:var(--color-accent)] bg-[color-mix(in_oklch,var(--color-accent)_15%,transparent)] px-2 py-0.5 text-[0.625rem] font-medium tracking-wide text-[color:var(--color-accent)] uppercase"
-              : "inline-flex items-center rounded-full border border-[color:var(--color-border)] bg-[color:var(--color-bg-subtle)] px-2 py-0.5 text-[0.625rem] font-medium tracking-wide text-[color:var(--color-fg-muted)] uppercase"
+              ? "bg-accent text-body-sm text-accent-foreground inline-flex h-6 items-center rounded-sm px-2 font-semibold"
+              : "border-input bg-card text-body-sm text-muted-foreground inline-flex h-6 items-center rounded-sm border px-2"
           }
         >
           {role}
@@ -981,7 +960,7 @@ async function PdnsStatsCard({
         </StatBlock>
         <StatBlock title="Response by qtype">
           {Array.isArray(latestQtype) && latestQtype.length > 0 ? (
-            <MapPieChart
+            <MapBarChart
               entries={latestQtype as Array<{ name: string; value: string }>}
               height={180}
             />
@@ -991,7 +970,7 @@ async function PdnsStatsCard({
         </StatBlock>
         <StatBlock title="Response by rcode">
           {Array.isArray(latestRcode) && latestRcode.length > 0 ? (
-            <MapPieChart
+            <MapBarChart
               entries={latestRcode as Array<{ name: string; value: string }>}
               height={180}
             />
@@ -1001,7 +980,7 @@ async function PdnsStatsCard({
         </StatBlock>
         <StatBlock title="Response sizes (bytes)">
           {sizeBuckets.length > 0 ? (
-            <MapPieChart entries={sizeBuckets} height={180} preserveOrder />
+            <MapBarChart entries={sizeBuckets} height={180} preserveOrder />
           ) : (
             <StatEmpty label="No response-size data yet." />
           )}
@@ -1013,22 +992,20 @@ async function PdnsStatsCard({
 
 function StatBlock({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="rounded border border-[color:var(--color-border)] bg-[color:var(--color-bg-subtle)] p-3">
-      <h4 className="mb-1 text-[0.625rem] font-medium tracking-wide text-[color:var(--color-fg-muted)] uppercase">
-        {title}
-      </h4>
+    <div className="border-border bg-background rounded border p-3">
+      <h4 className="text-caption text-muted-foreground mb-1">{title}</h4>
       {children}
     </div>
   );
 }
 
 function StatEmpty({ label }: { label: string }) {
-  return <p className="py-8 text-center text-xs text-[color:var(--color-fg-muted)]">{label}</p>;
+  return <p className="text-muted-foreground py-8 text-center text-xs">{label}</p>;
 }
 
 function DashboardTabStrip({ active }: { active: "admin" | "pdns" }) {
   return (
-    <div className="border-b border-[color:var(--color-border)]">
+    <div className="border-border border-b">
       <nav className="-mb-px flex gap-6 text-sm">
         <DashboardTab href="/dashboard" active={active === "pdns"}>
           PowerDNS stats
@@ -1056,8 +1033,8 @@ function DashboardTab({
       aria-current={active ? "page" : undefined}
       className={
         active
-          ? "border-b-2 border-[color:var(--color-accent)] px-1 pb-3 font-medium text-[color:var(--color-fg)]"
-          : "border-b-2 border-transparent px-1 pb-3 text-[color:var(--color-fg-muted)] hover:text-[color:var(--color-fg)]"
+          ? "border-primary text-foreground border-b-2 px-1 pb-3 font-medium"
+          : "text-muted-foreground hover:text-foreground border-b-2 border-transparent px-1 pb-3"
       }
     >
       {children}

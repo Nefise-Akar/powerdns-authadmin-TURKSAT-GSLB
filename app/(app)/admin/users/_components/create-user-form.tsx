@@ -8,6 +8,8 @@ import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { SelectMenu } from "@/components/ui/select-menu";
 import { apiFetch } from "@/lib/client/api-fetch";
+import { buttonClass } from "@/components/ui/button";
+import { inputClass as baseInputClass } from "@/components/ui/field";
 
 interface RoleOption {
   id: string;
@@ -121,24 +123,21 @@ export function CreateUserForm({ roles = [] }: { roles?: RoleOption[] }) {
       ) : null}
 
       {error ? (
-        <p className="text-sm text-[color:var(--color-error)]" role="alert">
+        <p className="text-destructive text-sm" role="alert">
           {error}
         </p>
       ) : null}
 
       <div className="flex items-center gap-3">
         <button
+          aria-busy={loading}
           type="submit"
           disabled={loading}
-          className="rounded-md bg-[color:var(--color-accent)] px-4 py-2 text-sm font-medium text-[color:var(--color-accent-fg)] hover:opacity-95 disabled:opacity-50"
+          className={buttonClass({ variant: "primary" })}
         >
-          {loading ? "Adding…" : "Add user"}
+          Add user
         </button>
-        <button
-          type="button"
-          onClick={() => router.push("/admin/users")}
-          className="rounded-md border border-[color:var(--color-border)] px-4 py-2 text-sm hover:bg-[color:var(--color-bg-subtle)]"
-        >
+        <button type="button" onClick={() => router.push("/admin/users")} className={buttonClass()}>
           Cancel
         </button>
       </div>
@@ -146,8 +145,7 @@ export function CreateUserForm({ roles = [] }: { roles?: RoleOption[] }) {
   );
 }
 
-const inputClass =
-  "mt-1 block w-full rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--color-accent)]";
+const inputClass = `mt-1.5 ${baseInputClass}`;
 
 function Field({
   id,
@@ -168,12 +166,12 @@ function Field({
     <div>
       <label htmlFor={id} className="block text-sm font-medium">
         {label}
-        {required ? <span className="text-[color:var(--color-error)]"> *</span> : null}
+        {required ? <span className="text-destructive"> *</span> : null}
       </label>
       {children}
-      {hint ? <p className="mt-1 text-xs text-[color:var(--color-fg-muted)]">{hint}</p> : null}
+      {hint ? <p className="text-muted-foreground mt-1 text-xs">{hint}</p> : null}
       {errors && errors.length > 0 ? (
-        <p className="mt-1 text-xs text-[color:var(--color-error)]" role="alert">
+        <p className="text-destructive mt-1 text-xs" role="alert">
           {errors.join(" ")}
         </p>
       ) : null}

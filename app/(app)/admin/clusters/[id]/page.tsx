@@ -30,21 +30,21 @@ export default async function ClusterDetailPage({ params }: PageProps) {
       <div>
         <Link
           href="/admin/clusters"
-          className="text-sm text-[color:var(--color-accent)] hover:underline"
+          className="text-primary hover:text-primary-hover text-sm hover:underline"
         >
           ← Back to groups
         </Link>
       </div>
 
       <header>
-        <h1 className="text-2xl font-semibold tracking-tight">{cluster.name}</h1>
-        <p className="mt-1 flex flex-wrap items-center gap-2 text-sm text-[color:var(--color-fg-muted)]">
+        <h1 className="text-h1">{cluster.name}</h1>
+        <p className="text-muted-foreground mt-1 flex flex-wrap items-center gap-2 text-sm">
           <code className="font-mono">{cluster.slug}</code>
-          <span className="rounded border border-[color:var(--color-border)] bg-[color:var(--color-bg-subtle)] px-1.5 py-0.5 text-[0.625rem] tracking-wide uppercase">
+          <span className="bg-tag text-mono-xs text-tag-foreground inline-flex h-5 items-center rounded-sm px-1.5 font-mono whitespace-nowrap">
             {composition.typeLabel}
           </span>
           {composition.isMultiPrimary ? (
-            <span className="rounded bg-[color:var(--color-accent)]/15 px-1.5 py-0.5 font-mono text-[0.625rem] tracking-wide text-[color:var(--color-accent)] uppercase">
+            <span className="bg-tag text-mono-xs text-tag-foreground inline-flex h-5 items-center rounded-sm px-1.5 font-mono whitespace-nowrap">
               {cluster.writeStrategy.replace("_", " ")}
             </span>
           ) : null}
@@ -53,9 +53,7 @@ export default async function ClusterDetailPage({ params }: PageProps) {
 
       {canEdit ? (
         <section>
-          <h2 className="mb-3 text-sm font-medium tracking-wide text-[color:var(--color-fg-muted)] uppercase">
-            Settings
-          </h2>
+          <h2 className="text-h3 text-foreground mb-2">Settings</h2>
           <ClusterForm
             mode="edit"
             showStrategy={composition.isMultiPrimary}
@@ -69,33 +67,29 @@ export default async function ClusterDetailPage({ params }: PageProps) {
       ) : null}
 
       <section className="space-y-2">
-        <h2 className="text-sm font-medium tracking-wide text-[color:var(--color-fg-muted)] uppercase">
-          Members ({members.length})
-        </h2>
+        <h2 className="text-h3 text-foreground">Members ({members.length})</h2>
         {members.length === 0 ? (
-          <p className="text-sm text-[color:var(--color-fg-muted)]">
+          <p className="text-muted-foreground text-sm">
             No PDNS servers reference this cluster yet. Edit a server&rsquo;s row at{" "}
             <Link
               href="/admin/servers"
-              className="text-[color:var(--color-accent)] hover:underline"
+              className="text-primary hover:text-primary-hover hover:underline"
             >
               /admin/servers
             </Link>{" "}
             to assign it.
           </p>
         ) : (
-          <ul className="divide-y divide-[color:var(--color-border)] rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg-subtle)]">
+          <ul className="divide-border border-border bg-background divide-y rounded-md border">
             {members.map((m) => (
               <li key={m.id} className="flex items-center justify-between gap-3 px-4 py-2">
                 <Link
                   href={`/admin/servers/${m.id}`}
-                  className="text-sm font-medium hover:text-[color:var(--color-accent)] hover:underline"
+                  className="hover:text-primary hover:text-primary-hover text-sm font-medium hover:underline"
                 >
                   {m.name}
                 </Link>
-                <span className="font-mono text-xs text-[color:var(--color-fg-muted)]">
-                  {m.slug}
-                </span>
+                <span className="text-muted-foreground font-mono text-xs">{m.slug}</span>
               </li>
             ))}
           </ul>
@@ -103,12 +97,10 @@ export default async function ClusterDetailPage({ params }: PageProps) {
       </section>
 
       {canDelete ? (
-        <section className="border-t border-[color:var(--color-border)] pt-6">
-          <h2 className="text-sm font-medium tracking-wide text-[color:var(--color-error)] uppercase">
-            Danger zone
-          </h2>
-          <div className="mt-3 flex items-start justify-between gap-4 rounded-md border border-[color:var(--color-error)]/40 bg-[color:var(--color-error)]/5 p-4">
-            <p className="flex-1 text-sm text-[color:var(--color-fg-muted)]">
+        <section className="border-border border-t pt-6">
+          <h2 className="text-h3 text-foreground">Danger zone</h2>
+          <div className="border-destructive bg-destructive-muted mt-3 flex items-start justify-between gap-4 rounded-md border p-4">
+            <p className="text-muted-foreground flex-1 text-sm">
               Delete this group. Members are detached from the group and revert to standalone
               semantics; the server rows themselves stay.
             </p>

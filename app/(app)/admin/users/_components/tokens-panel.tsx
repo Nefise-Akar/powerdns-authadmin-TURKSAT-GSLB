@@ -18,6 +18,7 @@ import { useState } from "react";
 import { useDialog } from "@/components/ui/dialog";
 import { LocalTime } from "@/components/ui/local-time";
 import { mutate } from "@/lib/client/api-fetch";
+import { buttonClass } from "@/components/ui/button";
 
 interface TokenRow {
   id: string;
@@ -82,15 +83,13 @@ export function TokensPanel({ userId, canManage, isSelf, tokens }: Props) {
   }
 
   return (
-    <section className="rounded-md border border-[color:var(--color-border)] p-5">
-      <h2 className="mb-3 text-sm font-medium tracking-wide text-[color:var(--color-fg-muted)] uppercase">
-        API tokens ({tokens.length})
-      </h2>
+    <section className="border-border rounded-md border p-5">
+      <h2 className="text-h3 text-foreground mb-2">API tokens ({tokens.length})</h2>
 
       {tokens.length === 0 ? (
-        <p className="text-sm text-[color:var(--color-fg-muted)]">No tokens issued.</p>
+        <p className="text-muted-foreground text-sm">No tokens issued.</p>
       ) : (
-        <ul className="divide-y divide-[color:var(--color-border)]">
+        <ul className="divide-border divide-y">
           {tokens.map((t) => {
             const revoked = t.revokedAt !== null;
             return (
@@ -99,24 +98,18 @@ export function TokensPanel({ userId, canManage, isSelf, tokens }: Props) {
                   <div className="font-medium">
                     {t.name}
                     {revoked ? (
-                      <span className="ml-2 rounded bg-[color:var(--color-bg-muted)] px-1.5 py-0.5 text-[0.6rem] tracking-wide text-[color:var(--color-fg-muted)] uppercase">
+                      <span className="bg-tag text-mono-xs text-tag-foreground ml-2 inline-flex h-5 items-center rounded-sm px-1.5 font-mono whitespace-nowrap">
                         revoked
                       </span>
                     ) : null}
                   </div>
-                  <div className="truncate font-mono text-[color:var(--color-fg-muted)]">
-                    {t.prefix}…
-                  </div>
+                  <div className="text-muted-foreground truncate font-mono">{t.prefix}…</div>
                   {t.scopes.length > 0 ? (
-                    <div className="text-[color:var(--color-fg-muted)]">
-                      scopes: {t.scopes.join(", ")}
-                    </div>
+                    <div className="text-muted-foreground">scopes: {t.scopes.join(", ")}</div>
                   ) : (
-                    <div className="text-[color:var(--color-fg-muted)]">
-                      scopes: (inherits user permissions)
-                    </div>
+                    <div className="text-muted-foreground">scopes: (inherits user permissions)</div>
                   )}
-                  <div className="text-[color:var(--color-fg-subtle)]">
+                  <div className="text-muted-foreground">
                     created <LocalTime ts={t.createdAt} />
                     {t.lastUsedAt ? (
                       <>
@@ -142,12 +135,17 @@ export function TokensPanel({ userId, canManage, isSelf, tokens }: Props) {
                 </div>
                 {canManage && !revoked ? (
                   <button
+                    aria-busy={busyId === t.id}
                     type="button"
                     onClick={() => handleRevoke(t.id, t.name)}
                     disabled={busyId !== null}
-                    className="shrink-0 rounded border border-[color:var(--color-error)] px-2 py-1 text-[0.6875rem] text-[color:var(--color-error)] hover:bg-[color:var(--color-error)]/10 disabled:opacity-50"
+                    className={buttonClass({
+                      variant: "destructive",
+                      size: "sm",
+                      className: "shrink-0",
+                    })}
                   >
-                    {busyId === t.id ? "Revoking…" : "Revoke"}
+                    Revoke
                   </button>
                 ) : null}
               </li>

@@ -74,12 +74,12 @@ export function RecordTable({ zoneName, rrsets }: RecordTableProps) {
               <li
                 key={idx}
                 className={`break-all ${
-                  record.disabled ? "text-[color:var(--color-fg-subtle)] line-through" : ""
+                  record.disabled ? "text-muted-foreground line-through" : ""
                 }`}
               >
                 {record.content}
                 {record.disabled ? (
-                  <span className="ml-2 rounded bg-[color:var(--color-bg-muted)] px-1 py-0.5 text-[0.65rem] tracking-wide uppercase no-underline">
+                  <span className="bg-tag text-mono-xs text-tag-foreground ml-2 inline-flex h-5 items-center rounded-sm px-1.5 font-mono whitespace-nowrap">
                     disabled
                   </span>
                 ) : null}
@@ -97,9 +97,9 @@ export function RecordTable({ zoneName, rrsets }: RecordTableProps) {
         cell: (ctx) => {
           const text = joinComments(ctx.row.original.comments);
           return text ? (
-            <span className="text-xs text-[color:var(--color-fg-muted)] italic">{text}</span>
+            <span className="text-muted-foreground text-xs italic">{text}</span>
           ) : (
-            <span className="text-xs text-[color:var(--color-fg-subtle)]">-</span>
+            <span className="text-muted-foreground text-xs">-</span>
           );
         },
         meta: { className: "w-[20%]" },
@@ -112,7 +112,7 @@ export function RecordTable({ zoneName, rrsets }: RecordTableProps) {
     <DataTable
       columns={columns}
       data={sorted}
-      searchPlaceholder="Search records by name, type, content…"
+      searchPlaceholder="Search records"
       noDataMessage="No records on this zone."
       initialSort={[{ id: "name", desc: false }]}
       stateKey="records"

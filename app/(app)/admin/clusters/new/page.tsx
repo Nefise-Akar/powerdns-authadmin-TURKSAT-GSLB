@@ -23,14 +23,14 @@ export default async function NewClusterPage() {
       <div>
         <Link
           href="/admin/clusters"
-          className="text-sm text-[color:var(--color-accent)] hover:underline"
+          className="text-primary hover:text-primary-hover text-sm hover:underline"
         >
           ← Back to groups
         </Link>
       </div>
       <header>
-        <h1 className="text-2xl font-semibold tracking-tight">New group</h1>
-        <p className="mt-1 text-sm text-[color:var(--color-fg-muted)]">
+        <h1 className="text-h1">New group</h1>
+        <p className="text-muted-foreground mt-1 text-sm">
           A group relates backends that replicate together - the writable peers of a multi-primary
           cluster, or a primary with its read-only secondaries. Pick its initial members below, or
           assign them later from each server&rsquo;s page (or the provisioning YAML&rsquo;s{" "}

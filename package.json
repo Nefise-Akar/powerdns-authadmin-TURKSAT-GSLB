@@ -48,6 +48,8 @@
   "dependencies": {
     "@casl/ability": "7.0.0",
     "@casl/react": "7.0.0",
+    "@fontsource/geist-mono": "5.3.0",
+    "@fontsource/instrument-sans": "5.3.0",
     "@node-rs/argon2": "2.0.2",
     "@node-saml/node-saml": "5.1.0",
     "@simplewebauthn/browser": "13.3.0",

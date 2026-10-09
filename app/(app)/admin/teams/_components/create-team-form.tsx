@@ -3,6 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { apiFetch } from "@/lib/client/api-fetch";
+import { buttonClass } from "@/components/ui/button";
+import { inputClass as baseInputClass, textareaClass } from "@/components/ui/field";
 
 export function CreateTeamForm() {
   const router = useRouter();
@@ -89,7 +91,7 @@ export function CreateTeamForm() {
           rows={2}
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          className={inputClass}
+          className={`mt-1.5 ${textareaClass}`}
         />
       </Field>
       <Field id="contact" label="Contact (optional)" errors={fieldErrors["contact"]}>
@@ -111,24 +113,21 @@ export function CreateTeamForm() {
       </Field>
 
       {error ? (
-        <p className="text-sm text-[color:var(--color-error)]" role="alert">
+        <p className="text-destructive text-sm" role="alert">
           {error}
         </p>
       ) : null}
 
       <div className="flex items-center gap-3">
         <button
+          aria-busy={loading}
           type="submit"
           disabled={loading}
-          className="rounded-md bg-[color:var(--color-accent)] px-4 py-2 text-sm font-medium text-[color:var(--color-accent-fg)] hover:opacity-95 disabled:opacity-50"
+          className={buttonClass({ variant: "primary" })}
         >
-          {loading ? "Adding…" : "Add team"}
+          Add team
         </button>
-        <button
-          type="button"
-          onClick={() => router.push("/admin/teams")}
-          className="rounded-md border border-[color:var(--color-border)] px-4 py-2 text-sm hover:bg-[color:var(--color-bg-subtle)]"
-        >
+        <button type="button" onClick={() => router.push("/admin/teams")} className={buttonClass()}>
           Cancel
         </button>
       </div>
@@ -136,8 +135,7 @@ export function CreateTeamForm() {
   );
 }
 
-const inputClass =
-  "mt-1 block w-full rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--color-accent)]";
+const inputClass = `mt-1.5 ${baseInputClass}`;
 
 function Field({
   id,
@@ -158,12 +156,12 @@ function Field({
     <div>
       <label htmlFor={id} className="block text-sm font-medium">
         {label}
-        {required ? <span className="text-[color:var(--color-error)]"> *</span> : null}
+        {required ? <span className="text-destructive"> *</span> : null}
       </label>
       {children}
-      {hint ? <p className="mt-1 text-xs text-[color:var(--color-fg-muted)]">{hint}</p> : null}
+      {hint ? <p className="text-muted-foreground mt-1 text-xs">{hint}</p> : null}
       {errors && errors.length > 0 ? (
-        <p className="mt-1 text-xs text-[color:var(--color-error)]" role="alert">
+        <p className="text-destructive mt-1 text-xs" role="alert">
           {errors.join(" ")}
         </p>
       ) : null}

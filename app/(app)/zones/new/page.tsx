@@ -103,8 +103,8 @@ export default async function NewZonePage({
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <header>
-        <h1 className="text-2xl font-semibold tracking-tight">Add zone</h1>
-        <p className="mt-1 text-sm text-[color:var(--color-fg-muted)]">
+        <h1 className="text-h1">Add zone</h1>
+        <p className="text-muted-foreground mt-1 text-sm">
           Add a new zone to a PowerDNS backend. Pick a template to start with a known-good NS set +
           SOA timers, or fill them in by hand.
         </p>

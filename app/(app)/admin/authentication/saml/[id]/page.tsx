@@ -59,13 +59,12 @@ export default async function SamlProviderEditPage({
   return (
     <div className="mx-auto max-w-2xl space-y-6">
       <header className="space-y-1">
-        <h1 className="text-2xl font-semibold tracking-tight">{provider.name}</h1>
-        <p className="text-sm text-[color:var(--color-fg-muted)]">
-          Slug{" "}
-          <code className="rounded bg-[color:var(--color-bg-subtle)] px-1">{provider.slug}</code> -
-          the slug can&apos;t be renamed (would break in-flight sign-ins).
+        <h1 className="text-h1">{provider.name}</h1>
+        <p className="text-muted-foreground text-sm">
+          Slug <code className="bg-background rounded px-1">{provider.slug}</code> - the slug
+          can&apos;t be renamed (would break in-flight sign-ins).
         </p>
-        <p className="text-xs text-[color:var(--color-fg-muted)]">
+        <p className="text-muted-foreground text-xs">
           SP metadata:{" "}
           <a
             href={`/api/auth/saml/${provider.slug}/metadata`}
@@ -78,10 +77,10 @@ export default async function SamlProviderEditPage({
           - paste this URL into your IdP&apos;s SP registration form.
         </p>
         {canReadAudit ? (
-          <p className="text-xs text-[color:var(--color-fg-muted)]">
+          <p className="text-muted-foreground text-xs">
             {lastEdit ? (
               <>
-                <span className="font-medium text-[color:var(--color-fg)]">Last admin edit:</span>{" "}
+                <span className="text-foreground font-medium">Last admin edit:</span>{" "}
                 {freshnessOf(lastEdit.ts.toISOString()).label}
                 {lastEdit.actorEmail ? (
                   <>
@@ -92,7 +91,7 @@ export default async function SamlProviderEditPage({
                   <> by system</>
                 ) : null}
                 {" · action: "}
-                <code className="rounded bg-[color:var(--color-bg-subtle)] px-1 text-[0.625rem]">
+                <code className="bg-tag text-mono-xs text-tag-foreground inline-flex h-5 items-center rounded-sm px-1.5 font-mono whitespace-nowrap">
                   {lastEdit.action}
                 </code>
               </>
@@ -143,9 +142,9 @@ export default async function SamlProviderEditPage({
       ) : null}
 
       {canManage ? (
-        <section className="mt-12 rounded-md border border-[color:var(--color-error)] bg-[color:var(--color-error)]/5 p-4">
-          <h2 className="text-base font-medium text-[color:var(--color-error)]">Danger zone</h2>
-          <p className="mt-1 text-sm text-[color:var(--color-fg-muted)]">
+        <section className="border-destructive bg-destructive-muted mt-12 rounded-md border p-4">
+          <h2 className="text-destructive text-base font-medium">Danger zone</h2>
+          <p className="text-muted-foreground mt-1 text-sm">
             Deleting this provider removes it from the login page immediately. In-flight sign-ins
             fail with <code>saml-unknown-provider</code>. Audit history is preserved.
           </p>

@@ -20,14 +20,14 @@ export default async function NewRolePage() {
       <div>
         <Link
           href="/admin/roles"
-          className="text-sm text-[color:var(--color-accent)] hover:underline"
+          className="text-primary hover:text-primary-hover text-sm hover:underline"
         >
           ← Back to roles
         </Link>
       </div>
       <header>
-        <h1 className="text-2xl font-semibold tracking-tight">Add role</h1>
-        <p className="mt-1 text-sm text-[color:var(--color-fg-muted)]">
+        <h1 className="text-h1">Add role</h1>
+        <p className="text-muted-foreground mt-1 text-sm">
           Custom roles bundle permissions an org needs in addition to the five seeded system roles.
           The slug you choose here is also what you reference in OIDC group → role mappings.
         </p>

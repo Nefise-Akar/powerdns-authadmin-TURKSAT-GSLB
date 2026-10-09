@@ -11,6 +11,9 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useDialog } from "@/components/ui/dialog";
 import { apiFetch } from "@/lib/client/api-fetch";
+import { buttonClass } from "@/components/ui/button";
+import { inputClass } from "@/components/ui/field";
+import { Alert } from "@/components/ui/alert";
 
 interface UserActionsProps {
   userId: string;
@@ -185,13 +188,11 @@ export function UserActions(props: UserActionsProps) {
   }
 
   return (
-    <section className="space-y-4 rounded-md border border-[color:var(--color-border)] p-5">
-      <h2 className="text-sm font-medium tracking-wide text-[color:var(--color-fg-muted)] uppercase">
-        Actions
-      </h2>
+    <section className="border-border space-y-4 rounded-md border p-5">
+      <h2 className="text-h3 text-foreground">Actions</h2>
 
       {props.readonlyDemo ? (
-        <p className="rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg-subtle)] px-3 py-2.5 text-xs text-[color:var(--color-fg-muted)]">
+        <p className="border-border bg-background text-muted-foreground rounded-md border px-3 py-2.5 text-xs">
           This is the shared, read-only demo account. Its identity, credentials, roles, and status
           are locked and can&apos;t be changed.
         </p>
@@ -207,15 +208,16 @@ export function UserActions(props: UserActionsProps) {
               id="user-name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="flex-1 rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg)] px-3 py-2 text-sm focus:ring-2 focus:ring-[color:var(--color-accent)] focus:outline-none"
+              className={`flex-1 ${inputClass}`}
             />
             <button
+              aria-busy={savingName}
               type="button"
               onClick={handleSaveName}
               disabled={savingName || name === props.initialName}
-              className="rounded-md border border-[color:var(--color-border)] px-3 py-2 text-sm hover:bg-[color:var(--color-bg-subtle)] disabled:opacity-50"
+              className={buttonClass()}
             >
-              {savingName ? "Saving…" : "Save"}
+              Save
             </button>
           </div>
         </div>
@@ -227,7 +229,7 @@ export function UserActions(props: UserActionsProps) {
             type="button"
             onClick={handleToggleDisabled}
             disabled={togglingDisabled || props.isSelf}
-            className="rounded-md border border-[color:var(--color-border)] px-3 py-2 text-sm hover:bg-[color:var(--color-bg-subtle)] disabled:opacity-50"
+            className={buttonClass()}
             title={props.isSelf ? "You can't disable your own account" : undefined}
           >
             {props.disabled ? "Enable account" : "Disable account"}
@@ -236,44 +238,44 @@ export function UserActions(props: UserActionsProps) {
 
         {props.canReset && !props.ssoOnly ? (
           <button
+            aria-busy={resetting}
             type="button"
             onClick={handleReset}
             disabled={resetting}
-            className="rounded-md border border-[color:var(--color-border)] px-3 py-2 text-sm hover:bg-[color:var(--color-bg-subtle)] disabled:opacity-50"
+            className={buttonClass()}
           >
-            {resetting ? "Resetting…" : "Reset password"}
+            Reset password
           </button>
         ) : null}
 
         {props.canDelete ? (
           <button
+            aria-busy={deleting}
             type="button"
             onClick={handleDelete}
             disabled={deleting}
-            className="ml-auto rounded-md border border-[color:var(--color-error)] px-3 py-2 text-sm text-[color:var(--color-error)] hover:bg-[color:var(--color-error)]/10 disabled:opacity-50"
+            className={buttonClass({ variant: "destructive", className: "ml-auto" })}
           >
-            {deleting ? "Deleting…" : "Delete user"}
+            Delete user
           </button>
         ) : null}
       </div>
 
       {error ? (
-        <div className="rounded-md border border-[color:var(--color-error)] bg-[color:var(--color-error)]/10 p-3 text-sm text-[color:var(--color-error)]">
+        <Alert variant="destructive" live>
           {error}
-        </div>
+        </Alert>
       ) : null}
 
       {resetResult ? (
-        <div className="rounded-md border border-[color:var(--color-warn)] bg-[color:var(--color-warn)]/10 p-3 text-sm">
-          <p className="font-medium">Temporary password</p>
-          <p className="mt-1 text-xs text-[color:var(--color-fg-muted)]">
-            Shown once. Convey to the user out-of-band; they&apos;ll be forced to change it on next
-            sign-in.
+        <Alert title="temporary password, shown once">
+          <p>
+            Give it to the user out-of-band; they&apos;ll have to change it at the next sign-in.
           </p>
-          <code className="mt-2 block rounded bg-[color:var(--color-bg)] p-2 font-mono text-sm break-all">
+          <code className="bg-card text-mono mt-2 block rounded-sm p-2 font-mono break-all">
             {resetResult}
           </code>
-        </div>
+        </Alert>
       ) : null}
     </section>
   );

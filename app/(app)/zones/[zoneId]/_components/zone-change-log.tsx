@@ -28,6 +28,8 @@ import { DateTimePicker } from "@/components/ui/datetime-picker";
 import { SelectMenu } from "@/components/ui/select-menu";
 import { BareDiff } from "./bare-diff";
 import { PdnsHttpLog, type PdnsHttpLogEntry } from "./pdns-http-log";
+import { buttonClass } from "@/components/ui/button";
+import { inputClass } from "@/components/ui/field";
 
 interface RRsetSnapshot {
   name: string;
@@ -149,7 +151,7 @@ export function ZoneChangeLog({ entries, zoneName, pdnsHttpByRequestId }: ZoneCh
 
   if (entries.length === 0) {
     return (
-      <p className="rounded-md border border-dashed border-[color:var(--color-border)] bg-[color:var(--color-bg-subtle)] p-6 text-center text-sm text-[color:var(--color-fg-muted)]">
+      <p className="border-border bg-background text-muted-foreground rounded-md border border-dashed p-6 text-center text-sm">
         No recorded changes for this zone yet. As operators add, edit, or delete records, the diff
         for each change will appear here.
       </p>
@@ -175,7 +177,7 @@ export function ZoneChangeLog({ entries, zoneName, pdnsHttpByRequestId }: ZoneCh
         onClear={clearFilters}
       />
 
-      <p className="text-[0.6875rem] text-[color:var(--color-fg-muted)]">
+      <p className="text-muted-foreground text-caption">
         {filtered.length === entries.length
           ? `${entries.length} change${entries.length === 1 ? "" : "s"}`
           : `${filtered.length} of ${entries.length} change${entries.length === 1 ? "" : "s"} match`}{" "}
@@ -183,7 +185,7 @@ export function ZoneChangeLog({ entries, zoneName, pdnsHttpByRequestId }: ZoneCh
       </p>
 
       {filtered.length === 0 ? (
-        <p className="rounded border border-dashed border-[color:var(--color-border)] bg-[color:var(--color-bg-subtle)] p-4 text-center text-xs text-[color:var(--color-fg-muted)]">
+        <p className="border-border bg-background text-muted-foreground rounded border border-dashed p-4 text-center text-xs">
           No events match the current filters.
         </p>
       ) : (
@@ -209,15 +211,15 @@ export function ZoneChangeLog({ entries, zoneName, pdnsHttpByRequestId }: ZoneCh
           </div>
 
           {/* Desktop (md+): the dense 5-column table. */}
-          <div className="hidden overflow-hidden rounded-lg border border-[color:var(--color-border)] md:block">
+          <div className="hidden overflow-hidden md:block">
             <table className="w-full text-sm">
-              <thead className="bg-[color:var(--color-bg-muted)] text-left text-xs font-medium tracking-wide text-[color:var(--color-fg-muted)] uppercase">
+              <thead className="border-border bg-background text-label text-muted-foreground border-y text-left">
                 <tr>
-                  <th className="w-8 px-4 py-2.5"></th>
-                  <th className="px-4 py-2.5">When</th>
-                  <th className="px-4 py-2.5">Action</th>
-                  <th className="px-4 py-2.5">Resource</th>
-                  <th className="px-4 py-2.5">Actor</th>
+                  <th className="h-9 w-8 px-2 font-medium first:pl-3"></th>
+                  <th className="h-9 px-2 font-medium first:pl-3">When</th>
+                  <th className="h-9 px-2 font-medium first:pl-3">Action</th>
+                  <th className="h-9 px-2 font-medium first:pl-3">Resource</th>
+                  <th className="h-9 px-2 font-medium first:pl-3">Actor</th>
                 </tr>
               </thead>
               <tbody>
@@ -271,10 +273,10 @@ function ExpandedPanel({
   return (
     <>
       {entry.requestId ? (
-        <div className="flex justify-end border-b border-[color:var(--color-border)] px-4 py-2 text-[0.6875rem]">
+        <div className="border-border text-caption flex justify-end border-b px-4 py-2">
           <a
             href={`/admin/audit?${new URLSearchParams({ requestId: entry.requestId }).toString()}`}
-            className="text-[color:var(--color-accent)] hover:underline"
+            className="text-primary hover:text-primary-hover hover:underline"
             title="See every audit row from this operation - record edit, notify, etc."
           >
             View operation in audit log →
@@ -283,7 +285,7 @@ function ExpandedPanel({
       ) : null}
       {diffable ? (
         removed.length === 0 && added.length === 0 ? (
-          <p className="px-4 py-3 text-xs text-[color:var(--color-fg-muted)]">
+          <p className="text-muted-foreground px-4 py-3 text-xs">
             Audit row carries no diffable snapshot.
           </p>
         ) : (
@@ -339,33 +341,33 @@ function ChangeRow({
   return (
     <>
       <tr
-        className="cursor-pointer border-t border-[color:var(--color-border)] transition-colors hover:bg-[color-mix(in_oklch,var(--color-accent)_14%,transparent)]"
+        className="border-border hover:bg-background cursor-pointer border-b transition-colors"
         onClick={onToggle}
         aria-expanded={expanded}
         data-change-entry-toggle="true"
       >
-        <td className="w-8 px-4 py-3 align-top text-[color:var(--color-fg-muted)]">
+        <td className="text-muted-foreground w-8 px-2 py-2 align-top first:pl-3">
           <Chevron expanded={expanded} />
         </td>
-        <td className="px-4 py-3 align-top font-mono text-[0.6875rem] whitespace-nowrap text-[color:var(--color-fg-muted)]">
+        <td className="text-muted-foreground text-mono-xs px-2 py-2 align-top font-mono whitespace-nowrap first:pl-3">
           {formatTimestamp(entry.ts)}
         </td>
-        <td className="px-4 py-3 align-top">
+        <td className="px-2 py-2 align-top first:pl-3">
           <ActionChip action={entry.action} />
         </td>
-        <td className="px-4 py-3 align-top font-mono text-xs text-[color:var(--color-fg)]">
+        <td className="text-foreground px-2 py-2 align-top font-mono text-xs first:pl-3">
           {resourceLabel ?? "-"}
         </td>
-        <td className="px-4 py-3 align-top text-xs text-[color:var(--color-fg-muted)]">
+        <td className="text-muted-foreground px-2 py-2 align-top text-xs first:pl-3">
           {actor}
           {entry.actorName ? (
-            <span className="ml-1 text-[color:var(--color-fg-subtle)]">({entry.actorName})</span>
+            <span className="text-muted-foreground ml-1">({entry.actorName})</span>
           ) : null}
         </td>
       </tr>
       {expanded ? (
-        <tr className="border-t border-[color:var(--color-border)]">
-          <td colSpan={5} className="bg-[color:var(--color-bg)] p-0">
+        <tr className="border-border border-b">
+          <td colSpan={5} className="bg-card p-0">
             <ExpandedPanel entry={entry} httpLog={httpLog} />
           </td>
         </tr>
@@ -395,37 +397,35 @@ function ChangeCard({
   const resourceLabel = describeResource(entry, zoneName);
   const actor = entry.actorEmail ?? (entry.actorType === "system" ? "system" : "-");
   return (
-    <div className="overflow-hidden rounded-lg border border-[color:var(--color-border)] bg-[color:var(--color-bg)]">
+    <div className="border-border bg-card overflow-hidden rounded-md border">
       <button
         type="button"
         onClick={onToggle}
         aria-expanded={expanded}
         data-change-entry-toggle="true"
-        className="flex w-full items-start gap-2 p-3 text-left transition-colors hover:bg-[color:var(--color-bg-subtle)]"
+        className="hover:bg-background flex w-full items-start gap-2 p-3 text-left transition-colors"
       >
-        <span className="mt-1.5 shrink-0 text-[color:var(--color-fg-muted)]">
+        <span className="text-muted-foreground mt-1.5 shrink-0">
           <Chevron expanded={expanded} />
         </span>
         <div className="min-w-0 flex-1 space-y-1">
           <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
-            <span className="font-mono text-[0.6875rem] whitespace-nowrap text-[color:var(--color-fg-muted)]">
+            <span className="text-muted-foreground text-mono-xs font-mono whitespace-nowrap">
               {formatTimestamp(entry.ts)}
             </span>
             <ActionChip action={entry.action} />
           </div>
-          <div className="font-mono text-xs break-all text-[color:var(--color-fg)]">
-            {resourceLabel ?? "-"}
-          </div>
-          <div className="text-xs text-[color:var(--color-fg-muted)]">
+          <div className="text-foreground font-mono text-xs break-all">{resourceLabel ?? "-"}</div>
+          <div className="text-muted-foreground text-xs">
             {actor}
             {entry.actorName ? (
-              <span className="ml-1 text-[color:var(--color-fg-subtle)]">({entry.actorName})</span>
+              <span className="text-muted-foreground ml-1">({entry.actorName})</span>
             ) : null}
           </div>
         </div>
       </button>
       {expanded ? (
-        <div className="border-t border-[color:var(--color-border)]">
+        <div className="border-border border-t">
           <ExpandedPanel entry={entry} httpLog={httpLog} />
         </div>
       ) : null}
@@ -467,14 +467,14 @@ function Filters({
   onClear,
 }: FiltersProps) {
   return (
-    <div className="flex flex-wrap items-end gap-2 rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg-subtle)] p-2 text-[0.6875rem]">
+    <div className="bg-tag text-mono-xs text-tag-foreground flex inline-flex h-5 flex-wrap items-center items-end rounded-sm px-1.5 font-mono whitespace-nowrap">
       <FilterField label="Search">
         <input
           type="search"
           value={query}
           onChange={(e) => onQuery(e.target.value)}
           placeholder="action, actor, resource…"
-          className="block w-56 rounded border border-[color:var(--color-border)] bg-[color:var(--color-bg)] px-2 py-1 text-xs outline-none"
+          className={`w-56 ${inputClass}`}
         />
       </FilterField>
       <FilterField label="Action">
@@ -498,26 +498,16 @@ function Filters({
         />
       </FilterField>
       <FilterField label="From">
-        <DateTimePicker
-          value={from}
-          onChange={onFrom}
-          side="from"
-          className="block rounded border border-[color:var(--color-border)] bg-[color:var(--color-bg)] px-2 py-1 text-xs"
-        />
+        <DateTimePicker value={from} onChange={onFrom} side="from" className={inputClass} />
       </FilterField>
       <FilterField label="To">
-        <DateTimePicker
-          value={to}
-          onChange={onTo}
-          side="to"
-          className="block rounded border border-[color:var(--color-border)] bg-[color:var(--color-bg)] px-2 py-1 text-xs"
-        />
+        <DateTimePicker value={to} onChange={onTo} side="to" className={inputClass} />
       </FilterField>
       {anyFilter ? (
         <button
           type="button"
           onClick={onClear}
-          className="ml-1 self-end rounded border border-[color:var(--color-border)] bg-[color:var(--color-bg)] px-2 py-1 text-xs hover:bg-[color:var(--color-bg-muted)]"
+          className={buttonClass({ size: "sm", className: "ml-1 self-end" })}
         >
           Clear
         </button>
@@ -529,9 +519,7 @@ function Filters({
 function FilterField({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="flex flex-col gap-1">
-      <span className="text-[0.625rem] tracking-wide text-[color:var(--color-fg-muted)] uppercase">
-        {label}
-      </span>
+      <span className="text-caption text-muted-foreground">{label}</span>
       {children}
     </label>
   );
@@ -547,9 +535,9 @@ interface PaginationProps {
 
 function Pagination({ page, totalPages, pageSize, onPageChange, onPageSize }: PaginationProps) {
   return (
-    <div className="flex flex-wrap items-center justify-between gap-2 text-[0.6875rem]">
+    <div className="text-caption flex flex-wrap items-center justify-between gap-2">
       <div className="flex items-center gap-2">
-        <span className="text-[color:var(--color-fg-muted)]">Rows per page</span>
+        <span className="text-muted-foreground">Rows per page</span>
         <SelectMenu
           value={String(pageSize)}
           onChange={(v) => onPageSize(Number(v) as (typeof PAGE_SIZES)[number])}
@@ -559,14 +547,14 @@ function Pagination({ page, totalPages, pageSize, onPageChange, onPageSize }: Pa
         />
       </div>
       <div className="flex items-center gap-2">
-        <span className="text-[color:var(--color-fg-muted)]">
+        <span className="text-muted-foreground">
           Page {page + 1} of {totalPages}
         </span>
         <button
           type="button"
           onClick={() => onPageChange(Math.max(0, page - 1))}
           disabled={page === 0}
-          className="rounded border border-[color:var(--color-border)] bg-[color:var(--color-bg)] px-2 py-1 text-xs hover:bg-[color:var(--color-bg-subtle)] disabled:opacity-50"
+          className={buttonClass({ size: "sm" })}
         >
           Prev
         </button>
@@ -574,7 +562,7 @@ function Pagination({ page, totalPages, pageSize, onPageChange, onPageSize }: Pa
           type="button"
           onClick={() => onPageChange(Math.min(totalPages - 1, page + 1))}
           disabled={page >= totalPages - 1}
-          className="rounded border border-[color:var(--color-border)] bg-[color:var(--color-bg)] px-2 py-1 text-xs hover:bg-[color:var(--color-bg-subtle)] disabled:opacity-50"
+          className={buttonClass({ size: "sm" })}
         >
           Next
         </button>
@@ -819,13 +807,9 @@ function ZoneEventLine({ entry }: { entry: ZoneAuditEntryClient }) {
     return (
       <p className="text-xs">
         {a.success ? (
-          <span className="text-[color:var(--color-success)]">
-            NOTIFY sent ({a.kind ?? "zone"}).
-          </span>
+          <span className="text-success">NOTIFY sent ({a.kind ?? "zone"}).</span>
         ) : (
-          <span className="text-[color:var(--color-error)]">
-            NOTIFY failed{a.error ? `: ${a.error}` : ""}.
-          </span>
+          <span className="text-destructive">NOTIFY failed{a.error ? `: ${a.error}` : ""}.</span>
         )}
       </p>
     );
@@ -840,9 +824,7 @@ function ZoneEventLine({ entry }: { entry: ZoneAuditEntryClient }) {
   }
 
   return (
-    <p className="text-xs text-[color:var(--color-fg-muted)]">
-      Zone-level event with no diffable payload.
-    </p>
+    <p className="text-muted-foreground text-xs">Zone-level event with no diffable payload.</p>
   );
 }
 
@@ -873,7 +855,7 @@ function CryptokeyEventLine({ entry }: { entry: ZoneAuditEntryClient }) {
         {algo}
         {bits}
         {after.active === false ? (
-          <span className="ml-1 text-[color:var(--color-fg-muted)]">(inactive)</span>
+          <span className="text-muted-foreground ml-1">(inactive)</span>
         ) : null}
       </p>
     );
@@ -905,11 +887,7 @@ function CryptokeyEventLine({ entry }: { entry: ZoneAuditEntryClient }) {
     );
   }
 
-  return (
-    <p className="text-xs text-[color:var(--color-fg-muted)]">
-      DNSSEC key event (incomplete snapshot).
-    </p>
-  );
+  return <p className="text-muted-foreground text-xs">DNSSEC key event (incomplete snapshot).</p>;
 }
 
 function MetadataEventLine({ entry }: { entry: ZoneAuditEntryClient }) {
@@ -925,7 +903,7 @@ function MetadataEventLine({ entry }: { entry: ZoneAuditEntryClient }) {
       <p className="text-xs">
         Set metadata <code>{kind}</code> to <code className="break-all">{display}</code>
         {beforeValues && beforeValues.length > 0 ? (
-          <span className="text-[color:var(--color-fg-muted)]">
+          <span className="text-muted-foreground">
             {" "}
             (was <code className="break-all">{beforeValues.join(", ")}</code>)
           </span>
@@ -940,7 +918,7 @@ function MetadataEventLine({ entry }: { entry: ZoneAuditEntryClient }) {
       <p className="text-xs">
         Deleted metadata <code>{kind}</code>
         {before?.values && before.values.length > 0 ? (
-          <span className="text-[color:var(--color-fg-muted)]">
+          <span className="text-muted-foreground">
             {" "}
             (was <code className="break-all">{before.values.join(", ")}</code>)
           </span>
@@ -950,13 +928,13 @@ function MetadataEventLine({ entry }: { entry: ZoneAuditEntryClient }) {
     );
   }
 
-  return <p className="text-xs text-[color:var(--color-fg-muted)]">Metadata event.</p>;
+  return <p className="text-muted-foreground text-xs">Metadata event.</p>;
 }
 
 function ActionChip({ action }: { action: string }) {
   return (
     <span
-      className={`inline-flex items-center rounded px-1.5 py-0.5 font-mono text-[0.65rem] tracking-wide uppercase ${colorForAuditAction(action)}`}
+      className={`text-mono-xs inline-flex h-5 items-center rounded-sm px-1.5 font-mono ${colorForAuditAction(action)}`}
     >
       {action}
     </span>

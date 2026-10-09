@@ -19,6 +19,8 @@ import { useDialog } from "@/components/ui/dialog";
 import { SelectMenu } from "@/components/ui/select-menu";
 import { Checkbox } from "@/components/ui/checkbox";
 import { mutate } from "@/lib/client/api-fetch";
+import { buttonClass } from "@/components/ui/button";
+import { inputClass } from "@/components/ui/field";
 
 interface Grant {
   id: string;
@@ -143,16 +145,14 @@ export function ZoneGrantsPanel({
       : "No per-zone grants. The user's effective permissions on zones come from role assignments and team grants only.";
 
   return (
-    <section className="rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg-subtle)] p-5">
+    <section className="border-border bg-background rounded-md border p-5">
       <header className="mb-3 flex items-center justify-between">
-        <h2 className="text-sm font-medium tracking-wide text-[color:var(--color-fg-muted)] uppercase">
-          Zone grants
-        </h2>
+        <h2 className="text-h3 text-foreground">Zone grants</h2>
         {canManage ? (
           <button
             type="button"
             onClick={() => setOpen((v) => !v)}
-            className="rounded border border-[color:var(--color-border)] px-2 py-1 text-xs hover:bg-[color:var(--color-bg-muted)]"
+            className={buttonClass({ size: "sm" })}
           >
             {open ? "Cancel" : "Add grant"}
           </button>
@@ -160,29 +160,31 @@ export function ZoneGrantsPanel({
       </header>
 
       {grants.length === 0 ? (
-        <p className="text-xs text-[color:var(--color-fg-muted)]">{emptyMessage}</p>
+        <p className="text-muted-foreground text-xs">{emptyMessage}</p>
       ) : (
         <ul className="space-y-2">
           {grants.map((g) => (
-            <li
-              key={g.id}
-              className="rounded border border-[color:var(--color-border)] bg-[color:var(--color-bg)] p-3 text-sm"
-            >
+            <li key={g.id} className="border-border bg-card rounded border p-3 text-sm">
               <div className="flex items-baseline justify-between gap-3">
                 <div className="min-w-0">
                   <div className="font-mono text-xs">{g.zoneName}</div>
-                  <div className="text-xs text-[color:var(--color-fg-muted)]">
+                  <div className="text-muted-foreground text-xs">
                     on <code>{g.serverName}</code>
                   </div>
                 </div>
                 {canManage ? (
                   <button
+                    aria-busy={removingId === g.id}
                     type="button"
                     onClick={() => handleRemove(g)}
                     disabled={removingId === g.id}
-                    className="shrink-0 rounded border border-[color:var(--color-error)] px-2 py-1 text-xs text-[color:var(--color-error)] hover:bg-[color:var(--color-error)]/10 disabled:opacity-50"
+                    className={buttonClass({
+                      variant: "destructive",
+                      size: "sm",
+                      className: "shrink-0",
+                    })}
                   >
-                    {removingId === g.id ? "Revoking…" : "Revoke"}
+                    Revoke
                   </button>
                 ) : null}
               </div>
@@ -191,14 +193,14 @@ export function ZoneGrantsPanel({
                   {g.permissions.map((p) => (
                     <span
                       key={p}
-                      className="rounded bg-[color:var(--color-bg-muted)] px-1.5 py-0.5 font-mono text-[0.625rem]"
+                      className="bg-tag text-mono-xs text-tag-foreground inline-flex h-5 items-center rounded-sm px-1.5 font-mono whitespace-nowrap"
                     >
                       {p}
                     </span>
                   ))}
                 </div>
               ) : (
-                <p className="mt-2 text-xs text-[color:var(--color-fg-muted)] italic">
+                <p className="text-muted-foreground mt-2 text-xs italic">
                   No permissions selected. The grant exists but authorizes nothing.
                 </p>
               )}
@@ -208,7 +210,7 @@ export function ZoneGrantsPanel({
       )}
 
       {open && canManage ? (
-        <div className="mt-4 space-y-3 rounded border border-[color:var(--color-border)] bg-[color:var(--color-bg)] p-3">
+        <div className="border-border bg-card mt-4 space-y-3 rounded border p-3">
           <div className="grid gap-2 sm:grid-cols-[1fr_2fr] sm:items-end">
             <div>
               <label htmlFor="zg-server" className="block text-xs font-medium">
@@ -232,7 +234,7 @@ export function ZoneGrantsPanel({
                 value={zoneName}
                 onChange={(e) => setZoneName(e.target.value)}
                 placeholder="example.com"
-                className="mt-1 w-full rounded border border-[color:var(--color-border)] bg-[color:var(--color-bg)] px-2 py-1 font-mono text-sm"
+                className={`mt-1 w-full font-mono ${inputClass}`}
               />
             </div>
           </div>
@@ -254,17 +256,18 @@ export function ZoneGrantsPanel({
               type="button"
               onClick={reset}
               disabled={adding}
-              className="rounded border border-[color:var(--color-border)] px-3 py-1 text-xs hover:bg-[color:var(--color-bg-muted)] disabled:opacity-50"
+              className={buttonClass({ size: "sm" })}
             >
               Cancel
             </button>
             <button
+              aria-busy={adding}
               type="button"
               onClick={handleAdd}
               disabled={adding}
-              className="rounded bg-[color:var(--color-accent)] px-3 py-1 text-xs font-medium text-[color:var(--color-accent-fg)] hover:opacity-95 disabled:opacity-50"
+              className={buttonClass({ variant: "primary", size: "sm" })}
             >
-              {adding ? "Granting…" : "Grant"}
+              Grant
             </button>
           </div>
         </div>

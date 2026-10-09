@@ -26,6 +26,9 @@ import { startAuthentication } from "@simplewebauthn/browser";
 import { TurnstileWidget } from "@/components/ui/turnstile-widget";
 import { apiFetch } from "@/lib/client/api-fetch";
 import { readFormFields, useDomFieldSync } from "@/lib/client/form-dom";
+import { buttonClass } from "@/components/ui/button";
+import { inputClass } from "@/components/ui/field";
+import { tabClass, tabListClass } from "@/components/ui/tabs";
 
 type MfaMethod = "totp" | "webauthn";
 
@@ -225,26 +228,20 @@ export function LoginForm({
     return (
       <div className="space-y-4">
         {mfa.methods.length > 1 ? (
-          <div className="flex gap-2 rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg-subtle)] p-1 text-xs">
+          <div role="group" aria-label="Verification method" className={tabListClass}>
             <button
               type="button"
               onClick={() => setMfaMode("totp")}
-              className={`flex-1 rounded px-3 py-1.5 ${
-                mfaMode === "totp"
-                  ? "bg-[color:var(--color-bg)] font-medium"
-                  : "text-[color:var(--color-fg-muted)]"
-              }`}
+              aria-pressed={mfaMode === "totp"}
+              className={`flex-1 justify-center ${tabClass(mfaMode === "totp")}`}
             >
               Authenticator code
             </button>
             <button
               type="button"
               onClick={() => setMfaMode("webauthn")}
-              className={`flex-1 rounded px-3 py-1.5 ${
-                mfaMode === "webauthn"
-                  ? "bg-[color:var(--color-bg)] font-medium"
-                  : "text-[color:var(--color-fg-muted)]"
-              }`}
+              aria-pressed={mfaMode === "webauthn"}
+              className={`flex-1 justify-center ${tabClass(mfaMode === "webauthn")}`}
             >
               Passkey
             </button>
@@ -267,40 +264,42 @@ export function LoginForm({
                 autoFocus
                 value={code}
                 onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                className="mt-1 w-32 rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg)] px-3 py-2 text-center font-mono text-lg tracking-widest focus:ring-2 focus:ring-[color:var(--color-accent)] focus:outline-none"
+                className="border-input bg-card text-h2 focus-visible:border-ring focus-visible:shadow-focus-ring mt-1.5 h-10 w-36 rounded-md border px-3 text-center font-mono tracking-widest focus-visible:outline-hidden"
                 placeholder="123456"
               />
             </div>
             {error ? (
-              <p className="text-sm text-[color:var(--color-error)]" role="alert">
+              <p className="text-destructive text-sm" role="alert">
                 {error}
               </p>
             ) : null}
             <button
+              aria-busy={loading}
               type="submit"
               disabled={loading || code.length !== 6}
-              className="block w-full rounded-md bg-[color:var(--color-accent)] px-4 py-2 text-sm font-medium text-[color:var(--color-accent-fg)] hover:opacity-95 disabled:opacity-50"
+              className={buttonClass({ variant: "primary", className: "block w-full" })}
             >
-              {loading ? "Verifying…" : "Sign in"}
+              Sign in
             </button>
           </form>
         ) : (
           <div className="space-y-4">
-            <p className="text-sm text-[color:var(--color-fg-muted)]">
+            <p className="text-muted-foreground text-sm">
               Use your passkey or security key to complete sign-in.
             </p>
             {error ? (
-              <p className="text-sm text-[color:var(--color-error)]" role="alert">
+              <p className="text-destructive text-sm" role="alert">
                 {error}
               </p>
             ) : null}
             <button
+              aria-busy={loading}
               type="button"
               onClick={handleWebauthnSecondFactor}
               disabled={loading}
-              className="block w-full rounded-md bg-[color:var(--color-accent)] px-4 py-2 text-sm font-medium text-[color:var(--color-accent-fg)] hover:opacity-95 disabled:opacity-50"
+              className={buttonClass({ variant: "primary", className: "block w-full" })}
             >
-              {loading ? "Waiting for device…" : "Continue with passkey"}
+              Continue with passkey
             </button>
           </div>
         )}
@@ -322,7 +321,7 @@ export function LoginForm({
           required
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="mt-1 block w-full rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg)] px-3 py-2 text-sm focus:ring-2 focus:ring-[color:var(--color-accent)] focus:outline-none"
+          className={`mt-1 w-full ${inputClass}`}
         />
       </div>
 
@@ -338,7 +337,7 @@ export function LoginForm({
           required
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="mt-1 block w-full rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg)] px-3 py-2 text-sm focus:ring-2 focus:ring-[color:var(--color-accent)] focus:outline-none"
+          className={`mt-1 w-full ${inputClass}`}
         />
       </div>
 
@@ -349,17 +348,18 @@ export function LoginForm({
       />
 
       {error ? (
-        <p className="text-sm text-[color:var(--color-error)]" role="alert">
+        <p className="text-destructive text-sm" role="alert">
           {error}
         </p>
       ) : null}
 
       <button
+        aria-busy={loading}
         type="submit"
         disabled={submitDisabled}
-        className="block w-full rounded-md bg-[color:var(--color-accent)] px-4 py-2 text-sm font-medium text-[color:var(--color-accent-fg)] hover:opacity-95 disabled:opacity-50"
+        className={buttonClass({ variant: "primary", className: "block w-full" })}
       >
-        {loading ? "Signing in…" : "Sign in"}
+        Sign in
       </button>
     </form>
   );

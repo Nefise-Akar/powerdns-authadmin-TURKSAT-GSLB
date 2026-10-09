@@ -5,7 +5,58 @@
  * serializable - each takes already-fetched rows and returns a plain option
  * object shipped as a prop to the `<Chart>` client wrapper. Extracted from
  * page.tsx to keep the page focused on data-fetching + layout.
+ *
+ * Charts use the `<Chart>` palette (one accent + grays) and name series with
+ * direct labels instead of a legend: lines carry their latest value (and,
+ * with several series, their name) at the end; bars carry their value. Since
+ * the options must stay serializable, labels use ECharts template strings
+ * (`{@[1]}` = the point's value) rather than formatter functions. Colors are
+ * design tokens (`var(--success)`), resolved by `<Chart>` in the browser.
  */
+
+/** Room on the right for a line's end label. */
+const END_LABEL_ROOM = 44;
+/** …and for "name value" end labels when several series share a chart. */
+const NAMED_END_LABEL_ROOM = 150;
+
+const VALUE_END_LABEL = {
+  show: true,
+  formatter: "{@[1]}",
+  color: "var(--foreground)",
+  fontSize: 12,
+};
+
+/** Horizontal bars, largest first, each labelled with its value. */
+function barListOption(rows: Array<{ name: string; value: number }>, seriesName: string) {
+  const sorted = rows.slice().sort((a, b) => b.value - a.value);
+  return {
+    tooltip: { trigger: "axis" as const, axisPointer: { type: "shadow" as const } },
+    grid: { left: 8, right: END_LABEL_ROOM, top: 8, bottom: 8 },
+    xAxis: { type: "value" as const, show: false },
+    yAxis: {
+      type: "category" as const,
+      data: sorted.map((r) => r.name),
+      inverse: true,
+      axisTick: { show: false },
+      axisLabel: { width: 140, overflow: "truncate" as const },
+    },
+    series: [
+      {
+        name: seriesName,
+        type: "bar" as const,
+        data: sorted.map((r) => r.value),
+        barMaxWidth: 16,
+        itemStyle: { borderRadius: [0, 2, 2, 0] },
+        label: {
+          show: true,
+          position: "right" as const,
+          color: "var(--foreground)",
+          fontSize: 12,
+        },
+      },
+    ],
+  };
+}
 
 import type { HourlyBucket } from "@/lib/db/repositories/dashboard";
 
@@ -32,10 +83,20 @@ function startOfHourUtc(d: Date): Date {
   return out;
 }
 
-export function hourlyLineOption(rows: HourlyBucket[], hours: number, label: string) {
+/**
+ * `color` is for a series that carries meaning - `"var(--success)"` for
+ * successful logins; anything else keeps the accent.
+ */
+export function hourlyLineOption(
+  rows: HourlyBucket[],
+  hours: number,
+  label: string,
+  color?: string,
+) {
   const filled = fillHourly(rows, hours);
   return {
     tooltip: { trigger: "axis" as const },
+    grid: { right: END_LABEL_ROOM },
     // `type: "time"` lets ECharts format every tick label in the
     // BROWSER's local timezone - the server is upstream of timezone
     // decisions and shouldn't be baking "08:00" into category labels.
@@ -58,7 +119,8 @@ export function hourlyLineOption(rows: HourlyBucket[], hours: number, label: str
         type: "line" as const,
         smooth: true,
         symbol: "none" as const,
-        areaStyle: { opacity: 0.2 },
+        ...(color ? { color } : {}),
+        endLabel: VALUE_END_LABEL,
         data: filled.map((row) => [row.hour.toISOString(), row.count]),
       },
     ],
@@ -85,18 +147,19 @@ export function multiSeriesOption(
       bySlug.set(row.serverSlug, { name: row.serverName, data: [] }).get(row.serverSlug)!;
     entry.data.push([new Date(row.sampledAt).toISOString(), value]);
   }
+  const named = bySlug.size > 1;
   const series = Array.from(bySlug.values()).map((entry) => ({
     name: entry.name,
     type: "line" as const,
     smooth: true,
-    symbol: "circle" as const,
-    symbolSize: 4,
+    symbol: "none" as const,
+    endLabel: named ? { ...VALUE_END_LABEL, formatter: "{a}  {@[1]}" } : VALUE_END_LABEL,
     data: entry.data,
   }));
 
   return {
     tooltip: { trigger: "axis" as const },
-    legend: bySlug.size > 1 ? { top: 0 } : undefined,
+    grid: { right: named ? NAMED_END_LABEL_ROOM : END_LABEL_ROOM },
     xAxis: { type: "time" as const, splitLine: { show: false } },
     yAxis: { type: "value" as const, name: axisLabel, splitLine: { show: false } },
     series,
@@ -106,66 +169,28 @@ export function multiSeriesOption(
 export function topActorsOption(
   rows: Array<{ email: string; name: string | null; count: number }>,
 ) {
-  return {
-    tooltip: { trigger: "axis" as const, axisPointer: { type: "shadow" as const } },
-    grid: { left: 100 },
-    xAxis: { type: "value" as const, splitLine: { show: false } },
-    yAxis: {
-      type: "category" as const,
-      data: rows.map((r) => r.name ?? r.email),
-      inverse: true,
-      splitLine: { show: false },
-    },
-    series: [
-      {
-        name: "Events",
-        type: "bar" as const,
-        data: rows.map((r) => r.count),
-        itemStyle: { borderRadius: [0, 4, 4, 0] },
-      },
-    ],
-  };
+  return barListOption(
+    rows.map((r) => ({ name: r.name ?? r.email, value: r.count })),
+    "Events",
+  );
 }
 
-export function actionPieOption(rows: Array<{ action: string; count: number }>) {
-  return {
-    tooltip: { trigger: "item" as const, confine: true },
-    // Same lane split as MapPieChart: donut left, truncating legend right,
-    // so long action names (e.g. "zone.metadata.update") never overlap the
-    // chart. Full name stays available in the tooltip.
-    legend: {
-      orient: "vertical" as const,
-      type: "scroll" as const,
-      left: "52%" as const,
-      top: "middle" as const,
-      icon: "circle" as const,
-      itemWidth: 9,
-      itemHeight: 9,
-      itemGap: 8,
-      textStyle: { fontSize: 11, overflow: "truncate" as const, width: 150 },
-    },
-    series: [
-      {
-        type: "pie" as const,
-        radius: ["45%", "65%"] as [string, string],
-        center: ["26%", "50%"] as [string, string],
-        avoidLabelOverlap: true,
-        itemStyle: { borderRadius: 4, borderColor: "transparent", borderWidth: 1 },
-        label: { show: false },
-        data: rows.map((r) => ({ name: r.action, value: r.count })),
-      },
-    ],
-  };
+/** Action breakdown as a sorted bar list (a donut needed a legend to read). */
+export function actionBarsOption(rows: Array<{ action: string; count: number }>) {
+  return barListOption(
+    rows.map((r) => ({ name: r.action, value: r.count })),
+    "Events",
+  );
 }
 
 /**
  * PDNS reports `response-sizes` as a fine-grained histogram (one bucket
- * per ~20–400 byte step), which makes a donut with a dozen tiny numeric
- * legend entries. Collapse those into a handful of human-readable size
- * ranges and emit them largest-first so the chart reads as a clean,
- * ordered size distribution. Returns the MapPieChart `entries` shape
- * (value as a string); pair with `preserveOrder` so the chart keeps this
- * size order instead of re-sorting by count.
+ * per ~20–400 byte step), which makes a dozen tiny numeric bars. Collapse
+ * those into a handful of human-readable size ranges and emit them
+ * largest-first so the chart reads as a clean, ordered size distribution.
+ * Returns the MapBarChart `entries` shape (value as a string); pair with
+ * `preserveOrder` so the chart keeps this size order instead of re-sorting
+ * by count.
  */
 const RESPONSE_SIZE_BUCKETS: Array<{ label: string; max: number }> = [
   { label: "≤ 64 B", max: 64 },
@@ -190,7 +215,7 @@ export function bucketResponseSizes(
       RESPONSE_SIZE_BUCKETS[RESPONSE_SIZE_BUCKETS.length - 1]!;
     sums.set(bucket.label, (sums.get(bucket.label) ?? 0) + count);
   }
-  // Walk the buckets large→small so the legend/slices are size-ordered
+  // Walk the buckets large→small so the bars are size-ordered
   // (descending), dropping any range with no traffic.
   return RESPONSE_SIZE_BUCKETS.slice()
     .reverse()
@@ -201,6 +226,7 @@ export function bucketResponseSizes(
 export function sessionsOption(rows: Array<{ sampledAt: Date; activeSessions: number }>) {
   return {
     tooltip: { trigger: "axis" as const },
+    grid: { right: END_LABEL_ROOM },
     xAxis: { type: "time" as const, splitLine: { show: false } },
     yAxis: { type: "value" as const, minInterval: 1, splitLine: { show: false } },
     series: [
@@ -209,7 +235,7 @@ export function sessionsOption(rows: Array<{ sampledAt: Date; activeSessions: nu
         type: "line" as const,
         smooth: true,
         symbol: "none" as const,
-        areaStyle: { opacity: 0.2 },
+        endLabel: VALUE_END_LABEL,
         data: rows.map((row) => [new Date(row.sampledAt).toISOString(), row.activeSessions]),
       },
     ],

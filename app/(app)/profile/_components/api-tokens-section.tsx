@@ -15,6 +15,9 @@ import { useDialog } from "@/components/ui/dialog";
 import { DateTimePicker } from "@/components/ui/datetime-picker";
 import { LocalTime } from "@/components/ui/local-time";
 import { apiFetch, mutate } from "@/lib/client/api-fetch";
+import { buttonClass } from "@/components/ui/button";
+import { inputClass } from "@/components/ui/field";
+import { Alert } from "@/components/ui/alert";
 
 interface TokenRow {
   id: string;
@@ -163,47 +166,47 @@ export function ApiTokensSection({ initialTokens, availablePermissions }: Props)
   const revoked = initialTokens.filter((t) => t.revokedAt);
 
   return (
-    <section className="rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg-subtle)] p-5">
+    <section className="border-border bg-background rounded-md border p-5">
       <header className="mb-3 flex items-center justify-between">
-        <h2 className="text-sm font-medium tracking-wide text-[color:var(--color-fg-muted)] uppercase">
-          Personal access tokens
-        </h2>
+        <h2 className="text-h3 text-foreground">Personal access tokens</h2>
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
-          className="rounded border border-[color:var(--color-border)] px-2 py-1 text-xs hover:bg-[color:var(--color-bg-muted)]"
+          className={buttonClass({ size: "sm" })}
         >
           {open ? "Cancel" : "Issue token"}
         </button>
       </header>
 
-      <p className="mb-3 text-xs text-[color:var(--color-fg-muted)]">
+      <p className="text-muted-foreground mb-3 text-xs">
         Tokens authenticate API calls via <code>Authorization: Bearer pda_pat_…</code>. Scope a
         token to the minimum permissions the consumer needs - empty scopes inherit your full current
         permission set.
       </p>
 
       {revealed ? (
-        <div className="mb-3 rounded-md border border-[color:var(--color-warn)] bg-[color:var(--color-warn)]/10 p-3 text-sm">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <p className="font-medium">Token - shown once</p>
-              <p className="mt-1 text-xs text-[color:var(--color-fg-muted)]">
-                Copy now; the secret won't be shown again. Reloading the page loses access to it.
-              </p>
-            </div>
-            <button type="button" onClick={() => setRevealed(null)} className="text-xs underline">
+        <Alert
+          className="mb-3"
+          title="token shown once"
+          action={
+            <button
+              type="button"
+              onClick={() => setRevealed(null)}
+              className={buttonClass({ variant: "link", size: "xs" })}
+            >
               Dismiss
             </button>
-          </div>
-          <code className="mt-2 block rounded bg-[color:var(--color-bg)] p-2 font-mono text-xs break-all">
+          }
+        >
+          <p>Copy it now; the secret won&apos;t be shown again and reloading the page loses it.</p>
+          <code className="bg-card text-mono-sm mt-2 block rounded-sm p-2 font-mono break-all">
             {revealed.secret}
           </code>
-        </div>
+        </Alert>
       ) : null}
 
       {open ? (
-        <div className="mb-4 space-y-3 rounded border border-[color:var(--color-border)] bg-[color:var(--color-bg)] p-3">
+        <div className="border-border bg-card mb-4 space-y-3 rounded border p-3">
           <div className="grid gap-2 sm:grid-cols-[2fr_1fr]">
             <div>
               <label htmlFor="tk-name" className="block text-xs font-medium">
@@ -215,7 +218,7 @@ export function ApiTokensSection({ initialTokens, availablePermissions }: Props)
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="ci-pipeline"
-                className="mt-1 w-full rounded border border-[color:var(--color-border)] bg-[color:var(--color-bg)] px-2 py-1 text-sm"
+                className={`mt-1 w-full ${inputClass}`}
               />
             </div>
             <div>
@@ -239,7 +242,7 @@ export function ApiTokensSection({ initialTokens, availablePermissions }: Props)
               Scopes (leave all unchecked to inherit your permissions)
             </legend>
             {availablePermissions.length === 0 ? (
-              <p className="mt-1 text-xs text-[color:var(--color-fg-muted)] italic">
+              <p className="text-muted-foreground mt-1 text-xs italic">
                 You have no permissions to scope a token to.
               </p>
             ) : (
@@ -262,24 +265,25 @@ export function ApiTokensSection({ initialTokens, availablePermissions }: Props)
               type="button"
               onClick={reset}
               disabled={issuing}
-              className="rounded border border-[color:var(--color-border)] px-3 py-1 text-xs hover:bg-[color:var(--color-bg-muted)] disabled:opacity-50"
+              className={buttonClass({ size: "sm" })}
             >
               Cancel
             </button>
             <button
+              aria-busy={issuing}
               type="button"
               onClick={handleCreate}
               disabled={issuing}
-              className="rounded bg-[color:var(--color-accent)] px-3 py-1 text-xs font-medium text-[color:var(--color-accent-fg)] hover:opacity-95 disabled:opacity-50"
+              className={buttonClass({ variant: "primary", size: "sm" })}
             >
-              {issuing ? "Issuing…" : "Issue"}
+              Issue
             </button>
           </div>
         </div>
       ) : null}
 
       {active.length === 0 && revoked.length === 0 ? (
-        <p className="text-xs text-[color:var(--color-fg-muted)]">You have no tokens.</p>
+        <p className="text-muted-foreground text-xs">You have no tokens.</p>
       ) : null}
 
       {active.length > 0 ? (
@@ -297,7 +301,7 @@ export function ApiTokensSection({ initialTokens, availablePermissions }: Props)
 
       {revoked.length > 0 ? (
         <details className="mt-4">
-          <summary className="cursor-pointer text-xs text-[color:var(--color-fg-muted)]">
+          <summary className="text-muted-foreground cursor-pointer text-xs">
             Show revoked ({revoked.length})
           </summary>
           <ul className="mt-2 space-y-2">
@@ -326,31 +330,30 @@ function TokenRowView({
     <li
       className={
         revoked
-          ? "rounded border border-[color:var(--color-border)] bg-[color:var(--color-bg-subtle)] p-3 text-sm opacity-60"
-          : "rounded border border-[color:var(--color-border)] bg-[color:var(--color-bg)] p-3 text-sm"
+          ? "border-border bg-background rounded border p-3 text-sm opacity-60"
+          : "border-border bg-card rounded border p-3 text-sm"
       }
     >
       <div className="flex items-baseline justify-between gap-3">
         <div className="min-w-0">
           <div className="font-medium">{row.name}</div>
-          <div className="font-mono text-xs text-[color:var(--color-fg-muted)]">
-            pda_pat_{row.prefix}…
-          </div>
+          <div className="text-muted-foreground font-mono text-xs">pda_pat_{row.prefix}…</div>
         </div>
         {!revoked && onRevoke ? (
           <button
+            aria-busy={revoking}
             type="button"
             onClick={onRevoke}
             disabled={revoking}
-            className="shrink-0 rounded border border-[color:var(--color-error)] px-2 py-1 text-xs text-[color:var(--color-error)] hover:bg-[color:var(--color-error)]/10 disabled:opacity-50"
+            className={buttonClass({ variant: "destructive", size: "sm", className: "shrink-0" })}
           >
-            {revoking ? "Revoking…" : "Revoke"}
+            Revoke
           </button>
         ) : revoked ? (
-          <span className="text-xs text-[color:var(--color-fg-muted)]">revoked</span>
+          <span className="text-muted-foreground text-xs">revoked</span>
         ) : null}
       </div>
-      <dl className="mt-2 grid grid-cols-[max-content_1fr] gap-x-3 gap-y-0.5 text-[0.6875rem] text-[color:var(--color-fg-muted)]">
+      <dl className="text-muted-foreground text-caption mt-2 grid grid-cols-[max-content_1fr] gap-x-3 gap-y-0.5">
         <dt>Created</dt>
         <dd>
           <LocalTime ts={row.createdAt} />
@@ -385,14 +388,14 @@ function TokenRowView({
           {row.scopes.map((s) => (
             <span
               key={s}
-              className="rounded bg-[color:var(--color-bg-muted)] px-1.5 py-0.5 font-mono text-[0.625rem]"
+              className="bg-tag text-mono-xs text-tag-foreground inline-flex h-5 items-center rounded-sm px-1.5 font-mono whitespace-nowrap"
             >
               {s}
             </span>
           ))}
         </div>
       ) : (
-        <p className="mt-2 text-[0.6875rem] text-[color:var(--color-fg-muted)] italic">
+        <p className="text-muted-foreground text-caption mt-2 italic">
           Inherits all of your current permissions.
         </p>
       )}

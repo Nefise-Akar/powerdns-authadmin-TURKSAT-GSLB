@@ -4,6 +4,8 @@ import { useRef, useState, type FormEvent } from "react";
 import { TurnstileWidget } from "@/components/ui/turnstile-widget";
 import { apiFetch } from "@/lib/client/api-fetch";
 import { readFormFields, useDomFieldSync } from "@/lib/client/form-dom";
+import { buttonClass } from "@/components/ui/button";
+import { inputClass } from "@/components/ui/field";
 
 export function ForgotPasswordForm({ turnstileSiteKey }: { turnstileSiteKey?: string }) {
   const [email, setEmail] = useState("");
@@ -86,7 +88,7 @@ export function ForgotPasswordForm({ turnstileSiteKey }: { turnstileSiteKey?: st
           required
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="mt-1 block w-full rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg)] px-3 py-2 text-sm focus:ring-2 focus:ring-[color:var(--color-accent)] focus:outline-none"
+          className={`mt-1 w-full ${inputClass}`}
         />
       </div>
       <TurnstileWidget
@@ -95,24 +97,22 @@ export function ForgotPasswordForm({ turnstileSiteKey }: { turnstileSiteKey?: st
         resetKey={captchaResetKey}
       />
       {message ? (
-        <p
-          className="rounded border border-[color:var(--color-success)] bg-[color:var(--color-success)]/10 p-3 text-sm"
-          role="status"
-        >
+        <p className="border-success bg-background rounded border p-3 text-sm" role="status">
           {message}
         </p>
       ) : null}
       {error ? (
-        <p className="text-sm text-[color:var(--color-error)]" role="alert">
+        <p className="text-destructive text-sm" role="alert">
           {error}
         </p>
       ) : null}
       <button
+        aria-busy={loading}
         type="submit"
         disabled={submitDisabled}
-        className="block w-full rounded-md bg-[color:var(--color-accent)] px-4 py-2 text-sm font-medium text-[color:var(--color-accent-fg)] hover:opacity-95 disabled:opacity-50"
+        className={buttonClass({ variant: "primary", className: "block w-full" })}
       >
-        {loading ? "Sending…" : "Request reset link"}
+        Request reset link
       </button>
     </form>
   );

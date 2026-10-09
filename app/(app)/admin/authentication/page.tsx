@@ -193,8 +193,8 @@ export default async function AuthenticationPage() {
     <div className="space-y-6">
       <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Authentication</h1>
-          <p className="mt-1 text-sm text-[color:var(--color-fg-muted)]">
+          <h1 className="text-h1">Authentication</h1>
+          <p className="text-muted-foreground mt-1 text-sm">
             Every configured way to sign in - local password, OIDC, LDAP, and (soon) SAML. The
             default below decides which one <code>/login</code> auto-redirects to on a fresh visit.
           </p>
@@ -202,7 +202,7 @@ export default async function AuthenticationPage() {
         {canManage ? <CreateButton href="/admin/authentication/new" label="Add provider" /> : null}
       </header>
 
-      <section className="rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg-subtle)] p-4">
+      <section className="border-border bg-background rounded-md border p-4">
         <DefaultProviderSelector
           initial={settings.authDefaultProvider}
           options={defaultProviderOptions}
@@ -211,7 +211,7 @@ export default async function AuthenticationPage() {
       </section>
 
       {rows.length === 0 ? (
-        <p className="text-sm text-[color:var(--color-fg-muted)]">
+        <p className="text-muted-foreground text-sm">
           No sign-in methods configured yet. Add an OIDC provider above, or enable local auth via{" "}
           <code>LOCAL_AUTH_ENABLED=true</code>.
         </p>

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { apiFetch } from "@/lib/client/api-fetch";
 import { useDialog } from "@/components/ui/dialog";
+import { buttonClass } from "@/components/ui/button";
 
 export function VerifyEmailForm({ token }: { token: string }) {
   const router = useRouter();
@@ -57,13 +58,13 @@ export function VerifyEmailForm({ token }: { token: string }) {
   if (status === "error") {
     return (
       <div className="space-y-3">
-        <p className="text-sm text-[color:var(--color-error)]" role="alert">
+        <p className="text-destructive text-sm" role="alert">
           {error}
         </p>
         <button
           type="button"
           onClick={() => void confirm()}
-          className="block w-full rounded-md bg-[color:var(--color-accent)] px-4 py-2 text-sm font-medium text-[color:var(--color-accent-fg)] hover:opacity-95"
+          className={buttonClass({ variant: "primary", className: "w-full" })}
         >
           Try again
         </button>
@@ -72,10 +73,7 @@ export function VerifyEmailForm({ token }: { token: string }) {
   }
 
   return (
-    <p
-      className="rounded border border-[color:var(--color-border)] bg-[color:var(--color-bg-subtle)] p-3 text-sm"
-      role="status"
-    >
+    <p className="border-border bg-background rounded border p-3 text-sm" role="status">
       {status === "done" ? "Email verified - redirecting to sign in…" : "Verifying your email…"}
     </p>
   );

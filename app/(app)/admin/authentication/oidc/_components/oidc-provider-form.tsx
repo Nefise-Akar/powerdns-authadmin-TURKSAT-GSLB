@@ -13,6 +13,8 @@ import { useState, type FormEvent } from "react";
 import { apiFetch } from "@/lib/client/api-fetch";
 import { safeIconUrl } from "@/lib/security/icon-url";
 import { SelectMenu } from "@/components/ui/select-menu";
+import { buttonClass } from "@/components/ui/button";
+import { inputClass as baseInputClass, textareaClass } from "@/components/ui/field";
 
 interface FormInitial {
   id: string;
@@ -406,7 +408,7 @@ export function OidcProviderForm(props: Props) {
           className={inputClass}
         />
         {iconUrl.trim() !== "" ? (
-          <div className="mt-2 flex items-center gap-2 rounded border border-[color:var(--color-border)] bg-[color:var(--color-bg-subtle)] p-2 text-xs text-[color:var(--color-fg-muted)]">
+          <div className="border-border bg-background text-muted-foreground mt-2 flex items-center gap-2 rounded border p-2 text-xs">
             <span>Preview:</span>
             {/* Same allowlist the server enforces, so the preview can never
                 render something that wouldn't save. `safeIconUrl` returns a
@@ -425,7 +427,7 @@ export function OidcProviderForm(props: Props) {
                 }}
               />
             ) : (
-              <span className="text-[color:var(--color-error)]">
+              <span className="text-destructive">
                 No preview - use an https:// URL or an inline data:image URI.
               </span>
             )}
@@ -433,7 +435,7 @@ export function OidcProviderForm(props: Props) {
         ) : null}
       </Field>
 
-      <div className="space-y-2 rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg-subtle)] p-4">
+      <div className="border-border bg-background space-y-2 rounded-md border p-4">
         <label className="flex items-start gap-2 text-sm">
           <input
             type="checkbox"
@@ -444,7 +446,7 @@ export function OidcProviderForm(props: Props) {
           />
           <span>
             Override <code>OIDC_ALLOWED_EMAIL_DOMAINS</code> for this provider
-            <span className="block text-xs text-[color:var(--color-fg-muted)]">
+            <span className="text-muted-foreground block text-xs">
               Off: inherit the env allow-list. On: use the list below instead (REPLACES env - leave
               empty to allow any email).
             </span>
@@ -464,15 +466,15 @@ export function OidcProviderForm(props: Props) {
               onChange={(e) => setDomainsText(e.target.value)}
               disabled={!canEdit}
               placeholder="example.com&#10;acme.corp"
-              className={`${inputClass} font-mono`}
+              className={`mt-1.5 ${textareaClass} font-mono`}
             />
           </Field>
         ) : null}
       </div>
 
-      <fieldset className="space-y-3 rounded-md border border-[color:var(--color-border)] p-3">
+      <fieldset className="border-border space-y-3 rounded-md border p-3">
         <legend className="px-1 text-sm font-medium">Group → role mappings</legend>
-        <p className="text-xs text-[color:var(--color-fg-muted)]">
+        <p className="text-muted-foreground text-xs">
           On every successful sign-in, the user&apos;s{" "}
           <code>{initial.scopes && claimEmail ? "claim_groups" : "groups"}</code> claim is matched
           against the rules below. Each matching row materialises a role assignment tagged with this
@@ -480,7 +482,7 @@ export function OidcProviderForm(props: Props) {
           assignments are never touched.
         </p>
         {groupMappings.length === 0 ? (
-          <p className="text-xs text-[color:var(--color-fg-muted)] italic">
+          <p className="text-muted-foreground text-xs italic">
             No mappings yet. Add one to grant roles based on the IdP&apos;s group claim.
           </p>
         ) : (
@@ -488,7 +490,7 @@ export function OidcProviderForm(props: Props) {
             {groupMappings.map((m, i) => (
               <li
                 key={i}
-                className="grid grid-cols-[1fr_1fr_1fr_1fr_auto] gap-2 rounded border border-[color:var(--color-border)] bg-[color:var(--color-bg-subtle)] p-2"
+                className="border-border bg-background grid grid-cols-[1fr_1fr_1fr_1fr_auto] gap-2 rounded border p-2"
               >
                 <label className="text-xs">
                   IdP group
@@ -585,7 +587,11 @@ export function OidcProviderForm(props: Props) {
                   onClick={() => removeGroupMapping(i)}
                   disabled={!canEdit}
                   title="Remove this mapping"
-                  className="self-end rounded border border-[color:var(--color-border)] px-2 py-1 text-xs text-[color:var(--color-error)] hover:bg-[color:var(--color-bg-muted)] disabled:opacity-50"
+                  className={buttonClass({
+                    variant: "destructive",
+                    size: "sm",
+                    className: "self-end",
+                  })}
                 >
                   Remove
                 </button>
@@ -594,16 +600,12 @@ export function OidcProviderForm(props: Props) {
           </ul>
         )}
         {canEdit ? (
-          <button
-            type="button"
-            onClick={addGroupMapping}
-            className="rounded border border-[color:var(--color-border)] px-3 py-1 text-xs hover:bg-[color:var(--color-bg-muted)]"
-          >
+          <button type="button" onClick={addGroupMapping} className={buttonClass({ size: "sm" })}>
             + Add mapping
           </button>
         ) : null}
         {fieldErrors["groupMappings"] ? (
-          <p className="text-xs text-[color:var(--color-error)]" role="alert">
+          <p className="text-destructive text-xs" role="alert">
             {fieldErrors["groupMappings"].join(" ")}
           </p>
         ) : null}
@@ -629,7 +631,7 @@ export function OidcProviderForm(props: Props) {
         />
         <span>
           Require <code>email_verified</code> claim from the IdP
-          <span className="block text-xs text-[color:var(--color-fg-muted)]">
+          <span className="text-muted-foreground block text-xs">
             On by default. Blocks sign-in for an existing local account unless the IdP attests the
             email is verified - the account-takeover guard for IdPs that let users set arbitrary
             unverified emails. Turn off only for IdPs that don&apos;t emit the claim at all (some
@@ -639,30 +641,26 @@ export function OidcProviderForm(props: Props) {
       </label>
 
       {error ? (
-        <p className="text-sm text-[color:var(--color-error)]" role="alert">
+        <p className="text-destructive text-sm" role="alert">
           {error}
         </p>
       ) : null}
 
       {canEdit ? (
         <div className="flex items-center gap-3">
-          <button
-            type="submit"
-            disabled={saving}
-            className="rounded-md bg-[color:var(--color-accent)] px-4 py-2 text-sm font-medium text-[color:var(--color-accent-fg)] hover:opacity-95 disabled:opacity-50"
-          >
+          <button type="submit" disabled={saving} className={buttonClass({ variant: "primary" })}>
             {saving ? "Saving…" : props.mode === "edit" ? "Save changes" : "Add provider"}
           </button>
           <button
             type="button"
             onClick={() => router.push("/admin/authentication")}
-            className="rounded-md border border-[color:var(--color-border)] px-4 py-2 text-sm hover:bg-[color:var(--color-bg-subtle)]"
+            className={buttonClass()}
           >
             Cancel
           </button>
         </div>
       ) : (
-        <p className="text-xs text-[color:var(--color-fg-muted)]">
+        <p className="text-muted-foreground text-xs">
           Read-only access. The oidc.manage permission is required to edit.
         </p>
       )}
@@ -670,8 +668,7 @@ export function OidcProviderForm(props: Props) {
   );
 }
 
-const inputClass =
-  "mt-1 block w-full rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--color-accent)] disabled:opacity-60";
+const inputClass = `mt-1.5 ${baseInputClass}`;
 
 function Field({
   id,
@@ -692,9 +689,9 @@ function Field({
         {label}
       </label>
       {children}
-      {hint ? <p className="mt-1 text-xs text-[color:var(--color-fg-muted)]">{hint}</p> : null}
+      {hint ? <p className="text-muted-foreground mt-1 text-xs">{hint}</p> : null}
       {errors && errors.length > 0 ? (
-        <p className="mt-1 text-xs text-[color:var(--color-error)]" role="alert">
+        <p className="text-destructive mt-1 text-xs" role="alert">
           {errors.join(" ")}
         </p>
       ) : null}

@@ -10,10 +10,14 @@
  *   - Click-to-sort on column headers, with direction indicators.
  *   - Global search filter (matches across every accessor by default; per-
  *     column filters land when a list needs them).
- *   - Client-side pagination with a page-size selector.
- *   - "Showing N–M of K" counter beneath the table.
- *   - Zebra-striped rows + hover highlight, all from design tokens so both
- *     light and dark themes track automatically.
+ *   - Client-side pagination with a page-size selector and numbered pages.
+ *   - "Showing N–M of K" counter above and beneath the table.
+ *
+ * Look follows the Liman table: 36px header and rows, `background` header
+ * row, rows split by 1px borders (no zebra), `background` on hover (never
+ * accent), an inset ring on the keyboard-focused row, a 12px arrow on the
+ * sorted column only. Cells keep wrapping (the guide truncates to one line)
+ * so long record data - TXT strings, keys - is never hidden.
  *
  * What's NOT shipped (and the reason): a sticky header. Current
  * markup nests the table inside `overflow-hidden` (for the rounded
@@ -40,7 +44,7 @@
  *     { accessorKey: "kind", header: "Kind" },
  *   ];
  *   <DataTable columns={columns} data={zones}
- *              searchPlaceholder="Search zones…"
+ *              searchPlaceholder="Search zones"
  *              initialSort={[{ id: "name", desc: false }]} />
  */
 
@@ -57,10 +61,14 @@ import {
   type SortingState,
   type Table as ReactTable,
 } from "@tanstack/react-table";
-import { ChevronDown, ChevronsUpDown, ChevronUp, Search } from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, Search } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Kbd } from "./badge";
+import { buttonClass, iconButtonClass } from "./button";
 import { parsePageSizeParam, parseSortParam, serializeSortParam } from "./data-table-url-sync";
+import { pageItems } from "./page-items";
+import { inputClass } from "./field";
 import { SelectMenu } from "./select-menu";
 
 // Per-column styling hook. TanStack v8.21 tightened `ColumnMeta` from a loose
@@ -372,6 +380,12 @@ export function DataTable<TData>({
     return () => document.removeEventListener("keydown", onKey);
   }, [searchShortcut, hideSearch]);
 
+  const clearSearch = () => {
+    setGlobalFilter("");
+    table.setPageIndex(0);
+    searchRef.current?.focus();
+  };
+
   // Row/card click → navigate, unless the click landed on an interactive
   // element (link, button, form control) so per-row actions keep working.
   const activateRow = (target: EventTarget | null, original: TData) => {
@@ -385,10 +399,12 @@ export function DataTable<TData>({
     <div className={`space-y-3 ${className}`}>
       {!hideSearch ? (
         <div className="flex items-center gap-2">
-          <div className="relative max-w-xs flex-1">
+          <div className="relative w-full max-w-64">
             <Search
               aria-hidden
-              className="pointer-events-none absolute top-1/2 left-2.5 h-4 w-4 -translate-y-1/2 text-[color:var(--color-fg-muted)]"
+              size={14}
+              strokeWidth={2}
+              className="text-muted-foreground pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2"
             />
             <input
               ref={searchRef}
@@ -412,21 +428,19 @@ export function DataTable<TData>({
               }}
               placeholder={searchPlaceholder}
               aria-keyshortcuts={searchShortcut ? "/" : undefined}
-              className={`block w-full rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg)] py-1.5 pl-8 text-sm focus:ring-2 focus:ring-[color:var(--color-accent)] focus:outline-none ${
-                searchShortcut ? "pr-9" : "pr-3"
-              }`}
+              className={`${inputClass} pl-8 ${searchShortcut ? "pr-9" : ""}`}
             />
             {searchShortcut ? (
-              <kbd
+              <span
                 aria-hidden
-                className="pointer-events-none absolute top-1/2 right-2 -translate-y-1/2 rounded border border-[color:var(--color-border)] bg-[color:var(--color-bg-subtle)] px-1.5 font-mono text-[0.65rem] text-[color:var(--color-fg-muted)]"
+                className="pointer-events-none absolute top-1/2 right-1.5 -translate-y-1/2"
               >
-                /
-              </kbd>
+                <Kbd>/</Kbd>
+              </span>
             ) : null}
           </div>
           {globalFilter ? (
-            <span className="text-xs text-[color:var(--color-fg-muted)]">
+            <span className="text-meta text-muted-foreground tabular-nums">
               {filteredCount} match{filteredCount === 1 ? "" : "es"}
             </span>
           ) : null}
@@ -454,8 +468,11 @@ export function DataTable<TData>({
           column becomes a labelled field, the first cell is the card title. */}
       <div className="space-y-3 md:hidden">
         {rows.length === 0 ? (
-          <div className="rounded-lg border border-[color:var(--color-border)] px-4 py-10 text-center text-sm text-[color:var(--color-fg-muted)]">
-            {totalCount === 0 ? noDataMessage : emptyMessage}
+          <div className="border-border rounded-md border px-4 py-10 text-center">
+            <EmptyState
+              message={totalCount === 0 ? noDataMessage : emptyMessage}
+              onClear={globalFilter ? clearSearch : undefined}
+            />
           </div>
         ) : (
           rows.map((row) => {
@@ -470,10 +487,8 @@ export function DataTable<TData>({
                   extra.onClick?.(e);
                   activateRow(e.target, row.original);
                 }}
-                className={`rounded-lg border border-[color:var(--color-border)] bg-[color:var(--color-bg)] p-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--color-accent)] ${
-                  rowHref
-                    ? "cursor-pointer transition-colors active:bg-[color:var(--color-bg-subtle)]"
-                    : ""
+                className={`border-border bg-card focus-visible:shadow-focus-ring rounded-md border p-4 focus-visible:outline-hidden ${
+                  rowHref ? "active:bg-background cursor-pointer" : ""
                 } ${extra.className ?? ""}`}
               >
                 {cells.map((cell, i) => {
@@ -483,7 +498,7 @@ export function DataTable<TData>({
                   // Unlabelled cells (actions) → full-width.
                   if (i === 0) {
                     return (
-                      <div key={cell.id} className="mb-2 text-base font-medium break-words">
+                      <div key={cell.id} className="text-body-strong mb-2 break-words">
                         {content}
                       </div>
                     );
@@ -498,9 +513,9 @@ export function DataTable<TData>({
                   return (
                     <div
                       key={cell.id}
-                      className="flex justify-between gap-3 border-t border-[color:var(--color-border)] py-1.5 text-sm first:border-t-0"
+                      className="border-border text-body-sm flex justify-between gap-3 border-t py-1.5 first:border-t-0"
                     >
-                      <span className="shrink-0 text-[color:var(--color-fg-muted)]">{label}</span>
+                      <span className="text-muted-foreground shrink-0">{label}</span>
                       <span className="min-w-0 text-right break-words">{content}</span>
                     </div>
                   );
@@ -514,10 +529,10 @@ export function DataTable<TData>({
 
       {/* Desktop (md+): the dense table. overflow-x-auto only kicks in when a
           table genuinely can't fit - the common case stays scroll-free. */}
-      <div className="hidden overflow-hidden rounded-lg border border-[color:var(--color-border)] md:block">
+      <div className="hidden md:block">
         <div className="overflow-x-auto">
-          <table className={`w-full text-sm ${layout === "fixed" ? "table-fixed" : ""}`}>
-            <thead className="bg-[color:var(--color-bg-muted)] text-left text-xs font-medium tracking-wide text-[color:var(--color-fg-muted)] uppercase">
+          <table className={`text-body w-full ${layout === "fixed" ? "table-fixed" : ""}`}>
+            <thead className="border-border bg-background text-label text-muted-foreground border-y text-left">
               {table.getHeaderGroups().map((headerGroup) => (
                 <tr key={headerGroup.id}>
                   {headerGroup.headers.map((header) => {
@@ -528,16 +543,15 @@ export function DataTable<TData>({
                         key={header.id}
                         scope="col"
                         className={[
-                          "px-4 py-2.5",
+                          "h-9 px-2 font-medium first:pl-3",
+                          sortDir ? "text-foreground" : "",
                           // Action columns (no header text) shrink to content so
                           // the table's spare width spreads across the data
                           // columns instead of opening a gap before the actions.
                           layout === "auto" && isUnlabeledColumn(header.column.columnDef)
                             ? "w-px whitespace-nowrap"
                             : "",
-                          canSort
-                            ? "cursor-pointer select-none hover:bg-[color:var(--color-bg-muted)]"
-                            : "",
+                          canSort ? "hover:text-foreground cursor-pointer select-none" : "",
                           header.column.columnDef.meta?.className ?? "",
                         ].join(" ")}
                         onClick={canSort ? header.column.getToggleSortingHandler() : undefined}
@@ -555,14 +569,10 @@ export function DataTable<TData>({
                           {header.isPlaceholder
                             ? null
                             : flexRender(header.column.columnDef.header, header.getContext())}
-                          {canSort ? (
-                            sortDir === "asc" ? (
-                              <ChevronUp className="h-3 w-3" aria-hidden />
-                            ) : sortDir === "desc" ? (
-                              <ChevronDown className="h-3 w-3" aria-hidden />
-                            ) : (
-                              <ChevronsUpDown className="h-3 w-3 opacity-40" aria-hidden />
-                            )
+                          {sortDir === "asc" ? (
+                            <ArrowUp aria-hidden size={12} strokeWidth={2} />
+                          ) : sortDir === "desc" ? (
+                            <ArrowDown aria-hidden size={12} strokeWidth={2} />
                           ) : null}
                         </span>
                       </th>
@@ -576,9 +586,12 @@ export function DataTable<TData>({
                 <tr>
                   <td
                     colSpan={table.getAllColumns().length}
-                    className="px-4 py-10 text-center text-sm text-[color:var(--color-fg-muted)]"
+                    className="border-border border-b px-4 py-10 text-center"
                   >
-                    {totalCount === 0 ? noDataMessage : emptyMessage}
+                    <EmptyState
+                      message={totalCount === 0 ? noDataMessage : emptyMessage}
+                      onClear={globalFilter ? clearSearch : undefined}
+                    />
                   </td>
                 </tr>
               ) : (
@@ -593,18 +606,9 @@ export function DataTable<TData>({
                           extra.onClick?.(e);
                           activateRow(e.target, row.original);
                         }}
-                        // Four visually distinct row states, all token-driven so
-                        // both themes track automatically:
-                        //   header → bg-muted (the strongest neutral, anchors the top)
-                        //   odd    → transparent (page bg)
-                        //   even   → bg-subtle stripe
-                        //   hover  → faint accent wash, distinct from every neutral
-                        //            shade above (and a subtle brand cue).
-                        // The hover color is semi-transparent over the page bg, so
-                        // it reads identically on odd and even rows. Tailwind emits
-                        // the `hover:` variant after `even:`, so hover wins the
-                        // cascade on striped rows without needing `!important`.
-                        className={`border-t border-[color:var(--color-border)] transition-colors even:bg-[color:var(--color-bg-subtle)] hover:bg-[color-mix(in_oklch,var(--color-accent)_14%,transparent)] focus:outline-none focus-visible:bg-[color-mix(in_oklch,var(--color-accent)_14%,transparent)] focus-visible:shadow-[inset_2px_0_0_var(--color-accent)] ${
+                        // Hover is `background` (accent means "selected", never
+                        // "pointed at"); keyboard focus draws an inset 2px ring.
+                        className={`border-border hover:bg-background border-b focus-visible:shadow-[inset_0_0_0_2px_var(--ring)] focus-visible:outline-hidden ${
                           rowHref ? "cursor-pointer" : ""
                         } ${extra.className ?? ""}`}
                       >
@@ -612,7 +616,8 @@ export function DataTable<TData>({
                           <td
                             key={cell.id}
                             className={[
-                              "px-4 py-3 align-top",
+                              // 8 + 20 (body line) + 8 = the 36px row height.
+                              "px-2 py-2 align-top first:pl-3",
                               layout === "auto" && isUnlabeledColumn(cell.column.columnDef)
                                 ? "w-px whitespace-nowrap"
                                 : "",
@@ -624,10 +629,10 @@ export function DataTable<TData>({
                         ))}
                       </tr>
                       {detail != null ? (
-                        <tr className="border-t-0">
+                        <tr>
                           <td
                             colSpan={row.getVisibleCells().length}
-                            className="bg-[color:var(--color-bg-subtle)] px-4 pt-0 pb-3"
+                            className="border-border bg-background border-b px-3 py-3"
                           >
                             {detail}
                           </td>
@@ -693,16 +698,19 @@ function PaginationControls<TData>({
   pageSizeOptionsResolved: readonly number[];
   table: ReactTable<TData>;
 }) {
+  const current = table.getState().pagination.pageIndex + 1;
+  const pageCount = Math.max(1, table.getPageCount());
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-[color:var(--color-fg-muted)]">
-      <span>
+    <div className="text-body-sm text-muted-foreground flex flex-wrap items-center justify-between gap-3">
+      <span className="tabular-nums">
         Showing {showingFrom}–{showingTo} of {filteredCount}
         {globalFilter && filteredCount !== totalCount ? ` (filtered from ${totalCount})` : ""}
       </span>
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-4">
         <label className="flex items-center gap-2">
-          <span>Rows</span>
+          <span>Per page</span>
           <SelectMenu
+            size="sm"
             value={String(pagination.pageSize)}
             onChange={(v) => table.setPageSize(Number(v))}
             options={pageSizeOptionsResolved.map((size) => ({
@@ -710,60 +718,70 @@ function PaginationControls<TData>({
               label: String(size),
             }))}
             ariaLabel="Rows per page"
-            className="w-20"
+            className="w-18"
           />
         </label>
-        <div className="inline-flex items-center gap-1">
-          <PaginationButton
-            onClick={() => table.setPageIndex(0)}
-            disabled={!table.getCanPreviousPage()}
-            label="First"
-            className="hidden sm:inline-block"
-          />
-          <PaginationButton
+        <nav aria-label="Pagination" className="flex items-center gap-1">
+          <button
+            type="button"
             onClick={() => table.previousPage()}
             disabled={!table.getCanPreviousPage()}
-            label="Prev"
-          />
-          <span className="px-2 whitespace-nowrap tabular-nums">
-            {table.getState().pagination.pageIndex + 1} / {Math.max(1, table.getPageCount())}
-          </span>
-          <PaginationButton
+            aria-label="Previous page"
+            className={iconButtonClass("sm")}
+          >
+            <ChevronLeft aria-hidden strokeWidth={2} />
+          </button>
+          {pageItems(current, pageCount).map((item, i) =>
+            item === "gap" ? (
+              <span key={`gap-${i}`} aria-hidden className="w-5 text-center">
+                …
+              </span>
+            ) : (
+              <button
+                key={item}
+                type="button"
+                onClick={() => table.setPageIndex(item - 1)}
+                aria-current={item === current ? "page" : undefined}
+                aria-label={`Page ${item}`}
+                className={`text-mono focus-visible:shadow-focus-ring inline-flex h-7 min-w-7 items-center justify-center rounded-md px-1 font-mono tabular-nums focus-visible:outline-hidden ${
+                  item === current
+                    ? "bg-accent text-accent-foreground font-semibold"
+                    : "text-foreground hover:bg-muted"
+                }`}
+              >
+                {item}
+              </button>
+            ),
+          )}
+          <button
+            type="button"
             onClick={() => table.nextPage()}
             disabled={!table.getCanNextPage()}
-            label="Next"
-          />
-          <PaginationButton
-            onClick={() => table.setPageIndex(table.getPageCount() - 1)}
-            disabled={!table.getCanNextPage()}
-            label="Last"
-            className="hidden sm:inline-block"
-          />
-        </div>
+            aria-label="Next page"
+            className={iconButtonClass("sm")}
+          >
+            <ChevronRight aria-hidden strokeWidth={2} />
+          </button>
+        </nav>
       </div>
     </div>
   );
 }
 
-function PaginationButton({
-  onClick,
-  disabled,
-  label,
-  className = "",
-}: {
-  onClick: () => void;
-  disabled: boolean;
-  label: string;
-  className?: string;
-}) {
+/** Zero rows: one sentence, plus the one way out when a search caused it. */
+function EmptyState({ message, onClear }: { message: string; onClear?: () => void }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      className={`rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg)] px-2 py-1 text-xs hover:bg-[color:var(--color-bg-subtle)] disabled:opacity-40 ${className}`}
-    >
-      {label}
-    </button>
+    <div className="flex flex-col items-center gap-2">
+      <p className="text-body text-muted-foreground">{message}</p>
+      {onClear ? (
+        <button
+          type="button"
+          onClick={onClear}
+          className={buttonClass({ variant: "link", size: "xs" })}
+        >
+          Clear search
+        </button>
+      ) : null}
+    </div>
   );
 }

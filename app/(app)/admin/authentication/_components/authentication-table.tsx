@@ -63,7 +63,7 @@ export function AuthenticationTable({ rows }: { rows: AuthRow[] }) {
               style={{ width: 20, height: 20, objectFit: "contain", display: "block" }}
             />
           ) : (
-            <span className="block h-5 w-5 rounded bg-[color:var(--color-bg-muted)]" aria-hidden />
+            <span className="bg-muted block h-5 w-5 rounded" aria-hidden />
           );
         },
       },
@@ -75,7 +75,7 @@ export function AuthenticationTable({ rows }: { rows: AuthRow[] }) {
             <span className="font-medium">{ctx.row.original.name}</span>
             {ctx.row.original.kind === "oidc-env" ? (
               <span
-                className="rounded-full border border-[color:var(--color-border)] bg-[color:var(--color-bg-muted)] px-2 py-0.5 text-[0.625rem] font-medium tracking-wide text-[color:var(--color-fg-muted)] uppercase"
+                className="bg-tag text-mono-xs text-tag-foreground inline-flex h-5 items-center rounded-sm px-1.5 font-mono whitespace-nowrap"
                 title="Configured via OIDC_* environment variables. Edit by changing env vars, not the UI."
               >
                 Env
@@ -88,7 +88,7 @@ export function AuthenticationTable({ rows }: { rows: AuthRow[] }) {
         accessorKey: "protocol",
         header: "Protocol",
         cell: (ctx) => (
-          <span className="inline-flex items-center rounded-full bg-[color:var(--color-bg-muted)] px-2 py-0.5 font-mono text-[0.625rem] tracking-wider uppercase">
+          <span className="bg-tag text-mono-xs text-tag-foreground inline-flex h-5 items-center rounded-sm px-1.5 font-mono whitespace-nowrap">
             {ctx.row.original.protocol}
           </span>
         ),
@@ -100,7 +100,7 @@ export function AuthenticationTable({ rows }: { rows: AuthRow[] }) {
           // Wrap, don't truncate - same posture as the role-description column
           // we added in the previous PR. The text is long enough to be the
           // operator's "how is this configured" cue at a glance.
-          <span className="block max-w-prose text-xs whitespace-normal text-[color:var(--color-fg-muted)]">
+          <span className="text-muted-foreground block max-w-prose text-xs whitespace-normal">
             {ctx.row.original.description}
           </span>
         ),
@@ -110,11 +110,11 @@ export function AuthenticationTable({ rows }: { rows: AuthRow[] }) {
         header: "Enabled",
         cell: (ctx) =>
           ctx.row.original.enabled ? (
-            <span className="rounded-full bg-[color:var(--color-success)]/15 px-2 py-0.5 text-xs">
+            <span className="bg-tag text-mono-xs text-tag-foreground inline-flex h-5 items-center rounded-sm px-1.5 font-mono">
               Yes
             </span>
           ) : (
-            <span className="rounded-full bg-[color:var(--color-fg-muted)]/15 px-2 py-0.5 text-xs">
+            <span className="bg-tag text-mono-xs text-tag-foreground inline-flex h-5 items-center rounded-sm px-1.5 font-mono">
               No
             </span>
           ),
@@ -128,7 +128,7 @@ export function AuthenticationTable({ rows }: { rows: AuthRow[] }) {
           if (!r.detailHref) {
             return (
               <span
-                className="text-xs text-[color:var(--color-fg-muted)]"
+                className="text-muted-foreground text-xs"
                 title="Read-only - configured by environment variables."
               >
                 Read-only

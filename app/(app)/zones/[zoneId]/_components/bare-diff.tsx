@@ -66,7 +66,7 @@ export function BareDiff({
   layout?: "side-by-side" | "stacked";
 }) {
   if (removed.length === 0 && added.length === 0) {
-    return <p className="px-4 py-3 text-xs text-[color:var(--color-fg-muted)]">No changes.</p>;
+    return <p className="text-muted-foreground px-4 py-3 text-xs">No changes.</p>;
   }
 
   if (layout === "stacked") return <StackedDiff removed={removed} added={added} />;
@@ -86,7 +86,7 @@ function SideBySideDiff({
 }) {
   const pairs = pairLinesBySimilarity(removed, added);
   return (
-    <div className="grid grid-cols-2 divide-x divide-[color:var(--color-border)]">
+    <div className="divide-border grid grid-cols-2 divide-x">
       <DiffSection title="Before">
         {pairs.map((p, i) => (
           <DiffRow
@@ -120,7 +120,7 @@ function SideBySideDiff({
 function StackedDiff({ removed, added }: { removed: readonly string[]; added: readonly string[] }) {
   const { beforeRows, afterRows } = buildStackedRows(removed, added);
   return (
-    <div className="divide-y divide-[color:var(--color-border)]">
+    <div className="divide-border divide-y">
       <DiffSection title="Before">
         {beforeRows.length === 0 ? (
           <EmptyRow kind="removed" />
@@ -266,7 +266,7 @@ function charDiff(
 function DiffSection({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div>
-      <div className="border-b border-[color:var(--color-border)] px-4 py-1.5 text-[0.65rem] font-medium tracking-wide text-[color:var(--color-fg-muted)] uppercase">
+      <div className="border-border text-caption text-muted-foreground border-b px-3 py-1.5">
         {title}
       </div>
       {/* Lines wrap inside each row (see DiffRow) - no per-section horizontal
@@ -308,22 +308,18 @@ function DiffRow({
     // visible and aligned with its counterpart on the other side. The gutter
     // is preserved so the numbering on both sides stays in lock-step.
     return (
-      <div className="flex gap-2 px-2 py-1 font-mono text-xs text-[color:var(--color-fg-subtle)] sm:gap-3 sm:px-3">
+      <div className="text-muted-foreground flex gap-2 px-2 py-1 font-mono text-xs sm:gap-3 sm:px-3">
         <LineGutter n={lineNumber} />
         <span className="flex-1">-</span>
       </div>
     );
   }
   const showTint = tinted ?? true;
-  const rowTint = showTint
-    ? kind === "added"
-      ? "bg-[color-mix(in_oklch,var(--color-success)_12%,transparent)]"
-      : "bg-[color-mix(in_oklch,var(--color-error)_12%,transparent)]"
-    : "";
+  const rowTint = showTint ? (kind === "added" ? "bg-background" : "bg-destructive-muted") : "";
 
   return (
     <div
-      className={`flex gap-2 px-2 py-1 font-mono text-xs text-[color:var(--color-fg)] sm:gap-3 sm:px-3 ${rowTint}`}
+      className={`text-foreground flex gap-2 px-2 py-1 font-mono text-xs sm:gap-3 sm:px-3 ${rowTint}`}
     >
       <LineGutter n={lineNumber} />
       {/* `min-w-0` lets the flex child shrink so `break-words` + `whitespace-
@@ -332,7 +328,7 @@ function DiffRow({
           the gutter - same visual as a code editor with soft-wrap. */}
       <span className="min-w-0 flex-1 break-words whitespace-pre-wrap">
         {segments.length === 0 ? (
-          <span className="text-[color:var(--color-fg-subtle)]">-</span>
+          <span className="text-muted-foreground">-</span>
         ) : (
           segments.map((seg, i) => (
             <SegmentSpan key={i} text={seg.text} changed={seg.changed} kind={kind} />
@@ -347,7 +343,7 @@ function LineGutter({ n }: { n: number }) {
   return (
     <span
       aria-hidden
-      className="w-6 shrink-0 text-left text-[color:var(--color-fg-subtle)] tabular-nums select-none sm:w-8"
+      className="text-muted-foreground w-6 shrink-0 text-left tabular-nums select-none sm:w-8"
     >
       {n}
     </span>
@@ -357,14 +353,9 @@ function LineGutter({ n }: { n: number }) {
 function EmptyRow({ kind }: { kind: "added" | "removed" }) {
   // Stacked-layout empty-section placeholder - clearly shows the
   // operator that this side has no content (pure-create / pure-delete).
-  const rowTint =
-    kind === "added"
-      ? "bg-[color-mix(in_oklch,var(--color-success)_12%,transparent)]"
-      : "bg-[color-mix(in_oklch,var(--color-error)_12%,transparent)]";
+  const rowTint = kind === "added" ? "bg-background" : "bg-destructive-muted";
   return (
-    <div
-      className={`px-4 py-1 font-mono text-xs whitespace-pre text-[color:var(--color-fg-subtle)] ${rowTint}`}
-    >
+    <div className={`text-muted-foreground px-4 py-1 font-mono text-xs whitespace-pre ${rowTint}`}>
       -
     </div>
   );
@@ -380,10 +371,7 @@ function SegmentSpan({
   kind: "added" | "removed";
 }) {
   if (!changed) return <>{text}</>;
-  const tint =
-    kind === "added"
-      ? "bg-[color-mix(in_oklch,var(--color-success)_45%,transparent)]"
-      : "bg-[color-mix(in_oklch,var(--color-error)_45%,transparent)]";
+  const tint = kind === "added" ? "bg-background" : "bg-destructive-muted";
   return <span className={tint}>{text}</span>;
 }
 

@@ -13,6 +13,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useDialog } from "@/components/ui/dialog";
 import { mutate } from "@/lib/client/api-fetch";
+import { buttonClass } from "@/components/ui/button";
 
 interface Row {
   id: number;
@@ -147,21 +148,22 @@ export function CryptokeyActions({ zoneIdEncoded, serverSlug, rows }: Props) {
   }
 
   return (
-    <div className="rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg-subtle)] p-4">
+    <div className="border-border bg-background rounded-md border p-4">
       <header className="mb-3 flex items-center justify-between">
         <div>
           <h2 className="text-sm font-medium">Manage keys</h2>
-          <p className="mt-1 text-xs text-[color:var(--color-fg-muted)]">
+          <p className="text-muted-foreground mt-1 text-xs">
             Generate, activate / deactivate, or delete cryptokeys for this zone.
           </p>
         </div>
         <button
+          aria-busy={generating}
           type="button"
           onClick={handleGenerate}
           disabled={generating}
-          className="rounded bg-[color:var(--color-accent)] px-3 py-1.5 text-xs font-medium text-[color:var(--color-accent-fg)] hover:opacity-95 disabled:opacity-50"
+          className={buttonClass({ size: "sm" })}
         >
-          {generating ? "Generating…" : "Generate key"}
+          Generate key
         </button>
       </header>
 
@@ -170,19 +172,13 @@ export function CryptokeyActions({ zoneIdEncoded, serverSlug, rows }: Props) {
           {rows.map((row) => (
             <li
               key={row.id}
-              className="flex flex-wrap items-center gap-2 rounded border border-[color:var(--color-border)] bg-[color:var(--color-bg)] p-2 text-xs"
+              className="border-border bg-card flex flex-wrap items-center gap-2 rounded border p-2 text-xs"
             >
-              <span className="rounded bg-[color:var(--color-bg-muted)] px-1.5 py-0.5 font-mono uppercase">
+              <span className="bg-tag text-mono-xs text-tag-foreground inline-flex h-5 items-center rounded-sm px-1.5 font-mono whitespace-nowrap">
                 {row.keytype}
               </span>
-              <span className="text-[color:var(--color-fg-muted)]">id {row.id}</span>
-              <span
-                className={
-                  row.active
-                    ? "text-[color:var(--color-success)]"
-                    : "text-[color:var(--color-fg-muted)]"
-                }
-              >
+              <span className="text-muted-foreground">id {row.id}</span>
+              <span className={row.active ? "text-success" : "text-muted-foreground"}>
                 {row.active ? "active" : "inactive"}
               </span>
               <div className="ml-auto flex gap-2">
@@ -190,7 +186,7 @@ export function CryptokeyActions({ zoneIdEncoded, serverSlug, rows }: Props) {
                   type="button"
                   onClick={() => handleToggleActive(row)}
                   disabled={busyId === row.id}
-                  className="rounded border border-[color:var(--color-border)] px-2 py-0.5 hover:bg-[color:var(--color-bg-muted)] disabled:opacity-50"
+                  className={buttonClass({ size: "sm" })}
                 >
                   {row.active ? "Deactivate" : "Activate"}
                 </button>
@@ -198,7 +194,7 @@ export function CryptokeyActions({ zoneIdEncoded, serverSlug, rows }: Props) {
                   type="button"
                   onClick={() => handleDelete(row)}
                   disabled={busyId === row.id}
-                  className="rounded border border-[color:var(--color-error)] px-2 py-0.5 text-[color:var(--color-error)] hover:bg-[color:var(--color-error)]/10 disabled:opacity-50"
+                  className={buttonClass({ variant: "destructive", size: "sm" })}
                 >
                   Delete
                 </button>

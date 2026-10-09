@@ -15,6 +15,8 @@ import { useDialog } from "@/components/ui/dialog";
 import { mutate } from "@/lib/client/api-fetch";
 import { createCtaClass } from "@/components/ui/create-button";
 import { DataTable } from "@/components/ui/data-table";
+import { buttonClass } from "@/components/ui/button";
+import { inputClass } from "@/components/ui/field";
 
 interface Row {
   ip: string;
@@ -111,9 +113,9 @@ export function AutoprimaryActions({ serverSlug, rows }: Props) {
 
   return (
     <section className="space-y-6">
-      <div className="rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg)] p-5">
+      <div className="border-border bg-card rounded-md border p-5">
         <h2 className="text-sm font-medium">Add an autoprimary</h2>
-        <p className="mt-1 text-xs text-[color:var(--color-fg-muted)]">
+        <p className="text-muted-foreground mt-1 text-xs">
           PDNS will accept NOTIFYs from this (IP, nameserver) pair and auto-create slave zones for
           any zone the primary serves. `account` is an optional free-form label.
         </p>
@@ -127,7 +129,7 @@ export function AutoprimaryActions({ serverSlug, rows }: Props) {
               value={ip}
               onChange={(e) => setIp(e.target.value)}
               placeholder="192.0.2.10"
-              className="mt-1 block w-full rounded border border-[color:var(--color-border)] bg-[color:var(--color-bg)] px-2 py-1 font-mono text-sm"
+              className={`mt-1 w-full font-mono ${inputClass}`}
             />
           </div>
           <div>
@@ -139,7 +141,7 @@ export function AutoprimaryActions({ serverSlug, rows }: Props) {
               value={nameserver}
               onChange={(e) => setNameserver(e.target.value)}
               placeholder="ns1.example."
-              className="mt-1 block w-full rounded border border-[color:var(--color-border)] bg-[color:var(--color-bg)] px-2 py-1 font-mono text-sm"
+              className={`mt-1 w-full font-mono ${inputClass}`}
             />
           </div>
           <div>
@@ -151,17 +153,18 @@ export function AutoprimaryActions({ serverSlug, rows }: Props) {
               value={account}
               onChange={(e) => setAccount(e.target.value)}
               placeholder="customer-x"
-              className="mt-1 block w-full rounded border border-[color:var(--color-border)] bg-[color:var(--color-bg)] px-2 py-1 text-sm"
+              className={`mt-1 w-full ${inputClass}`}
             />
           </div>
           <button
+            aria-busy={creating}
             type="button"
             onClick={handleCreate}
             disabled={creating}
             className={`${createCtaClass} disabled:opacity-50`}
           >
             <Plus className="h-4 w-4" aria-hidden />
-            {creating ? "Adding…" : "Add"}
+            Add
           </button>
         </div>
       </div>
@@ -206,7 +209,7 @@ function AutoprimariesTable({
         accessorKey: "account",
         header: "Account",
         cell: (ctx) => (
-          <span className="text-xs text-[color:var(--color-fg-muted)]">
+          <span className="text-muted-foreground text-xs">
             {ctx.getValue<string | undefined>() ?? "-"}
           </span>
         ),
@@ -220,12 +223,13 @@ function AutoprimariesTable({
           const busy = busyKey === rowKey(row);
           return (
             <button
+              aria-busy={busy}
               type="button"
               onClick={() => onDelete(row)}
               disabled={busy}
-              className="rounded border border-[color:var(--color-error)] px-2 py-1 text-xs text-[color:var(--color-error)] hover:bg-[color:var(--color-error)]/10 disabled:opacity-50"
+              className={buttonClass({ variant: "destructive", size: "sm" })}
             >
-              {busy ? "Removing…" : "Remove"}
+              Remove
             </button>
           );
         },

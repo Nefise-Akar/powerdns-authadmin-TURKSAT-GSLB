@@ -65,16 +65,16 @@ export default async function ProfilePage({
           { id: "change-email", label: "Email" },
         ]
       : []),
-    { id: "sessions", label: `Sessions (${sessions.length})` },
+    { id: "sessions", label: "Sessions", count: sessions.length },
     { id: "mfa", label: "Two-factor" },
-    { id: "api-tokens", label: `API tokens (${tokens.length})` },
+    { id: "api-tokens", label: "API tokens", count: tokens.length },
   ];
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <header>
-        <h1 className="text-2xl font-semibold tracking-tight">Profile</h1>
-        <p className="mt-1 text-sm text-[color:var(--color-fg-muted)]">
+        <h1 className="text-h1">Profile</h1>
+        <p className="text-muted-foreground mt-1 text-sm">
           Manage your account, password, and active sessions.
         </p>
       </header>
@@ -83,14 +83,12 @@ export default async function ProfilePage({
         <ComplianceBanner />
 
         <SectionTabPanel id="account">
-          <div className="space-y-3 rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg-subtle)] p-5">
-            <h2 className="text-sm font-medium tracking-wide text-[color:var(--color-fg-muted)] uppercase">
-              Account
-            </h2>
+          <div className="border-border bg-background space-y-3 rounded-md border p-5">
+            <h2 className="text-h3 text-foreground">Account</h2>
             <dl className="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-1.5 text-sm">
               <Row label="Email" value={user.email} />
               <div className="contents">
-                <dt className="text-[color:var(--color-fg-muted)]">Name</dt>
+                <dt className="text-muted-foreground">Name</dt>
                 <dd className="min-w-0">
                   {readonlyDemo ? (
                     <span className="truncate">{user.name ?? "-"}</span>
@@ -106,7 +104,7 @@ export default async function ProfilePage({
                 }
               />
               <div className="contents">
-                <dt className="text-[color:var(--color-fg-muted)]">Roles</dt>
+                <dt className="text-muted-foreground">Roles</dt>
                 <dd className="min-w-0">
                   <RoleChips slugs={roleSlugs} />
                 </dd>
@@ -121,12 +119,10 @@ export default async function ProfilePage({
 
         {user.passwordHash ? (
           <SectionTabPanel id="change-password">
-            <div className="space-y-4 rounded-md border border-[color:var(--color-border)] p-5">
+            <div className="border-border space-y-4 rounded-md border p-5">
               <header>
-                <h2 className="text-sm font-medium tracking-wide text-[color:var(--color-fg-muted)] uppercase">
-                  Change password
-                </h2>
-                <p className="mt-1 text-xs text-[color:var(--color-fg-muted)]">
+                <h2 className="text-h3 text-foreground">Change password</h2>
+                <p className="text-muted-foreground mt-1 text-xs">
                   Minimum 12 characters. Existing sessions stay valid - revoke them below if you
                   want to sign out elsewhere.
                 </p>
@@ -142,12 +138,10 @@ export default async function ProfilePage({
 
         {user.passwordHash ? (
           <SectionTabPanel id="change-email">
-            <div className="space-y-4 rounded-md border border-[color:var(--color-border)] p-5">
+            <div className="border-border space-y-4 rounded-md border p-5">
               <header>
-                <h2 className="text-sm font-medium tracking-wide text-[color:var(--color-fg-muted)] uppercase">
-                  Change email
-                </h2>
-                <p className="mt-1 text-xs text-[color:var(--color-fg-muted)]">
+                <h2 className="text-h3 text-foreground">Change email</h2>
+                <p className="text-muted-foreground mt-1 text-xs">
                   We mint a confirmation link to the new address. Until transactional email lands,
                   your admin will share the link from the audit log. Confirming the link revokes all
                   your sessions.
@@ -159,12 +153,10 @@ export default async function ProfilePage({
         ) : null}
 
         <SectionTabPanel id="sessions">
-          <div className="space-y-4 rounded-md border border-[color:var(--color-border)] p-5">
+          <div className="border-border space-y-4 rounded-md border p-5">
             <header>
-              <h2 className="text-sm font-medium tracking-wide text-[color:var(--color-fg-muted)] uppercase">
-                Active sessions ({sessions.length})
-              </h2>
-              <p className="mt-1 text-xs text-[color:var(--color-fg-muted)]">
+              <h2 className="text-h3 text-foreground">Active sessions ({sessions.length})</h2>
+              <p className="text-muted-foreground mt-1 text-xs">
                 Each row is one browser cookie tied to your account. Revoking a session forces a
                 re-login from that browser.
               </p>
@@ -184,7 +176,7 @@ export default async function ProfilePage({
 
         <SectionTabPanel id="mfa">
           {readonlyDemo ? (
-            <div className="rounded-md border border-[color:var(--color-border)] p-5">
+            <div className="border-border rounded-md border p-5">
               <DemoLockNotice />
             </div>
           ) : (
@@ -239,7 +231,7 @@ export default async function ProfilePage({
  */
 function DemoLockNotice() {
   return (
-    <p className="rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg-subtle)] px-3 py-2.5 text-xs text-[color:var(--color-fg-muted)]">
+    <p className="border-border bg-background text-muted-foreground rounded-md border px-3 py-2.5 text-xs">
       This is a shared, read-only demo account - its login and security settings are locked and
       can&apos;t be changed.
     </p>
@@ -249,7 +241,7 @@ function DemoLockNotice() {
 function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="contents">
-      <dt className="text-[color:var(--color-fg-muted)]">{label}</dt>
+      <dt className="text-muted-foreground">{label}</dt>
       <dd className="truncate">{value}</dd>
     </div>
   );
@@ -266,14 +258,14 @@ function Row({ label, value }: { label: string; value: string }) {
  */
 function RoleChips({ slugs }: { slugs: readonly string[] }) {
   if (slugs.length === 0) {
-    return <span className="text-[color:var(--color-fg-muted)]">None</span>;
+    return <span className="text-muted-foreground">None</span>;
   }
   return (
     <span className="inline-flex flex-wrap gap-1">
       {slugs.map((slug) => (
         <span
           key={slug}
-          className="rounded bg-[color:var(--color-bg-muted)] px-1.5 py-0.5 font-mono text-[0.6875rem]"
+          className="bg-tag text-mono-xs text-tag-foreground inline-flex h-5 items-center rounded-sm px-1.5 font-mono whitespace-nowrap"
         >
           {slug}
         </span>

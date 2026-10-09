@@ -130,9 +130,9 @@ export function UsersTable({
         sortUndefined: "last",
         cell: (ctx) => {
           const iso = ctx.getValue<string | null>();
-          if (!iso) return <span className="text-xs text-[color:var(--color-fg-muted)]">-</span>;
+          if (!iso) return <span className="text-muted-foreground text-xs">-</span>;
           return (
-            <span className="text-xs text-[color:var(--color-fg-muted)]" title={iso}>
+            <span className="text-muted-foreground text-xs" title={iso}>
               {freshnessOf(iso).label}
             </span>
           );
@@ -147,7 +147,7 @@ export function UsersTable({
       cell: (ctx) => (
         <Link
           href={`/admin/users/${ctx.row.original.id}`}
-          className="text-[color:var(--color-accent)] hover:underline"
+          className="text-primary hover:text-primary-hover hover:underline"
         >
           Manage
         </Link>
@@ -161,7 +161,7 @@ export function UsersTable({
     <DataTable
       columns={columns}
       data={rows}
-      searchPlaceholder="Search by email or name…"
+      searchPlaceholder="Search users"
       initialSort={[{ id: "email", desc: false }]}
       sortParam="sort"
       pageSizeParam="pageSize"
@@ -185,7 +185,7 @@ function UserStatus({
   if (disabledAt) {
     return (
       <span className="inline-flex items-center gap-1 text-xs">
-        <span className="h-1.5 w-1.5 rounded-full bg-[color:var(--color-fg-subtle)]" />
+        <span className="bg-muted-foreground h-1.5 w-1.5 rounded-full" />
         Disabled
       </span>
     );
@@ -198,7 +198,7 @@ function UserStatus({
         className="inline-flex items-center gap-1 text-xs"
         title={`Auto-unlocks at ${lockedUntilIso}`}
       >
-        <span className="h-1.5 w-1.5 rounded-full bg-[color:var(--color-error)]" />
+        <span className="bg-destructive h-1.5 w-1.5 rounded-full" />
         Locked out
       </span>
     );
@@ -206,7 +206,7 @@ function UserStatus({
   if (mustChangePassword) {
     return (
       <span className="inline-flex items-center gap-1 text-xs">
-        <span className="h-1.5 w-1.5 rounded-full bg-[color:var(--color-warn)]" />
+        <span className="bg-warning h-1.5 w-1.5 rounded-full" />
         Must change password
       </span>
     );
@@ -214,14 +214,14 @@ function UserStatus({
   if (ssoOnly) {
     return (
       <span className="inline-flex items-center gap-1 text-xs">
-        <span className="h-1.5 w-1.5 rounded-full bg-[color:var(--color-accent)]" />
+        <span className="bg-primary h-1.5 w-1.5 rounded-full" />
         SSO only
       </span>
     );
   }
   return (
     <span className="inline-flex items-center gap-1 text-xs">
-      <span className="h-1.5 w-1.5 rounded-full bg-[color:var(--color-success)]" />
+      <span className="bg-success h-1.5 w-1.5 rounded-full" />
       Active
     </span>
   );
@@ -245,7 +245,7 @@ function SecurityChips({
     return (
       <span
         title="Single sign-on account - authentication, MFA, and email verification are handled by the identity provider."
-        className="text-[0.6875rem] tracking-wide text-[color:var(--color-fg-subtle)]"
+        className="text-muted-foreground text-caption tracking-wide"
       >
         SSO · managed by IdP
       </span>
@@ -266,7 +266,7 @@ function SecurityChips({
       {failedLoginCount > 0 ? (
         <span
           title={`${failedLoginCount} consecutive failed login attempt${failedLoginCount === 1 ? "" : "s"} since the last success.`}
-          className="rounded bg-[color:var(--color-error)]/15 px-1.5 py-0.5 font-mono text-[0.625rem] text-[color:var(--color-error)]"
+          className="bg-tag text-mono-xs text-tag-foreground inline-flex h-5 items-center rounded-sm px-1.5 font-mono whitespace-nowrap"
         >
           {failedLoginCount} fail
         </span>
@@ -280,13 +280,13 @@ function SecurityFlag({ label, ok, title }: { label: string; ok: boolean; title:
   return (
     <span
       title={title}
-      className="inline-flex items-center gap-1 text-[0.6875rem] tracking-wide text-[color:var(--color-fg-muted)]"
+      className="text-muted-foreground text-caption inline-flex items-center gap-1 tracking-wide"
     >
       {label}
       {ok ? (
-        <Check aria-hidden size={13} className="text-[color:var(--color-success)]" />
+        <Check aria-hidden size={13} className="text-success" />
       ) : (
-        <X aria-hidden size={13} className="text-[color:var(--color-error)]" />
+        <X aria-hidden size={13} className="text-destructive" />
       )}
     </span>
   );

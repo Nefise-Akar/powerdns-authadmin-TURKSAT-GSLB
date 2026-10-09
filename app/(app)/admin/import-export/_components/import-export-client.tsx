@@ -22,6 +22,10 @@ import { apiFetch, mutate } from "@/lib/client/api-fetch";
 import { TsigKeySelector } from "@/components/domain/tsig-key-selector";
 import { SelectMenu } from "@/components/ui/select-menu";
 import { useDialog } from "@/components/ui/dialog";
+import { buttonClass } from "@/components/ui/button";
+import { textareaClass, inputClass } from "@/components/ui/field";
+import { tabClass, tabListClass } from "@/components/ui/tabs";
+import { Alert } from "@/components/ui/alert";
 
 interface Backend {
   slug: string;
@@ -61,11 +65,7 @@ export function ImportExportClient({
 
   return (
     <div className="space-y-6">
-      <div
-        role="tablist"
-        aria-label="Import / Export"
-        className="inline-flex rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg-subtle)] p-1"
-      >
+      <div role="tablist" aria-label="Import / Export" className={tabListClass}>
         {canImport ? (
           <TabButton active={tab === "import"} onClick={() => setTab("import")}>
             <ArrowDownToLine className="h-4 w-4" aria-hidden /> Import
@@ -97,11 +97,7 @@ function TabButton({
       role="tab"
       aria-selected={active}
       onClick={onClick}
-      className={`inline-flex items-center gap-2 rounded px-3 py-1.5 text-sm font-medium transition ${
-        active
-          ? "bg-[color:var(--color-bg)] text-[color:var(--color-fg)] shadow-sm"
-          : "text-[color:var(--color-fg-muted)] hover:text-[color:var(--color-fg)]"
-      }`}
+      className={tabClass(active)}
     >
       {children}
     </button>
@@ -200,7 +196,7 @@ function ImportPanel({ backends }: { backends: Backend[] }) {
   if (backends.length === 0) {
     return (
       <Panel>
-        <p className="text-sm text-[color:var(--color-fg-muted)]">
+        <p className="text-muted-foreground text-sm">
           No active PowerDNS backends configured. Add one under PowerDNS → Servers first.
         </p>
       </Panel>
@@ -211,13 +207,11 @@ function ImportPanel({ backends }: { backends: Backend[] }) {
     <div className="space-y-6">
       <Panel>
         <h2 className="text-base font-semibold">Import a zonefile</h2>
-        <p className="mt-1 text-sm text-[color:var(--color-fg-muted)]">
+        <p className="text-muted-foreground mt-1 text-sm">
           Paste one or more zones in BIND format. Multi-zone files are split at{" "}
-          <code className="rounded bg-[color:var(--color-bg-subtle)] px-1 py-0.5 text-xs">
-            $ORIGIN
-          </code>{" "}
-          boundaries; each becomes its own zone with its records pre-populated. DNSSEC records
-          (RRSIG, NSEC, …) are skipped - PowerDNS manages those.
+          <code className="bg-background rounded px-1 py-0.5 text-xs">$ORIGIN</code> boundaries;
+          each becomes its own zone with its records pre-populated. DNSSEC records (RRSIG, NSEC, …)
+          are skipped - PowerDNS manages those.
         </p>
 
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
@@ -240,11 +234,9 @@ function ImportPanel({ backends }: { backends: Backend[] }) {
         </div>
 
         {kind === "Master" && eligibleTsigKeys.length > 0 ? (
-          <div className="mt-4 rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg)] p-4">
-            <h3 className="text-sm font-medium tracking-wide text-[color:var(--color-fg-muted)] uppercase">
-              TSIG keys
-            </h3>
-            <p className="mt-1 text-xs text-[color:var(--color-fg-muted)]">
+          <div className="border-border bg-card mt-4 rounded-md border p-4">
+            <h3 className="text-h3 text-foreground">TSIG keys</h3>
+            <p className="text-muted-foreground mt-1 text-xs">
               Only keys present on the primary and every secondary are selectable.
             </p>
             <div className="mt-3">
@@ -267,11 +259,11 @@ function ImportPanel({ backends }: { backends: Backend[] }) {
               onChange={(e) => setZoneText(e.target.value)}
               rows={14}
               spellCheck={false}
-              className="w-full rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg)] p-3 font-mono text-xs text-[color:var(--color-fg)] focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)] focus:outline-none"
+              className={`${textareaClass} font-mono`}
               placeholder={`$ORIGIN example.com.\n$TTL 3600\n@   IN SOA ns1.example.com. hostmaster.example.com. (\n        2026052801 ; serial\n        3600       ; refresh\n        900        ; retry\n        1209600    ; expire\n        3600 )     ; minimum\n@   IN NS  ns1.example.com.\n@   IN NS  ns2.example.com.\nwww IN A   192.0.2.1`}
             />
           </Field>
-          <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-[color:var(--color-fg-muted)]">
+          <div className="text-muted-foreground mt-2 flex flex-wrap items-center gap-3 text-xs">
             <label className="inline-flex cursor-pointer items-center gap-1 underline-offset-2 hover:underline">
               <Upload className="h-3.5 w-3.5" aria-hidden />
               <span>Load from file…</span>
@@ -304,13 +296,14 @@ function ImportPanel({ backends }: { backends: Backend[] }) {
 
         <div className="mt-4 flex items-center gap-3">
           <button
+            aria-busy={submitting}
             type="button"
             onClick={() => void handleSubmit()}
             disabled={submitting || !server || !zoneText.trim()}
-            className="inline-flex items-center gap-2 rounded-md bg-[color:var(--color-accent)] px-4 py-2 text-sm font-medium text-[color:var(--color-accent-on)] shadow-sm transition hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-50"
+            className={buttonClass({ variant: "primary" })}
           >
             <ArrowDownToLine className="h-4 w-4" aria-hidden />
-            {submitting ? "Importing…" : "Import"}
+            Import
           </button>
         </div>
 
@@ -322,14 +315,7 @@ function ImportPanel({ backends }: { backends: Backend[] }) {
           <h3 className="text-sm font-semibold">Parse diagnostics</h3>
           <ul className="mt-2 space-y-1 text-xs">
             {diagnostics.map((d, i) => (
-              <li
-                key={i}
-                className={
-                  d.level === "error"
-                    ? "text-[color:var(--color-danger)]"
-                    : "text-[color:var(--color-warning)]"
-                }
-              >
+              <li key={i} className={d.level === "error" ? "text-destructive" : "text-warning"}>
                 <span className="font-mono">L{d.line}</span> · {d.level} · {d.message}
               </li>
             ))}
@@ -340,20 +326,18 @@ function ImportPanel({ backends }: { backends: Backend[] }) {
       {results ? (
         <Panel>
           <h3 className="text-sm font-semibold">Result</h3>
-          <ul className="mt-2 divide-y divide-[color:var(--color-border)] text-sm">
+          <ul className="divide-border mt-2 divide-y text-sm">
             {results.map((r) => (
               <li key={r.name} className="flex items-start justify-between gap-3 py-2">
                 <div>
                   <p className="font-mono">{r.name}</p>
-                  {r.error ? (
-                    <p className="mt-0.5 text-xs text-[color:var(--color-danger)]">{r.error}</p>
-                  ) : null}
+                  {r.error ? <p className="text-destructive mt-0.5 text-xs">{r.error}</p> : null}
                 </div>
                 <span
                   className={
                     r.status === "created"
-                      ? "rounded-full bg-[color:var(--color-success-bg)] px-2 py-0.5 text-xs font-medium text-[color:var(--color-success-fg)]"
-                      : "rounded-full bg-[color:var(--color-danger-bg)] px-2 py-0.5 text-xs font-medium text-[color:var(--color-danger-fg)]"
+                      ? "bg-background text-badge text-success inline-flex h-5 items-center rounded-sm px-1.5"
+                      : "bg-destructive-muted text-badge text-destructive inline-flex h-5 items-center rounded-sm px-1.5"
                   }
                 >
                   {r.status} · {r.rrsetCount} rrsets
@@ -477,9 +461,7 @@ function ExportPanel({ backends }: { backends: Backend[] }) {
   if (backends.length === 0) {
     return (
       <Panel>
-        <p className="text-sm text-[color:var(--color-fg-muted)]">
-          No active PowerDNS backends configured.
-        </p>
+        <p className="text-muted-foreground text-sm">No active PowerDNS backends configured.</p>
       </Panel>
     );
   }
@@ -488,7 +470,7 @@ function ExportPanel({ backends }: { backends: Backend[] }) {
     <div className="space-y-6">
       <Panel>
         <h2 className="text-base font-semibold">Export zones</h2>
-        <p className="mt-1 text-sm text-[color:var(--color-fg-muted)]">
+        <p className="text-muted-foreground mt-1 text-sm">
           Pick a backend, choose the zones you want, and download them as a single text bundle (one
           file, BIND format). One audit row is written per zone read.
         </p>
@@ -508,13 +490,13 @@ function ExportPanel({ backends }: { backends: Backend[] }) {
               value={filter}
               onChange={(e) => setFilter(e.target.value)}
               placeholder="zone name contains…"
-              className="w-full rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg)] px-3 py-2 text-sm text-[color:var(--color-fg)] focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)] focus:outline-none"
+              className={`w-full ${inputClass}`}
             />
           </Field>
         </div>
 
         <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-          <p className="text-xs text-[color:var(--color-fg-muted)]">
+          <p className="text-muted-foreground text-xs">
             {loading
               ? "Loading…"
               : zones === null
@@ -541,21 +523,21 @@ function ExportPanel({ backends }: { backends: Backend[] }) {
           </div>
         </div>
 
-        <div className="mt-3 max-h-96 overflow-y-auto rounded-md border border-[color:var(--color-border)]">
+        <div className="border-border mt-3 max-h-96 overflow-y-auto rounded-md border">
           {filtered.length === 0 ? (
-            <p className="p-4 text-center text-sm text-[color:var(--color-fg-muted)]">
+            <p className="text-muted-foreground p-4 text-center text-sm">
               {loading ? "Loading zones…" : "No zones match."}
             </p>
           ) : (
-            <ul className="divide-y divide-[color:var(--color-border)]">
+            <ul className="divide-border divide-y">
               {filtered.map((z) => {
                 const checked = selected.has(z.name);
                 return (
                   <li key={z.id}>
-                    <label className="flex cursor-pointer items-center gap-3 px-3 py-2 text-sm hover:bg-[color:var(--color-bg-subtle)]">
+                    <label className="hover:bg-background flex cursor-pointer items-center gap-3 px-3 py-2 text-sm">
                       <Checkbox checked={checked} onChange={() => toggle(z.name)} />
                       <span className="flex-1 font-mono">{z.name}</span>
-                      <span className="text-xs text-[color:var(--color-fg-muted)]">{z.kind}</span>
+                      <span className="text-muted-foreground text-xs">{z.kind}</span>
                     </label>
                   </li>
                 );
@@ -569,7 +551,7 @@ function ExportPanel({ backends }: { backends: Backend[] }) {
             type="button"
             onClick={() => void handleDownload()}
             disabled={downloading || selected.size === 0}
-            className="inline-flex items-center gap-2 rounded-md bg-[color:var(--color-accent)] px-4 py-2 text-sm font-medium text-[color:var(--color-accent-on)] shadow-sm transition hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-50"
+            className={buttonClass({ variant: "primary" })}
           >
             <Download className="h-4 w-4" aria-hidden />
             {downloading
@@ -587,19 +569,13 @@ function ExportPanel({ backends }: { backends: Backend[] }) {
 /* -------------------------------- primitives -------------------------------- */
 
 function Panel({ children }: { children: React.ReactNode }) {
-  return (
-    <section className="rounded-lg border border-[color:var(--color-border)] bg-[color:var(--color-bg)] p-5 shadow-sm">
-      {children}
-    </section>
-  );
+  return <section className="border-border bg-card rounded-md border p-4">{children}</section>;
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="block">
-      <span className="block text-xs font-medium tracking-wide text-[color:var(--color-fg-muted)] uppercase">
-        {label}
-      </span>
+      <span className="text-caption text-muted-foreground block">{label}</span>
       <div className="mt-1.5">{children}</div>
     </label>
   );
@@ -607,9 +583,9 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 function ErrorBanner({ children }: { children: React.ReactNode }) {
   return (
-    <div className="mt-4 rounded-md border border-[color:var(--color-danger-border)] bg-[color:var(--color-danger-bg)] p-3 text-sm text-[color:var(--color-danger-fg)]">
+    <Alert variant="destructive" live className="mt-4">
       {children}
-    </div>
+    </Alert>
   );
 }
 
@@ -635,9 +611,7 @@ function Checkbox({ checked, onChange }: { checked: boolean; onChange: () => voi
         }
       }}
       className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border transition ${
-        checked
-          ? "border-[color:var(--color-accent)] bg-[color:var(--color-accent)] text-[color:var(--color-accent-on)]"
-          : "border-[color:var(--color-border)] bg-[color:var(--color-bg)]"
+        checked ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card"
       }`}
     >
       {checked ? (

@@ -69,7 +69,7 @@ export function ProviderTypePicker({ selected, onSelect }: Props) {
   return (
     <fieldset className="space-y-3">
       <legend className="text-sm font-medium">Choose a provider type</legend>
-      <p className="text-xs text-[color:var(--color-fg-muted)]">
+      <p className="text-muted-foreground text-xs">
         Pick the protocol your identity provider speaks. The configuration form changes to match.
       </p>
       <div className="grid gap-3 sm:grid-cols-3">
@@ -88,29 +88,23 @@ export function ProviderTypePicker({ selected, onSelect }: Props) {
                 // Interactive cards (only OIDC today): hover hint, accent border when selected.
                 interactive
                   ? isSelected
-                    ? "border-[color:var(--color-accent)] bg-[color:var(--color-accent)]/10"
-                    : "border-[color:var(--color-border)] bg-[color:var(--color-bg)] hover:border-[color:var(--color-fg-muted)] hover:bg-[color:var(--color-bg-subtle)]"
-                  : "cursor-not-allowed border-[color:var(--color-border)] bg-[color:var(--color-bg-subtle)] opacity-70",
+                    ? "border-primary bg-accent"
+                    : "border-border bg-card hover:border-muted-foreground hover:bg-background"
+                  : "border-border bg-background cursor-not-allowed opacity-70",
               ].join(" ")}
             >
               <div className="flex items-center gap-2">
-                <span
-                  className={
-                    isSelected
-                      ? "text-[color:var(--color-accent)]"
-                      : "text-[color:var(--color-fg-muted)]"
-                  }
-                >
+                <span className={isSelected ? "text-primary" : "text-muted-foreground"}>
                   {c.icon}
                 </span>
                 <span className="font-medium">{c.title}</span>
                 {c.comingChip ? (
-                  <span className="ml-auto rounded-full border border-[color:var(--color-warn)]/40 bg-[color:var(--color-warn)]/10 px-2 py-0.5 text-[0.625rem] font-medium tracking-wide text-[color:var(--color-warn)] uppercase">
+                  <span className="bg-tag text-mono-xs text-tag-foreground ml-auto inline-flex h-5 items-center rounded-sm px-1.5 font-mono whitespace-nowrap">
                     {c.comingChip}
                   </span>
                 ) : null}
               </div>
-              <p className="text-xs text-[color:var(--color-fg-muted)]">{c.blurb}</p>
+              <p className="text-muted-foreground text-xs">{c.blurb}</p>
             </button>
           );
         })}

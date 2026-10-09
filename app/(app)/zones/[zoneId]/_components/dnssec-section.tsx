@@ -22,6 +22,7 @@ import type { PdnsServer } from "@/lib/db/schema";
 import type { PdnsCryptokeySummary, PdnsZoneDetail } from "@/lib/pdns/types";
 import { CryptokeyActions } from "../dnssec/_components/cryptokey-actions";
 import { DnssecZoneActions } from "../dnssec/_components/dnssec-zone-actions";
+import { Alert } from "@/components/ui/alert";
 
 interface Props {
   zoneIdEncoded: string;
@@ -43,9 +44,9 @@ export async function DnssecSection({
   const zoneName = zone.name;
   if (!canRead) {
     return (
-      <div className="rounded-md border border-[color:var(--color-warn)] bg-[color:var(--color-warn)]/10 p-4 text-sm">
+      <Alert title="no permission">
         You don&apos;t have permission to view DNSSEC keys for this zone.
-      </div>
+      </Alert>
     );
   }
 
@@ -56,11 +57,7 @@ export async function DnssecSection({
     keys = await client.listCryptokeys(zoneName);
   } catch (err) {
     if (err instanceof PdnsNotFoundError) {
-      return (
-        <div className="rounded-md border border-[color:var(--color-error)] bg-[color:var(--color-error)]/10 p-4 text-sm">
-          Zone not found on backend.
-        </div>
-      );
+      return <Alert variant="destructive" title="zone not found on backend" />;
     }
     fetchError = err instanceof Error ? redact(err.message) : "Unknown error";
     logger.warn(
@@ -89,29 +86,23 @@ export async function DnssecSection({
 
   return (
     <div className="space-y-4">
-      <section className="rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg-subtle)] p-4">
+      <section className="border-border bg-background rounded-md border p-4">
         <header className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <h2 className="text-sm font-medium">
               DNSSEC is{" "}
-              <span
-                className={
-                  signed
-                    ? "text-[color:var(--color-success)]"
-                    : "text-[color:var(--color-fg-muted)]"
-                }
-              >
+              <span className={signed ? "text-success" : "text-muted-foreground"}>
                 {signed ? "enabled" : "off"}
               </span>
             </h2>
             <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-4 gap-y-0.5 text-xs">
-              <dt className="text-[color:var(--color-fg-muted)]">Denial of existence</dt>
+              <dt className="text-muted-foreground">Denial of existence</dt>
               <dd className="font-mono">{zone.nsec3param ? `NSEC3 ${zone.nsec3param}` : "NSEC"}</dd>
-              <dt className="text-[color:var(--color-fg-muted)]">SOA-EDIT</dt>
+              <dt className="text-muted-foreground">SOA-EDIT</dt>
               <dd className="font-mono">
                 {zone.soa_edit === undefined || zone.soa_edit === "" ? "(unset)" : zone.soa_edit}
               </dd>
-              <dt className="text-[color:var(--color-fg-muted)]">API-RECTIFY</dt>
+              <dt className="text-muted-foreground">API-RECTIFY</dt>
               <dd className="font-mono">
                 {zone.api_rectify === undefined ? "-" : String(zone.api_rectify)}
               </dd>
@@ -129,7 +120,7 @@ export async function DnssecSection({
           ) : null}
         </header>
         {warnings.length > 0 ? (
-          <ul className="mt-3 space-y-1 text-xs text-[color:var(--color-warn)]">
+          <ul className="text-warning mt-3 space-y-1 text-xs">
             {warnings.map((w) => (
               <li key={w}>{w}</li>
             ))}
@@ -150,16 +141,15 @@ export async function DnssecSection({
 
       <h2 className="text-lg font-semibold">
         DNSSEC keys{" "}
-        <span className="text-sm font-normal text-[color:var(--color-fg-muted)]">
+        <span className="text-muted-foreground text-sm font-normal">
           - DS records below go to your domain registrar to enable DNSSEC validation upstream.
         </span>
       </h2>
 
       {fetchError ? (
-        <div className="rounded-md border border-[color:var(--color-error)] bg-[color:var(--color-error)]/10 p-4 text-sm">
-          <strong>Could not list cryptokeys.</strong>
-          <p className="mt-1 text-xs">{fetchError}</p>
-        </div>
+        <Alert variant="destructive" title="could not list cryptokeys">
+          {fetchError}
+        </Alert>
       ) : null}
 
       {canConfigure ? (
@@ -176,7 +166,7 @@ export async function DnssecSection({
       ) : null}
 
       {keys?.length === 0 ? (
-        <div className="rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg-subtle)] p-5 text-sm">
+        <div className="border-border bg-background rounded-md border p-5 text-sm">
           This zone has no DNSSEC keys configured. The zone is unsigned. Use Enable DNSSEC above -
           generating keys one by one here doesn&apos;t rectify the zone.
         </div>
@@ -187,36 +177,29 @@ export async function DnssecSection({
       {keys && keys.length > 0 ? (
         <ul className="space-y-4">
           {keys.map((k) => (
-            <li
-              key={k.id}
-              className="rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg)] p-5"
-            >
+            <li key={k.id} className="border-border bg-card rounded-md border p-5">
               <header className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                <span className="rounded bg-[color:var(--color-bg-muted)] px-2 py-0.5 font-mono text-xs uppercase">
+                <span className="bg-tag text-mono-xs text-tag-foreground inline-flex h-5 items-center rounded-sm px-1.5 font-mono whitespace-nowrap">
                   {k.keytype}
                 </span>
                 <span
-                  className={
-                    k.active
-                      ? "text-xs text-[color:var(--color-success)]"
-                      : "text-xs text-[color:var(--color-fg-muted)]"
-                  }
+                  className={k.active ? "text-success text-xs" : "text-muted-foreground text-xs"}
                 >
                   {k.active ? "active" : "inactive"}
                 </span>
                 {k.published === false ? (
-                  <span className="text-xs text-[color:var(--color-fg-muted)]">not published</span>
+                  <span className="text-muted-foreground text-xs">not published</span>
                 ) : null}
                 {k.algorithm ? (
-                  <span className="text-xs text-[color:var(--color-fg-muted)]">
+                  <span className="text-muted-foreground text-xs">
                     {k.algorithm}
                     {k.bits ? ` · ${k.bits} bits` : ""}
                   </span>
                 ) : null}
-                <span className="text-xs text-[color:var(--color-fg-muted)]">id {k.id}</span>
+                <span className="text-muted-foreground text-xs">id {k.id}</span>
                 {lastActivityByKey.has(k.id) ? (
                   <span
-                    className="text-xs text-[color:var(--color-fg-muted)]"
+                    className="text-muted-foreground text-xs"
                     title={lastActivityByKey.get(k.id)!.toISOString()}
                   >
                     · last activity {freshnessOf(lastActivityByKey.get(k.id)!.toISOString()).label}
@@ -262,12 +245,8 @@ export async function DnssecSection({
 function KeyField({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="mt-4">
-      <div className="text-xs font-medium tracking-wide text-[color:var(--color-fg-muted)] uppercase">
-        {label}
-      </div>
-      <div className="mt-1 rounded bg-[color:var(--color-bg-subtle)] p-3 font-mono text-xs">
-        {children}
-      </div>
+      <div className="text-caption text-muted-foreground">{label}</div>
+      <div className="bg-background mt-1 rounded p-3 font-mono text-xs">{children}</div>
     </div>
   );
 }
@@ -300,10 +279,8 @@ function DnssecSummary({
     new Set(keys.map((k) => k.algorithm).filter((a): a is string => Boolean(a))),
   ).sort();
   return (
-    <section className="rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg-subtle)] p-4">
-      <h2 className="mb-3 text-sm font-medium tracking-wide text-[color:var(--color-fg-muted)] uppercase">
-        Key summary
-      </h2>
+    <section className="border-border bg-background rounded-md border p-4">
+      <h2 className="text-h3 text-foreground mb-2">Key summary</h2>
       <dl className="grid grid-cols-2 gap-x-6 gap-y-1 text-sm sm:grid-cols-4">
         <SummaryStat label="Total keys" value={String(keys.length)} />
         <SummaryStat
@@ -319,11 +296,11 @@ function DnssecSummary({
         ) : null}
       </dl>
       {algorithms.length > 0 ? (
-        <p className="mt-3 text-xs text-[color:var(--color-fg-muted)]">
+        <p className="text-muted-foreground mt-3 text-xs">
           Algorithms in use:{" "}
           {algorithms.map((a, i) => (
             <span key={a}>
-              <code className="rounded bg-[color:var(--color-bg)] px-1">{a}</code>
+              <code className="bg-card rounded px-1">{a}</code>
               {i < algorithms.length - 1 ? ", " : ""}
             </span>
           ))}
@@ -336,13 +313,9 @@ function DnssecSummary({
 function SummaryStat({ label, value, tone }: { label: string; value: string; tone?: "warn" }) {
   return (
     <div className="contents">
-      <dt className="text-[color:var(--color-fg-muted)]">{label}</dt>
+      <dt className="text-muted-foreground">{label}</dt>
       <dd
-        className={
-          tone === "warn"
-            ? "font-mono font-medium text-[color:var(--color-warn)]"
-            : "font-mono font-medium"
-        }
+        className={tone === "warn" ? "text-warning font-mono font-medium" : "font-mono font-medium"}
       >
         {value}
       </dd>

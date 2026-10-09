@@ -42,7 +42,7 @@ export function ZoneDetailChromeSkeleton() {
         </div>
         <Skeleton className="h-3 w-64" />
       </header>
-      <div className="flex gap-6 border-b border-[color:var(--color-border)] pb-3">
+      <div className="border-border flex gap-6 border-b pb-3">
         {Array.from({ length: 6 }).map((_, idx) => (
           <Skeleton key={idx} className="h-4 w-20" />
         ))}

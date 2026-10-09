@@ -34,7 +34,7 @@
  */
 
 import { useRouter } from "next/navigation";
-import { cloneElement, isValidElement, useEffect, useId, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { type ColumnDef } from "@tanstack/react-table";
 import { MoreHorizontal, Pencil, Plus } from "lucide-react";
 import { Dialog, useDialog } from "@/components/ui/dialog";
@@ -56,6 +56,9 @@ import { NumberInput } from "@/components/ui/number-input";
 import { getRREditor, RRContentField } from "@/components/domain/rr-editors";
 import { Field as EditorField } from "@/components/domain/rr-editors/_form";
 import { Switch } from "@/components/ui/switch";
+import { buttonClass, iconButtonClass } from "@/components/ui/button";
+import { Field, inputClass, textareaClass } from "@/components/ui/field";
+import { Alert } from "@/components/ui/alert";
 
 interface RecordValue {
   content: string;
@@ -261,11 +264,11 @@ export function EditableRecordTable(props: EditableRecordTableProps) {
           const row = ctx.row.original;
           return (
             <span
-              className={`block font-mono text-xs break-all ${row.disabled ? "text-[color:var(--color-fg-subtle)] line-through" : ""}`}
+              className={`block font-mono text-xs break-all ${row.disabled ? "text-muted-foreground line-through" : ""}`}
             >
               {row.value}
               {row.disabled ? (
-                <span className="ml-2 rounded bg-[color:var(--color-bg-muted)] px-1 py-0.5 text-[0.65rem] tracking-wide uppercase no-underline">
+                <span className="bg-tag text-mono-xs text-tag-foreground ml-2 inline-flex h-5 items-center rounded-sm px-1.5 font-mono whitespace-nowrap">
                   disabled
                 </span>
               ) : null}
@@ -282,9 +285,9 @@ export function EditableRecordTable(props: EditableRecordTableProps) {
         cell: (ctx) => {
           const text = ctx.row.original.comment;
           return text ? (
-            <span className="text-xs text-[color:var(--color-fg-muted)] italic">{text}</span>
+            <span className="text-muted-foreground text-xs italic">{text}</span>
           ) : (
-            <span className="text-xs text-[color:var(--color-fg-subtle)]">-</span>
+            <span className="text-muted-foreground text-xs">-</span>
           );
         },
         meta: { className: "w-[18%]" },
@@ -302,7 +305,7 @@ export function EditableRecordTable(props: EditableRecordTableProps) {
           if (isLockedRow(row)) {
             return (
               <span
-                className="text-xs text-[color:var(--color-fg-subtle)]"
+                className="text-muted-foreground text-xs"
                 title="The apex NS records are this zone's delegation. Editing them needs record.update.apex-ns."
               >
                 Delegation - locked
@@ -316,7 +319,7 @@ export function EditableRecordTable(props: EditableRecordTableProps) {
                   type="button"
                   onClick={() => openInline(row)}
                   title="Edit TTL and value in place (Enter)"
-                  className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[color:var(--color-accent)] hover:bg-[color:var(--color-bg-subtle)] hover:underline"
+                  className={buttonClass({ variant: "link", size: "xs", className: "px-1.5" })}
                 >
                   <Pencil className="h-3 w-3" aria-hidden />
                   Edit
@@ -328,7 +331,7 @@ export function EditableRecordTable(props: EditableRecordTableProps) {
                   onClick={() => openEdit(row)}
                   title="Full editor: rename, change type, comment (E)"
                   aria-label="Open full editor"
-                  className="rounded px-1.5 py-0.5 text-[color:var(--color-fg-muted)] hover:bg-[color:var(--color-bg-subtle)] hover:text-[color:var(--color-fg)]"
+                  className={iconButtonClass("sm")}
                 >
                   <MoreHorizontal className="h-3.5 w-3.5" aria-hidden />
                 </button>
@@ -338,7 +341,7 @@ export function EditableRecordTable(props: EditableRecordTableProps) {
                   type="button"
                   onClick={() => handleDeleteRow(row)}
                   title="Delete this value (Delete)"
-                  className="rounded px-1.5 py-0.5 text-[color:var(--color-error)] hover:bg-[color:var(--color-bg-subtle)] hover:underline"
+                  className="text-body-sm text-destructive hover:bg-muted focus-visible:shadow-focus-ring inline-flex h-6 items-center rounded-sm px-1.5 hover:underline focus-visible:outline-hidden"
                 >
                   Delete
                 </button>
@@ -679,9 +682,7 @@ export function EditableRecordTable(props: EditableRecordTableProps) {
     return {
       tabIndex: editable ? 0 : -1,
       "data-editing": editing ? "true" : undefined,
-      className: editing
-        ? "bg-[color-mix(in_oklch,var(--color-accent)_14%,transparent)] shadow-[inset_2px_0_0_var(--color-accent)]"
-        : undefined,
+      className: editing ? "bg-row-selected shadow-[inset_2px_0_0_var(--primary)]" : undefined,
       onDoubleClick: (e) => {
         if (!editable || !props.canUpdate) return;
         if ((e.target as HTMLElement).closest("a,button,input,textarea,label")) return;
@@ -773,7 +774,7 @@ export function EditableRecordTable(props: EditableRecordTableProps) {
       <DataTable
         columns={columns}
         data={rows}
-        searchPlaceholder="Search records by name, type, value…"
+        searchPlaceholder="Search records"
         searchShortcut
         noDataMessage="No records on this zone yet."
         initialSort={[{ id: "name", desc: false }]}
@@ -872,7 +873,7 @@ export function EditableRecordTable(props: EditableRecordTableProps) {
                   className="mt-1 w-full"
                 />
                 {!props.luaRecordsEnabled ? (
-                  <p className="mt-1 text-[0.6875rem] text-[color:var(--color-fg-muted)]">
+                  <p className="text-muted-foreground text-caption mt-1">
                     To add LUA records through AuthAdmin, set <code>ENABLE-LUA-RECORDS</code> to{" "}
                     <code>1</code> for this zone on the PowerDNS host.
                   </p>
@@ -933,14 +934,14 @@ export function EditableRecordTable(props: EditableRecordTableProps) {
                 onChange={(e) => setEditor({ ...editor, comment: e.target.value })}
                 rows={2}
                 placeholder="Optional"
-                className={inputClass}
+                className={textareaClass}
               />
             </Field>
 
             {showValidation ? <ValidationIssues result={liveValidation} /> : null}
 
             {hasValidationErrors ? (
-              <label className="flex items-start gap-2 rounded-md border border-[color:var(--color-warn)] bg-[color:var(--color-warn)]/10 p-3 text-sm">
+              <label className="border-warning-border bg-warning-muted flex items-start gap-2 rounded-md border p-3 text-sm">
                 <input
                   type="checkbox"
                   checked={overrideErrors}
@@ -955,7 +956,7 @@ export function EditableRecordTable(props: EditableRecordTableProps) {
             ) : null}
 
             {editorError ? (
-              <p className="text-sm text-[color:var(--color-error)]" role="alert">
+              <p className="text-destructive text-sm" role="alert">
                 {editorError}
               </p>
             ) : null}
@@ -964,17 +965,13 @@ export function EditableRecordTable(props: EditableRecordTableProps) {
               <KeyHint className="mr-auto">
                 <Kbd>Enter</Kbd> review · <Kbd>Esc</Kbd> cancel
               </KeyHint>
-              <button
-                type="button"
-                onClick={() => setEditor(null)}
-                className="rounded-md border border-[color:var(--color-border)] px-4 py-2 text-sm hover:bg-[color:var(--color-bg-subtle)]"
-              >
+              <button type="button" onClick={() => setEditor(null)} className={buttonClass()}>
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={hasValidationErrors && !overrideErrors}
-                className="rounded-md bg-[color:var(--color-accent)] px-4 py-2 text-sm font-medium text-[color:var(--color-accent-fg)] hover:opacity-95 disabled:opacity-50"
+                className={buttonClass({ variant: "primary" })}
               >
                 Review changes
               </button>
@@ -996,7 +993,7 @@ export function EditableRecordTable(props: EditableRecordTableProps) {
             {(() => {
               const { removed, added } = computeBindDiff(nonSoa, pending.rrsetsAfter);
               return (
-                <div className="overflow-hidden rounded-md border border-[color:var(--color-border)]">
+                <div className="border-border overflow-hidden rounded-md border">
                   <BareDiff removed={removed} added={added} />
                 </div>
               );
@@ -1009,11 +1006,12 @@ export function EditableRecordTable(props: EditableRecordTableProps) {
                 type="button"
                 onClick={() => setPending(null)}
                 disabled={saving}
-                className="rounded-md border border-[color:var(--color-border)] px-4 py-2 text-sm hover:bg-[color:var(--color-bg-subtle)] disabled:opacity-50"
+                className={buttonClass()}
               >
                 Back
               </button>
               <button
+                aria-busy={saving}
                 type="button"
                 data-dialog-focus="true"
                 onClick={() => {
@@ -1039,9 +1037,9 @@ export function EditableRecordTable(props: EditableRecordTableProps) {
                   void applyPatch(pending);
                 }}
                 disabled={saving}
-                className="rounded-md bg-[color:var(--color-accent)] px-4 py-2 text-sm font-medium text-[color:var(--color-accent-fg)] hover:opacity-95 disabled:opacity-50"
+                className={buttonClass({ variant: "primary" })}
               >
-                {saving ? "Saving…" : "Save"}
+                Save
               </button>
             </div>
           </div>
@@ -1180,9 +1178,7 @@ function InlineRecordEditor({
                 onChange={(next) => onChange({ value: next })}
                 fallbackPlaceholder={validator.placeholder}
               />
-              <p className="mt-1 text-xs text-[color:var(--color-fg-muted)]">
-                {validator.description}
-              </p>
+              <p className="text-muted-foreground mt-1 text-xs">{validator.description}</p>
             </>
           ) : (
             <EditorField label="Value" hint={validator.description}>
@@ -1209,30 +1205,22 @@ function InlineRecordEditor({
 
       {draft.value.trim() !== "" ? <ValidationIssues result={validation} /> : null}
       {error ? (
-        <p className="text-sm text-[color:var(--color-error)]" role="alert">
+        <p className="text-destructive text-sm" role="alert">
           {error}
         </p>
       ) : null}
 
       <div className="flex flex-wrap items-center gap-3">
-        <button
-          type="submit"
-          disabled={!dirty}
-          className="rounded-md bg-[color:var(--color-accent)] px-3 py-1.5 text-sm font-medium text-[color:var(--color-accent-fg)] hover:opacity-95 disabled:opacity-50"
-        >
+        <button type="submit" disabled={!dirty} className={buttonClass({ variant: "primary" })}>
           Review changes
         </button>
-        <button
-          type="button"
-          onClick={onCancel}
-          className="rounded-md border border-[color:var(--color-border)] px-3 py-1.5 text-sm hover:bg-[color:var(--color-bg-subtle)]"
-        >
+        <button type="button" onClick={onCancel} className={buttonClass()}>
           Cancel
         </button>
         <button
           type="button"
           onClick={onOpenFull}
-          className="text-sm text-[color:var(--color-accent)] hover:underline"
+          className="text-primary hover:text-primary-hover text-sm hover:underline"
           title="Rename, change the type, edit the comment, or save with validation errors"
         >
           Full editor…
@@ -1277,14 +1265,12 @@ function ShortcutLegend({ canCreate, canDelete }: { canCreate: boolean; canDelet
 }
 
 function KeyHint({ children, className }: { children: React.ReactNode; className?: string }) {
-  return (
-    <p className={`text-xs text-[color:var(--color-fg-muted)] ${className ?? ""}`}>{children}</p>
-  );
+  return <p className={`text-muted-foreground text-xs ${className ?? ""}`}>{children}</p>;
 }
 
 function Kbd({ children }: { children: React.ReactNode }) {
   return (
-    <kbd className="mx-0.5 rounded border border-[color:var(--color-border)] bg-[color:var(--color-bg-subtle)] px-1 py-px font-mono text-[0.65rem]">
+    <kbd className="bg-tag text-mono-xs text-tag-foreground mx-0.5 inline-flex h-5 items-center rounded-sm px-1.5 font-mono whitespace-nowrap">
       {children}
     </kbd>
   );
@@ -1299,63 +1285,13 @@ function ValidationIssues({ result }: { result: RRValidationResult | null }) {
   return (
     <ul className="space-y-1 text-xs">
       {result.issues.map((issue, idx) => (
-        <li
-          key={idx}
-          className={
-            issue.level === "error"
-              ? "text-[color:var(--color-error)]"
-              : "text-[color:var(--color-warn)]"
-          }
-        >
-          <span className="font-medium tracking-wide uppercase">{issue.level}</span> {issue.message}
+        <li key={idx} className={issue.level === "error" ? "text-destructive" : "text-warning"}>
+          <span className="text-caption text-muted-foreground">{issue.level}</span> {issue.message}
         </li>
       ))}
     </ul>
   );
 }
-
-/**
- * Label + control + hint. A single element child without an `id` gets one
- * so the label's `htmlFor` reaches it - clicking "TTL" focuses the TTL box
- * and screen readers announce the field by name.
- */
-function Field({
-  label,
-  hint,
-  children,
-}: {
-  label: string;
-  hint?: string;
-  children: React.ReactNode;
-}) {
-  const autoId = useId();
-  const hintId = `${autoId}-hint`;
-  let control = children;
-  let controlId: string | undefined;
-  if (isValidElement<{ id?: string; "aria-describedby"?: string }>(children)) {
-    controlId = children.props.id ?? autoId;
-    control = cloneElement(children, {
-      id: controlId,
-      ...(hint && !children.props["aria-describedby"] ? { "aria-describedby": hintId } : {}),
-    });
-  }
-  return (
-    <div>
-      <label htmlFor={controlId} className="block text-sm font-medium">
-        {label}
-      </label>
-      {control}
-      {hint ? (
-        <p id={hintId} className="mt-1 text-xs text-[color:var(--color-fg-muted)]">
-          {hint}
-        </p>
-      ) : null}
-    </div>
-  );
-}
-
-const inputClass =
-  "mt-1 block w-full rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--color-accent)]";
 
 // =============================================================================
 // RRset ↔ row conversion
@@ -1536,8 +1472,7 @@ function renderRenameHint(
   const toType = editor.type.toUpperCase();
   if (fromName === toName && fromType === toType) return null;
   return (
-    <p className="rounded-md border border-[color:var(--color-warn)] bg-[color:var(--color-warn)]/10 px-3 py-2 text-xs text-[color:var(--color-warn)]">
-      Moving record:{" "}
+    <Alert title="moving record">
       <code className="font-mono">
         {fromName} {fromType}
       </code>{" "}
@@ -1546,7 +1481,7 @@ function renderRenameHint(
         {toName} {toType}
       </code>
       . The old RRset shrinks (or is deleted if empty) and the new RRset gains this value.
-    </p>
+    </Alert>
   );
 }
 

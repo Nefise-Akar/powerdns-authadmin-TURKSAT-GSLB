@@ -11,6 +11,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useDialog } from "@/components/ui/dialog";
 import { apiFetch } from "@/lib/client/api-fetch";
+import { buttonClass } from "@/components/ui/button";
 
 interface ActionsProps {
   id: string;
@@ -57,12 +58,13 @@ export function SamlProviderActions({ id, name }: ActionsProps) {
 
   return (
     <button
+      aria-busy={deleting}
       type="button"
       onClick={handleDelete}
       disabled={deleting}
-      className="mt-4 rounded-md border border-[color:var(--color-error)] bg-[color:var(--color-error)] px-4 py-2 text-sm font-medium text-white hover:opacity-95 disabled:opacity-50"
+      className={buttonClass({ variant: "destructive", className: "mt-4" })}
     >
-      {deleting ? "Deleting…" : "Delete provider"}
+      Delete provider
     </button>
   );
 }

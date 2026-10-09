@@ -62,45 +62,36 @@ export async function AccessSection({ serverId, zoneName }: Props) {
   return (
     <div className="space-y-8">
       <section>
-        <h2 className="mb-3 text-sm font-medium tracking-wide text-[color:var(--color-fg-muted)] uppercase">
-          Roles with zone permissions
-        </h2>
-        <p className="mb-3 text-xs text-[color:var(--color-fg-muted)]">
+        <h2 className="text-h3 text-foreground mb-2">Roles with zone permissions</h2>
+        <p className="text-muted-foreground mb-3 text-xs">
           Every role whose permission set includes zone-scope actions. Operators with these roles
           assigned (globally, or at a matching team / server scope) can act on this zone.
         </p>
         {rolesWithZoneAccess.length === 0 ? (
-          <p className="text-xs text-[color:var(--color-fg-muted)] italic">
+          <p className="text-muted-foreground text-xs italic">
             No role grants any zone-scope permission.
           </p>
         ) : (
           <ul className="space-y-2">
             {rolesWithZoneAccess.map((role) => (
-              <li
-                key={role.id}
-                className="rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg)] p-3"
-              >
+              <li key={role.id} className="border-border bg-card rounded-md border p-3">
                 <div className="flex items-baseline gap-2">
                   <span className="text-sm font-medium">{role.name}</span>
-                  <code className="font-mono text-xs text-[color:var(--color-fg-muted)]">
-                    {role.slug}
-                  </code>
+                  <code className="text-muted-foreground font-mono text-xs">{role.slug}</code>
                   {role.isSystem ? (
-                    <span className="rounded bg-[color:var(--color-bg-muted)] px-1.5 py-0.5 text-[0.625rem] tracking-wide text-[color:var(--color-fg-muted)] uppercase">
+                    <span className="bg-tag text-mono-xs text-tag-foreground inline-flex h-5 items-center rounded-sm px-1.5 font-mono whitespace-nowrap">
                       System
                     </span>
                   ) : null}
                 </div>
                 {role.description ? (
-                  <p className="mt-1 text-xs text-[color:var(--color-fg-muted)]">
-                    {role.description}
-                  </p>
+                  <p className="text-muted-foreground mt-1 text-xs">{role.description}</p>
                 ) : null}
                 <div className="mt-2 flex flex-wrap gap-1">
                   {role.zonePermissions.map((p) => (
                     <code
                       key={p}
-                      className="rounded bg-[color:var(--color-bg-muted)] px-1.5 py-0.5 font-mono text-[0.625rem]"
+                      className="bg-tag text-mono-xs text-tag-foreground inline-flex h-5 items-center rounded-sm px-1.5 font-mono whitespace-nowrap"
                     >
                       {p}
                     </code>
@@ -113,14 +104,12 @@ export async function AccessSection({ serverId, zoneName }: Props) {
       </section>
 
       <section>
-        <h2 className="mb-3 text-sm font-medium tracking-wide text-[color:var(--color-fg-muted)] uppercase">
-          Teams with grants on this zone
-        </h2>
-        <p className="mb-3 text-xs text-[color:var(--color-fg-muted)]">
+        <h2 className="text-h3 text-foreground mb-2">Teams with grants on this zone</h2>
+        <p className="text-muted-foreground mb-3 text-xs">
           Members of these teams inherit the listed permissions on this zone.
         </p>
         {teamGrants.length === 0 ? (
-          <p className="text-xs text-[color:var(--color-fg-muted)] italic">
+          <p className="text-muted-foreground text-xs italic">
             No teams have a direct grant on this zone.
           </p>
         ) : (
@@ -141,14 +130,12 @@ export async function AccessSection({ serverId, zoneName }: Props) {
       </section>
 
       <section>
-        <h2 className="mb-3 text-sm font-medium tracking-wide text-[color:var(--color-fg-muted)] uppercase">
-          Users with direct grants on this zone
-        </h2>
-        <p className="mb-3 text-xs text-[color:var(--color-fg-muted)]">
+        <h2 className="text-h3 text-foreground mb-2">Users with direct grants on this zone</h2>
+        <p className="text-muted-foreground mb-3 text-xs">
           Users named individually on this zone. Inherited access via roles or teams is shown above.
         </p>
         {userGrants.length === 0 ? (
-          <p className="text-xs text-[color:var(--color-fg-muted)] italic">
+          <p className="text-muted-foreground text-xs italic">
             No users have a direct grant on this zone.
           </p>
         ) : (
@@ -183,20 +170,18 @@ function PrincipalGrantRow({
   createdAt: Date;
 }) {
   return (
-    <li className="rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg)] p-3">
+    <li className="border-border bg-card rounded-md border p-3">
       <div className="flex items-baseline justify-between gap-3">
         <div className="min-w-0">
           <div className="text-sm font-medium">{title}</div>
-          {subtitle ? (
-            <div className="text-xs text-[color:var(--color-fg-muted)]">{subtitle}</div>
-          ) : null}
+          {subtitle ? <div className="text-muted-foreground text-xs">{subtitle}</div> : null}
         </div>
-        <div className="shrink-0 text-xs text-[color:var(--color-fg-muted)]">
+        <div className="text-muted-foreground shrink-0 text-xs">
           granted <LocalTime ts={createdAt} />
         </div>
       </div>
       {permissions.length === 0 ? (
-        <p className="mt-2 text-xs text-[color:var(--color-fg-muted)] italic">
+        <p className="text-muted-foreground mt-2 text-xs italic">
           Grant row exists but no permissions are attached.
         </p>
       ) : (
@@ -204,7 +189,7 @@ function PrincipalGrantRow({
           {permissions.map((p) => (
             <code
               key={p}
-              className="rounded bg-[color:var(--color-bg-muted)] px-1.5 py-0.5 font-mono text-[0.625rem]"
+              className="bg-tag text-mono-xs text-tag-foreground inline-flex h-5 items-center rounded-sm px-1.5 font-mono whitespace-nowrap"
             >
               {p}
             </code>

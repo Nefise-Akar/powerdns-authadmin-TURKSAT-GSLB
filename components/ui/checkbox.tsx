@@ -4,9 +4,9 @@
  * components/ui/checkbox.tsx
  *
  * Themed checkbox - the project's replacement for the default browser checkbox.
- * A `role="checkbox"` button that fills with the accent colour + a checkmark when
- * checked, so it matches the app's design language (dark-mode aware) instead of
- * the OS control. Keyboard-operable (Space/Enter via the native button).
+ * A 16px `role="checkbox"` button with 2px corners: an `input` border when
+ * empty, filled with primary + a checkmark when checked. Keyboard-operable
+ * (Space/Enter via the native button).
  */
 
 import type { ReactNode } from "react";
@@ -31,7 +31,7 @@ export function Checkbox({
 }: CheckboxProps) {
   return (
     <label
-      className={`inline-flex cursor-pointer items-center gap-2 ${disabled ? "cursor-not-allowed opacity-60" : ""} ${className ?? ""}`}
+      className={`text-body inline-flex items-center gap-2 ${disabled ? "cursor-default opacity-45" : "cursor-pointer"} ${className ?? ""}`}
     >
       <button
         type="button"
@@ -40,10 +40,8 @@ export function Checkbox({
         aria-label={ariaLabel}
         disabled={disabled}
         onClick={() => onChange(!checked)}
-        className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors ${
-          checked
-            ? "border-[color:var(--color-accent)] bg-[color:var(--color-accent)] text-[color:var(--color-accent-fg)]"
-            : "border-[color:var(--color-border)] bg-[color:var(--color-bg)] hover:border-[color:var(--color-fg-muted)]"
+        className={`focus-visible:shadow-focus-ring flex size-4 shrink-0 items-center justify-center rounded-sm border focus-visible:outline-hidden ${
+          checked ? "border-primary bg-primary text-primary-foreground" : "border-input bg-card"
         }`}
       >
         {checked ? (

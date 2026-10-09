@@ -33,7 +33,7 @@ export function TsigKeysReadOnly({ serverSlug, rows }: { serverSlug: string; row
         accessorKey: "algorithm",
         header: "Algorithm",
         cell: (ctx) => (
-          <span className="rounded bg-[color:var(--color-bg-muted)] px-2 py-0.5 font-mono text-xs">
+          <span className="bg-muted rounded px-2 py-0.5 font-mono text-xs">
             {ctx.getValue<string>()}
           </span>
         ),
@@ -47,9 +47,7 @@ export function TsigKeysReadOnly({ serverSlug, rows }: { serverSlug: string; row
             <div className="max-w-sm space-y-1">
               <span
                 className={`inline-flex rounded px-2 py-0.5 text-xs font-medium ${
-                  row.zoneCount > 0
-                    ? "bg-[color:var(--color-accent)]/15 text-[color:var(--color-accent)]"
-                    : "bg-[color:var(--color-bg-muted)] text-[color:var(--color-fg-muted)]"
+                  row.zoneCount > 0 ? "bg-accent text-primary" : "bg-muted text-muted-foreground"
                 }`}
               >
                 {row.zoneCount === 0
@@ -62,13 +60,13 @@ export function TsigKeysReadOnly({ serverSlug, rows }: { serverSlug: string; row
                     <span
                       key={zone}
                       title={zone}
-                      className="max-w-44 truncate rounded bg-[color:var(--color-bg-subtle)] px-1.5 py-0.5 font-mono text-[0.625rem] text-[color:var(--color-fg-muted)]"
+                      className="bg-tag text-mono-xs text-tag-foreground inline-flex h-5 max-w-44 items-center truncate rounded-sm px-1.5 font-mono whitespace-nowrap"
                     >
                       {zone}
                     </span>
                   ))}
                   {row.zones.length > 3 ? (
-                    <span className="rounded bg-[color:var(--color-bg-subtle)] px-1.5 py-0.5 text-[0.625rem] text-[color:var(--color-fg-muted)]">
+                    <span className="bg-tag text-mono-xs text-tag-foreground inline-flex h-5 items-center rounded-sm px-1.5 font-mono whitespace-nowrap">
                       +{row.zones.length - 3}
                     </span>
                   ) : null}
@@ -82,7 +80,7 @@ export function TsigKeysReadOnly({ serverSlug, rows }: { serverSlug: string; row
         accessorKey: "id",
         header: "id",
         cell: (ctx) => (
-          <span className="font-mono text-[0.625rem] text-[color:var(--color-fg-muted)]">
+          <span className="text-muted-foreground text-mono-xs font-mono">
             {ctx.getValue<string>()}
           </span>
         ),

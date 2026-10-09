@@ -10,6 +10,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { buttonClass } from "@/components/ui/button";
 import { useDialog } from "@/components/ui/dialog";
 import { mutate } from "@/lib/client/api-fetch";
 
@@ -21,17 +22,12 @@ interface ConfirmDeleteButtonProps {
   confirmLabel: string;
   /** Toast description shown on success. */
   successMessage: string;
-  /** Idle button label. */
+  /** Button label; it stays the same while the request runs (the button is disabled). */
   label: string;
-  /** Label while the request is in flight. */
-  busyLabel?: string;
   /** Navigate here on success before refreshing. Omit to refresh in place. */
   redirectTo?: string;
   className?: string;
 }
-
-const DEFAULT_CLASS =
-  "rounded border border-[color:var(--color-error)] px-3 py-1.5 text-sm font-medium text-[color:var(--color-error)] hover:bg-[color:var(--color-error)]/10 disabled:opacity-50";
 
 export function ConfirmDeleteButton({
   endpoint,
@@ -40,7 +36,6 @@ export function ConfirmDeleteButton({
   confirmLabel,
   successMessage,
   label,
-  busyLabel = "Deleting…",
   redirectTo,
   className,
 }: ConfirmDeleteButtonProps) {
@@ -76,9 +71,10 @@ export function ConfirmDeleteButton({
       type="button"
       onClick={handleDelete}
       disabled={busy}
-      className={className ?? DEFAULT_CLASS}
+      aria-busy={busy}
+      className={className ?? buttonClass({ variant: "destructive" })}
     >
-      {busy ? busyLabel : label}
+      {label}
     </button>
   );
 }

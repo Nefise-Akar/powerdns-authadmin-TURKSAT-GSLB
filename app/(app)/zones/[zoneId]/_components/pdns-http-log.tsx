@@ -67,15 +67,11 @@ export function PdnsHttpLog({ entries, collapsible = true }: Props) {
 
   return (
     <Disclosure
-      className="border-t border-[color:var(--color-border)]"
-      summaryClassName="px-4 py-2 text-[0.6875rem]"
+      className="border-border border-t"
+      summaryClassName="px-4 py-2 text-caption"
       bodyClassName="px-4 pt-1 pb-3"
       label={`PowerDNS HTTP requests (${count})`}
-      accessory={
-        failures > 0 ? (
-          <span className="text-[color:var(--color-error)]">{failures} failed</span>
-        ) : null
-      }
+      accessory={failures > 0 ? <span className="text-destructive">{failures} failed</span> : null}
     >
       {body}
     </Disclosure>
@@ -87,18 +83,16 @@ function HttpBlock({ entry }: { entry: PdnsHttpLogEntry }) {
     entry.error !== null || (entry.responseStatus !== null && entry.responseStatus >= 400);
   return (
     <div>
-      <div className="flex flex-wrap items-baseline justify-between gap-2 py-1 text-[0.625rem] tracking-wide text-[color:var(--color-fg-muted)] uppercase">
+      <div className="text-caption text-muted-foreground flex flex-wrap items-baseline justify-between gap-2 py-1">
         <span>
-          <span
-            className={`font-mono ${isFailure ? "text-[color:var(--color-error)]" : "text-[color:var(--color-fg)]"}`}
-          >
+          <span className={`font-mono ${isFailure ? "text-destructive" : "text-foreground"}`}>
             {entry.op}
           </span>
           <ServerBadge entry={entry} />
         </span>
         <time className="font-mono normal-case">{entry.ts}</time>
       </div>
-      <pre className="overflow-x-auto font-mono text-[0.6875rem] leading-relaxed whitespace-pre text-[color:var(--color-fg)]">
+      <pre className="text-foreground text-mono-xs overflow-x-auto font-mono leading-relaxed whitespace-pre">
         {renderHttp(entry)}
       </pre>
     </div>
@@ -112,7 +106,7 @@ function ServerBadge({ entry }: { entry: PdnsHttpLogEntry }) {
     return (
       <Link
         href={`/admin/servers/${entry.serverDbId}`}
-        className="ml-2 text-[color:var(--color-accent)] normal-case hover:underline"
+        className="text-primary ml-2 normal-case hover:underline"
       >
         on {label}
       </Link>

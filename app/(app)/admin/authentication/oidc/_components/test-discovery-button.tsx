@@ -12,6 +12,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useDialog } from "@/components/ui/dialog";
 import { apiFetch } from "@/lib/client/api-fetch";
+import { buttonClass } from "@/components/ui/button";
 
 interface TestResponse {
   ok: boolean;
@@ -62,13 +63,14 @@ export function TestDiscoveryButton({ providerId }: { providerId: string }) {
 
   return (
     <button
+      aria-busy={busy}
       type="button"
       onClick={handleTest}
       disabled={busy}
       title="Probe this provider's .well-known/openid-configuration endpoint."
-      className="rounded border border-[color:var(--color-border)] px-2 py-1 text-xs hover:bg-[color:var(--color-bg-muted)] disabled:opacity-50"
+      className={buttonClass({ size: "sm" })}
     >
-      {busy ? "Testing…" : "Test"}
+      Test
     </button>
   );
 }

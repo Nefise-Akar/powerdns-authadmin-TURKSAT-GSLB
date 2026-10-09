@@ -4,7 +4,7 @@
  * components/ui/chart.tsx
  *
  * Thin wrapper over `echarts-for-react` that imports only the ECharts
- * modules the dashboard actually uses (line / bar / pie + tooltip / grid /
+ * modules the dashboard actually uses (line / bar + tooltip / grid /
  * legend / canvas), keeping the client bundle far smaller than the full
  * `echarts` umbrella import.
  *
@@ -14,7 +14,7 @@
  */
 
 import { use as echartsUse } from "echarts/core";
-import { BarChart, LineChart, PieChart } from "echarts/charts";
+import { BarChart, LineChart } from "echarts/charts";
 import {
   GridComponent,
   LegendComponent,
@@ -35,7 +35,6 @@ import { useEffect, useState } from "react";
 echartsUse([
   BarChart,
   LineChart,
-  PieChart,
   GridComponent,
   LegendComponent,
   TitleComponent,
@@ -51,77 +50,113 @@ interface ChartProps {
   className?: string;
 }
 
-export function Chart({ option, height = 280, className = "" }: ChartProps) {
-  const [theme, setTheme] = useState<"light" | "dark">("light");
+/**
+ * Series colors. One accent plus grays, so a chart reads as "the thing" and
+ * its context; success/destructive are reserved for series that mean
+ * success or failure and are set per series by the caller.
+ */
+const DEFAULT_PALETTE = ["var(--primary)", "var(--muted-foreground)", "var(--input)"];
 
-  // Re-read the theme after mount and on .dark mutation. ECharts itself
-  // doesn't know about CSS variables so we react explicitly.
+/**
+ * Options are built on the server and arrive as plain data, so they name
+ * colors as design tokens - `"var(--success)"` - and this resolves every such
+ * string against the active theme before ECharts (a canvas, blind to CSS
+ * variables) sees it.
+ */
+function resolveTokens<T>(value: T, root: CSSStyleDeclaration): T {
+  if (typeof value === "string") {
+    const m = /^var\((--[a-z0-9-]+)\)$/.exec(value);
+    return (m ? root.getPropertyValue(m[1]!).trim() || value : value) as T;
+  }
+  if (Array.isArray(value)) {
+    return (value as unknown[]).map((v) => resolveTokens(v, root)) as T;
+  }
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>).map(([k, v]) => [k, resolveTokens(v, root)]),
+    ) as T;
+  }
+  return value;
+}
+
+export function Chart({ option, height = 280, className = "" }: ChartProps) {
+  // Null until mounted: the tokens only resolve in the browser, and ECharts
+  // only draws there anyway. The sized box holds the layout meanwhile.
+  const [resolved, setResolved] = useState<EChartsOption | null>(null);
+
+  // Resolve after mount and again whenever the theme attribute flips.
   useEffect(() => {
-    const update = () =>
-      setTheme(document.documentElement.classList.contains("dark") ? "dark" : "light");
+    const update = () => {
+      const root = getComputedStyle(document.documentElement);
+      const font = getComputedStyle(document.body).fontFamily;
+      setResolved(resolveTokens(withThemeDefaults(option, font), root));
+    };
     update();
     const obs = new MutationObserver(update);
     obs.observe(document.documentElement, {
       attributes: true,
-      attributeFilter: ["class"],
+      attributeFilter: ["data-theme"],
     });
     return () => obs.disconnect();
-  }, []);
-
-  // Inject sensible defaults that play with the design tokens.
-  const themed = withThemeDefaults(option, theme);
+  }, [option]);
 
   return (
     <div className={className} style={{ height }}>
-      <ReactECharts
-        echarts={echarts}
-        option={themed}
-        style={{ height: "100%", width: "100%" }}
-        notMerge
-        lazyUpdate
-        opts={{ renderer: "canvas" }}
-      />
+      {resolved ? (
+        <ReactECharts
+          echarts={echarts}
+          option={resolved}
+          style={{ height: "100%", width: "100%" }}
+          notMerge
+          lazyUpdate
+          opts={{ renderer: "canvas" }}
+        />
+      ) : null}
     </div>
   );
 }
 
-/**
- * Merge minimal theme defaults - background, palette, fonts, tooltip styling
- * - onto the caller's option. We intentionally don't touch xAxis / yAxis
- * shape (their discriminated-union shape doesn't merge cleanly through spread);
- * call sites style axes themselves.
- */
-function withThemeDefaults(option: EChartsOption, theme: "light" | "dark"): EChartsOption {
-  const text = theme === "dark" ? "#d1d5db" : "#374151";
-  const grid = theme === "dark" ? "#374151" : "#e5e7eb";
+/** The axis keys this file themes - every ECharts axis option has them. */
+interface AxisLike {
+  axisLine?: object;
+  axisTick?: object;
+  axisLabel?: object;
+  nameTextStyle?: object;
+}
 
+/** Token colors for an axis (or axis list), under whatever the caller set. */
+function themeAxis<T>(axis: T): T {
+  if (axis === undefined) return axis;
+  const one = (a: AxisLike): AxisLike => ({
+    ...a,
+    axisLine: { lineStyle: { color: "var(--border)" }, ...a.axisLine },
+    axisTick: { lineStyle: { color: "var(--border)" }, ...a.axisTick },
+    axisLabel: { color: "var(--muted-foreground)", ...a.axisLabel },
+    nameTextStyle: { color: "var(--muted-foreground)", ...a.nameTextStyle },
+  });
+  return (Array.isArray(axis) ? (axis as AxisLike[]).map(one) : one(axis as AxisLike)) as T;
+}
+
+/**
+ * Merge theme defaults - palette, fonts, axis and tooltip colors - under the
+ * caller's option. There is no legend unless a caller asks for one: series
+ * are named by direct labels (end labels on lines, value labels on bars),
+ * which also keeps the x-axis free of an overlapping legend row.
+ */
+function withThemeDefaults(option: EChartsOption, font: string): EChartsOption {
   return {
     backgroundColor: "transparent",
-    textStyle: {
-      color: text,
-      fontFamily: "ui-sans-serif, system-ui, sans-serif",
-    },
-    color: [
-      "#6366f1", // indigo (accent)
-      "#10b981", // emerald
-      "#f59e0b", // amber
-      "#ef4444", // red
-      "#8b5cf6", // violet
-      "#06b6d4", // cyan
-      "#ec4899", // pink
-    ],
+    textStyle: { color: "var(--muted-foreground)", fontFamily: font },
+    color: DEFAULT_PALETTE,
     ...option,
-    // ECharts' legend doesn't inherit the top-level `textStyle.color`; if
-    // we don't set it explicitly the labels render as a hardcoded #333
-    // that vanishes against the dark-mode background. Merge our default
-    // color on top of whatever the caller passed so existing legend
-    // configs (`type`, `orient`, `data`, …) survive.
-    legend: mergeLegend(option.legend, text),
+    legend: { show: false, ...(option.legend as object) },
+    xAxis: themeAxis(option.xAxis),
+    yAxis: themeAxis(option.yAxis),
     tooltip: {
-      backgroundColor: theme === "dark" ? "rgba(17,24,39,0.95)" : "rgba(255,255,255,0.95)",
-      borderColor: grid,
+      backgroundColor: "var(--card)",
+      borderColor: "var(--border)",
       borderWidth: 1,
-      textStyle: { color: text, fontSize: 12 },
+      textStyle: { color: "var(--foreground)", fontSize: 12 },
       ...(option.tooltip ?? {}),
     },
     grid: {
@@ -132,22 +167,5 @@ function withThemeDefaults(option: EChartsOption, theme: "light" | "dark"): ECha
       containLabel: true,
       ...(option.grid ?? {}),
     },
-  };
-}
-
-type LegendOption = EChartsOption["legend"];
-
-function mergeLegend(legend: LegendOption, color: string): LegendOption {
-  const defaults = { textStyle: { color } };
-  if (legend === undefined) return defaults;
-  if (Array.isArray(legend)) {
-    return legend.map((l) => ({
-      ...l,
-      textStyle: { color, ...(l.textStyle ?? {}) },
-    }));
-  }
-  return {
-    ...legend,
-    textStyle: { color, ...(legend.textStyle ?? {}) },
   };
 }

@@ -33,6 +33,7 @@ import type { PdnsServer } from "@/lib/db/schema";
 import { TestServerButton } from "./_components/test-server-button";
 import { RefreshAllButton } from "./_components/refresh-all-button";
 import { ServersPageHeartbeat } from "./_components/servers-page-heartbeat";
+import { buttonClass } from "@/components/ui/button";
 
 export const metadata: Metadata = { title: "PowerDNS servers" };
 
@@ -121,10 +122,10 @@ export default async function PdnsServersListPage() {
       <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <div className="flex items-baseline gap-2">
-            <h1 className="text-2xl font-semibold tracking-tight">PowerDNS servers</h1>
+            <h1 className="text-h1">PowerDNS servers</h1>
             {!pdnsBackgroundPollingEnabled ? <PollingDisabledHint /> : null}
           </div>
-          <p className="mt-1 text-sm text-[color:var(--color-fg-muted)]">
+          <p className="text-muted-foreground mt-1 text-sm">
             One row per upstream PowerDNS Authoritative backend.
           </p>
         </div>
@@ -211,18 +212,22 @@ export default async function PdnsServersListPage() {
           {/* Desktop (md+): the dense grouped table. Header + row styling kept
               in lock-step with components/ui/data-table.tsx so the bespoke
               grouped layout reads as one of the standard tables. */}
-          <div className="hidden overflow-hidden rounded-lg border border-[color:var(--color-border)] md:block">
+          <div className="hidden overflow-hidden md:block">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
-                <thead className="bg-[color:var(--color-bg-muted)] text-left text-xs font-medium tracking-wide text-[color:var(--color-fg-muted)] uppercase">
+                <thead className="border-border bg-background text-label text-muted-foreground border-y text-left">
                   <tr>
-                    <th className="px-4 py-2.5">Name</th>
-                    <th className="px-4 py-2.5">Base URL</th>
-                    <th className="px-4 py-2.5">Status</th>
-                    <th className="px-4 py-2.5">Version</th>
-                    {pdnsBackgroundPollingEnabled ? <th className="px-4 py-2.5">Sync</th> : null}
-                    {canReadAudit ? <th className="px-4 py-2.5">Last admin edit</th> : null}
-                    <th className="w-px px-4 py-2.5 whitespace-nowrap"></th>
+                    <th className="h-9 px-2 font-medium first:pl-3">Name</th>
+                    <th className="h-9 px-2 font-medium first:pl-3">Base URL</th>
+                    <th className="h-9 px-2 font-medium first:pl-3">Status</th>
+                    <th className="h-9 px-2 font-medium first:pl-3">Version</th>
+                    {pdnsBackgroundPollingEnabled ? (
+                      <th className="h-9 px-2 font-medium first:pl-3">Sync</th>
+                    ) : null}
+                    {canReadAudit ? (
+                      <th className="h-9 px-2 font-medium first:pl-3">Last admin edit</th>
+                    ) : null}
+                    <th className="h-9 w-px px-2 font-medium whitespace-nowrap first:pl-3"></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -254,10 +259,10 @@ export default async function PdnsServersListPage() {
                   })}
                   {standaloneSecondaries.length > 0 ? (
                     <Fragment>
-                      <tr className="border-t border-[color:var(--color-border)] bg-[color:var(--color-bg-subtle)]">
+                      <tr className="border-border bg-background border-b">
                         <td
                           colSpan={(pdnsBackgroundPollingEnabled ? 7 : 6) + (canReadAudit ? 0 : -1)}
-                          className="px-4 py-1.5 text-[0.625rem] font-medium tracking-wide text-[color:var(--color-fg-muted)] uppercase"
+                          className="text-caption text-muted-foreground px-3 py-1.5"
                         >
                           Standalone secondaries (mirror an external / unmanaged primary)
                         </td>
@@ -277,10 +282,10 @@ export default async function PdnsServersListPage() {
                   ) : null}
                   {orphanSecondaries.length > 0 ? (
                     <Fragment>
-                      <tr className="border-t border-[color:var(--color-border)] bg-[color:var(--color-bg-subtle)]">
+                      <tr className="border-border bg-background border-b">
                         <td
                           colSpan={(pdnsBackgroundPollingEnabled ? 7 : 6) + (canReadAudit ? 0 : -1)}
-                          className="px-4 py-1.5 text-[0.625rem] font-medium tracking-wide text-[color:var(--color-fg-muted)] uppercase"
+                          className="text-caption text-muted-foreground px-3 py-1.5"
                         >
                           Orphan secondaries (parent disabled or deleted)
                         </td>
@@ -321,25 +326,25 @@ function serverRowAttentionClass(
 ): string {
   if (disabledAt) return "";
   if (reachability) {
-    return "bg-[color:var(--color-error)]/5 border-l-2 border-l-[color:var(--color-error)]";
+    return "bg-destructive-muted border-l-2 border-l-destructive";
   }
   if (!lastSeenAt) {
-    return "bg-[color:var(--color-warn)]/5 border-l-2 border-l-[color:var(--color-warn)]";
+    return "bg-warning-muted border-l-2 border-l-warning-border";
   }
   return "";
 }
 
 function EmptyState({ canCreate }: { canCreate: boolean }) {
   return (
-    <div className="rounded-md border border-dashed border-[color:var(--color-border)] bg-[color:var(--color-bg-subtle)] p-8 text-center">
-      <p className="text-sm text-[color:var(--color-fg-muted)]">
+    <div className="border-border bg-background rounded-md border border-dashed p-8 text-center">
+      <p className="text-muted-foreground text-sm">
         No PowerDNS servers configured yet.
         {canCreate ? " Add one to begin managing zones." : ""}
       </p>
       {canCreate ? (
         <Link
           href="/admin/servers/new"
-          className="mt-4 inline-block rounded-md bg-[color:var(--color-accent)] px-4 py-2 text-sm font-medium text-[color:var(--color-accent-fg)] hover:opacity-95"
+          className={buttonClass({ variant: "primary", className: "mt-4" })}
         >
           Add your first server
         </Link>
@@ -361,7 +366,7 @@ function HealthBadge({
   if (disabledAt) {
     return (
       <span className="inline-flex items-center gap-1 text-xs">
-        <span className="h-1.5 w-1.5 rounded-full bg-[color:var(--color-fg-subtle)]" />
+        <span className="bg-muted-foreground h-1.5 w-1.5 rounded-full" />
         Disabled
       </span>
     );
@@ -372,16 +377,16 @@ function HealthBadge({
   // "Reachable". Cleared the moment the poll reaches it again.
   if (reachability) {
     return (
-      <span className="inline-flex items-center gap-1 text-xs text-[color:var(--color-error)]">
-        <span className="h-1.5 w-1.5 rounded-full bg-[color:var(--color-error)]" />
+      <span className="text-destructive inline-flex items-center gap-1 text-xs">
+        <span className="bg-destructive h-1.5 w-1.5 rounded-full" />
         {reachability === "auth" ? "API rejected" : "Unreachable"}
       </span>
     );
   }
   if (!lastSeenAt) {
     return (
-      <span className="inline-flex items-center gap-1 text-xs text-[color:var(--color-fg-muted)]">
-        <span className="h-1.5 w-1.5 rounded-full bg-[color:var(--color-warn)]" />
+      <span className="text-muted-foreground inline-flex items-center gap-1 text-xs">
+        <span className="bg-warning h-1.5 w-1.5 rounded-full" />
         Not yet reached
       </span>
     );
@@ -396,10 +401,10 @@ function HealthBadge({
   return (
     <span className="inline-flex flex-col gap-0.5 text-xs">
       <span className="inline-flex items-center gap-1">
-        <span className="h-1.5 w-1.5 rounded-full bg-[color:var(--color-success)]" />
+        <span className="bg-success h-1.5 w-1.5 rounded-full" />
         Reachable
       </span>
-      <span className="pl-2.5 text-[color:var(--color-fg-muted)]">{fresh.label}</span>
+      <span className="text-muted-foreground pl-2.5">{fresh.label}</span>
     </span>
   );
 }
@@ -429,52 +434,52 @@ function ServerRow({
   // letting both render would mean the same status renders differently
   // depending on row parity.
   const attentionClass = serverRowAttentionClass(row.disabledAt, row.lastSeenAt, reachability);
-  const stripeClass = attentionClass ? "" : "even:bg-[color:var(--color-bg-subtle)]";
+  const stripeClass = attentionClass ? "" : "even:bg-background";
   return (
     <ClickableTr
       href={`/admin/servers/${row.id}`}
-      className={`border-t border-[color:var(--color-border)] transition-colors hover:bg-[color-mix(in_oklch,var(--color-accent)_14%,transparent)] ${stripeClass} ${attentionClass}`}
+      className={`border-border hover:bg-background border-t transition-colors ${stripeClass} ${attentionClass}`}
     >
-      <td className={`px-4 py-3 align-top ${indented ? "pl-10" : ""}`}>
+      <td className={`px-2 py-2 align-top first:pl-3 ${indented ? "pl-10" : ""}`}>
         <div className="flex items-center gap-2">
           {indented ? (
-            <span aria-hidden className="font-mono text-[color:var(--color-fg-subtle)] select-none">
+            <span aria-hidden className="text-muted-foreground font-mono select-none">
               └─
             </span>
           ) : null}
           <div className="font-medium">{row.name}</div>
           <CapabilityBadges capabilities={row.capabilities} writeMode={row.writeMode} />
         </div>
-        <div className="mt-0.5 text-xs text-[color:var(--color-fg-muted)]">
+        <div className="text-muted-foreground mt-0.5 text-xs">
           {row.slug}
           {row.isDefault ? (
-            <span className="ml-2 rounded bg-[color:var(--color-bg-muted)] px-1.5 py-0.5 text-[0.65rem] tracking-wide uppercase">
+            <span className="bg-tag text-mono-xs text-tag-foreground ml-2 inline-flex h-5 items-center rounded-sm px-1.5 font-mono whitespace-nowrap">
               default
             </span>
           ) : null}
         </div>
         {row.description ? (
-          <div className="mt-1 max-w-md truncate text-xs text-[color:var(--color-fg-muted)] italic">
+          <div className="text-muted-foreground mt-1 max-w-md truncate text-xs italic">
             {row.description}
           </div>
         ) : null}
       </td>
-      <td className="px-4 py-3 align-top font-mono text-xs">{row.baseUrl}</td>
-      <td className="px-4 py-3 align-top">
+      <td className="px-2 py-2 align-top font-mono text-xs first:pl-3">{row.baseUrl}</td>
+      <td className="px-2 py-2 align-top first:pl-3">
         <HealthBadge
           disabledAt={row.disabledAt}
           lastSeenAt={row.lastSeenAt}
           reachability={reachability}
         />
       </td>
-      <td className="px-4 py-3 align-top text-xs">{row.versionCache?.version ?? "-"}</td>
+      <td className="px-2 py-2 align-top text-xs first:pl-3">{row.versionCache?.version ?? "-"}</td>
       {pdnsBackgroundPollingEnabled ? (
-        <td className="px-4 py-3 align-top text-xs">
+        <td className="px-2 py-2 align-top text-xs first:pl-3">
           <SyncChip verdict={syncChip} isMirror={isReadOnlyBackend(row)} />
         </td>
       ) : null}
       {canReadAudit ? (
-        <td className="px-4 py-3 align-top text-xs text-[color:var(--color-fg-muted)]">
+        <td className="text-muted-foreground px-2 py-2 align-top text-xs first:pl-3">
           {lastEdits.has(row.id) ? (
             <span title={lastEdits.get(row.id)!.toISOString()}>
               {freshnessOf(lastEdits.get(row.id)!.toISOString()).label}
@@ -484,12 +489,12 @@ function ServerRow({
           )}
         </td>
       ) : null}
-      <td className="w-px px-4 py-3 text-right align-top whitespace-nowrap">
+      <td className="w-px px-2 py-2 text-right align-top whitespace-nowrap first:pl-3">
         <span className="inline-flex items-center gap-2">
           <TestServerButton serverId={row.id} />
           <Link
             href={`/admin/servers/${row.id}`}
-            className="text-[color:var(--color-accent)] hover:underline"
+            className="text-primary hover:text-primary-hover hover:underline"
           >
             Edit
           </Link>
@@ -505,7 +510,7 @@ function ServerCard({ row, canReadAudit, lastEdits, syncChip, reachability }: Se
   return (
     <ClickableDiv
       href={`/admin/servers/${row.id}`}
-      className={`rounded-lg border border-[color:var(--color-border)] bg-[color:var(--color-bg)] p-4 ${serverRowAttentionClass(
+      className={`border-border bg-card rounded-md border p-4 ${serverRowAttentionClass(
         row.disabledAt,
         row.lastSeenAt,
         reachability,
@@ -515,16 +520,14 @@ function ServerCard({ row, canReadAudit, lastEdits, syncChip, reachability }: Se
         <span className="text-base font-medium">{row.name}</span>
         <CapabilityBadges capabilities={row.capabilities} writeMode={row.writeMode} />
         {row.isDefault ? (
-          <span className="rounded bg-[color:var(--color-bg-muted)] px-1.5 py-0.5 text-[0.65rem] tracking-wide uppercase">
+          <span className="bg-tag text-mono-xs text-tag-foreground inline-flex h-5 items-center rounded-sm px-1.5 font-mono whitespace-nowrap">
             default
           </span>
         ) : null}
       </div>
-      <div className="mt-0.5 text-xs text-[color:var(--color-fg-muted)]">{row.slug}</div>
+      <div className="text-muted-foreground mt-0.5 text-xs">{row.slug}</div>
       {row.description ? (
-        <div className="mt-1 text-xs text-[color:var(--color-fg-muted)] italic">
-          {row.description}
-        </div>
+        <div className="text-muted-foreground mt-1 text-xs italic">{row.description}</div>
       ) : null}
 
       <dl className="mt-3 text-sm">
@@ -548,7 +551,7 @@ function ServerCard({ row, canReadAudit, lastEdits, syncChip, reachability }: Se
         ) : null}
         {canReadAudit ? (
           <Field label="Last admin edit">
-            <span className="text-xs text-[color:var(--color-fg-muted)]">
+            <span className="text-muted-foreground text-xs">
               {lastEdits.has(row.id)
                 ? freshnessOf(lastEdits.get(row.id)!.toISOString()).label
                 : "-"}
@@ -561,7 +564,7 @@ function ServerCard({ row, canReadAudit, lastEdits, syncChip, reachability }: Se
         <TestServerButton serverId={row.id} />
         <Link
           href={`/admin/servers/${row.id}`}
-          className="text-[color:var(--color-accent)] hover:underline"
+          className="text-primary hover:text-primary-hover hover:underline"
         >
           Edit
         </Link>
@@ -572,25 +575,21 @@ function ServerCard({ row, canReadAudit, lastEdits, syncChip, reachability }: Se
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="flex justify-between gap-3 border-t border-[color:var(--color-border)] py-1.5 first:border-t-0">
-      <dt className="shrink-0 text-[color:var(--color-fg-muted)]">{label}</dt>
+    <div className="border-border flex justify-between gap-3 border-t py-1.5 first:border-t-0">
+      <dt className="text-muted-foreground shrink-0">{label}</dt>
       <dd className="min-w-0 text-right">{children}</dd>
     </div>
   );
 }
 
 function ServersGroupHeading({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="px-1 pt-2 text-[0.625rem] font-medium tracking-wide text-[color:var(--color-fg-muted)] uppercase">
-      {children}
-    </div>
-  );
+  return <div className="text-caption text-muted-foreground px-1 pt-2">{children}</div>;
 }
 
 function SyncChip({ verdict, isMirror }: { verdict: SyncVerdict | null; isMirror: boolean }) {
-  if (!isMirror) return <span className="text-[color:var(--color-fg-subtle)]">-</span>;
+  if (!isMirror) return <span className="text-muted-foreground">-</span>;
   if (verdict === null || verdict === "unknown") {
-    return <span className="text-[color:var(--color-fg-muted)]">unknown</span>;
+    return <span className="text-muted-foreground">unknown</span>;
   }
   if (verdict === "in-sync") {
     return (
@@ -601,7 +600,7 @@ function SyncChip({ verdict, isMirror }: { verdict: SyncVerdict | null; isMirror
     );
   }
   return (
-    <span className="inline-flex items-center gap-1.5 text-[color:var(--color-error)]">
+    <span className="text-destructive inline-flex items-center gap-1.5">
       <SyncIndicator state="desynced" />
       Desynced
     </span>

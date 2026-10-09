@@ -9,7 +9,7 @@
  * (line numbers, expand-collapsed, sub-line word diff, accessibility) for
  * free, themed against our design tokens.
  *
- * Theme: the component re-reads `.dark` on `<html>` via MutationObserver and
+ * Theme: the component re-reads `data-theme` on `<html>` via MutationObserver and
  * swaps `useDarkTheme` accordingly. Per-token color overrides are layered on
  * top so backgrounds + line numbers blend with the app frame instead of the
  * library's default greyscale.
@@ -65,10 +65,10 @@ export function BindDiffView({
     <div className="space-y-3">
       {compact ? null : (
         <div className="flex flex-wrap items-center gap-4 text-xs">
-          <span className="text-[color:var(--color-fg-muted)]">
+          <span className="text-muted-foreground">
             Zone: <span className="font-mono">{zoneName}</span>
           </span>
-          <span className="text-[color:var(--color-fg-muted)]">
+          <span className="text-muted-foreground">
             Layout: {splitView ? "side-by-side" : "unified"}
           </span>
         </div>
@@ -77,8 +77,8 @@ export function BindDiffView({
       <div
         className={
           compact
-            ? "overflow-auto rounded-md border border-[color:var(--color-border)]"
-            : "max-h-[60vh] overflow-auto rounded-md border border-[color:var(--color-border)]"
+            ? "border-border overflow-auto rounded-md border"
+            : "border-border max-h-[60vh] overflow-auto rounded-md border"
         }
       >
         <ReactDiffViewer
@@ -101,18 +101,18 @@ export function BindDiffView({
 }
 
 /**
- * Watch the `.dark` class on `<html>` so the diff theme follows the app's
- * theme toggle without a remount.
+ * Watch `data-theme` on `<html>` so the diff theme follows the app's theme
+ * toggle without a remount.
  */
 function useIsDark(): boolean {
   const [isDark, setIsDark] = useState(false);
   useEffect(() => {
-    const read = () => document.documentElement.classList.contains("dark");
+    const read = () => document.documentElement.getAttribute("data-theme") === "dark";
     setIsDark(read());
     const observer = new MutationObserver(() => setIsDark(read()));
     observer.observe(document.documentElement, {
       attributes: true,
-      attributeFilter: ["class"],
+      attributeFilter: ["data-theme"],
     });
     return () => observer.disconnect();
   }, []);
@@ -139,17 +139,17 @@ function renderBindContent(line: string): React.ReactElement {
 function classForToken(token: BindToken): string {
   switch (token.kind) {
     case "directive":
-      return "text-[color:var(--color-accent)] font-semibold";
+      return "text-primary font-semibold";
     case "comment":
-      return "text-[color:var(--color-fg-subtle)] italic";
+      return "text-muted-foreground italic";
     case "disabled":
-      return "text-[color:var(--color-warn)] italic";
+      return "text-warning italic";
     case "ttl":
-      return "text-[color:var(--color-fg-muted)]";
+      return "text-muted-foreground";
     case "class":
-      return "text-[color:var(--color-fg-subtle)] uppercase";
+      return "text-muted-foreground uppercase";
     case "type":
-      return "text-[color:var(--color-accent)] font-medium";
+      return "text-primary font-medium";
     case "name":
     case "rdata":
     case "whitespace":

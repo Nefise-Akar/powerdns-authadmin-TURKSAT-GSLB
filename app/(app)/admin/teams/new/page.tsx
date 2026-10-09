@@ -13,8 +13,8 @@ export default async function NewTeamPage() {
   return (
     <div className="mx-auto max-w-2xl space-y-6">
       <header>
-        <h1 className="text-2xl font-semibold tracking-tight">Add team</h1>
-        <p className="mt-1 text-sm text-[color:var(--color-fg-muted)]">
+        <h1 className="text-h1">Add team</h1>
+        <p className="text-muted-foreground mt-1 text-sm">
           Teams own zones and group users with a shared access scope.
         </p>
       </header>

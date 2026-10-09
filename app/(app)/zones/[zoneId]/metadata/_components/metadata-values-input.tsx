@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { getKindSpec, isBoolTrue } from "./kind-specs";
 import { Switch } from "@/components/ui/switch";
+import { inputClass, textareaClass } from "@/components/ui/field";
 
 interface Props {
   kind: string;
@@ -54,7 +55,7 @@ export function MetadataValuesInput({ kind, values, onChange }: Props) {
         value={current}
         onChange={(e) => onChange(e.target.value.trim() === "" ? [] : [e.target.value])}
         placeholder="Single value"
-        className="block w-full rounded border border-[color:var(--color-border)] bg-[color:var(--color-bg)] p-2 font-mono text-xs"
+        className={`w-full font-mono ${inputClass}`}
       />
     );
   }
@@ -88,10 +89,10 @@ function ListTextarea({ kind, values, onChange }: Props) {
         onChange={(e) => onChange(e.target.value.split(/\r?\n/))}
         rows={Math.max(2, text.split(/\r?\n/).length + 1)}
         placeholder={lineHint ? `One value per line, e.g. ${lineHint}` : "One value per line"}
-        className="block w-full rounded border border-[color:var(--color-border)] bg-[color:var(--color-bg)] p-2 font-mono text-xs"
+        className={`w-full font-mono ${textareaClass}`}
       />
       {lineErrors.length > 0 ? (
-        <ul className="mt-1 space-y-0.5 text-[0.6875rem] text-[color:var(--color-error)]">
+        <ul className="text-destructive text-caption mt-1 space-y-0.5">
           {lineErrors.map((e) => (
             <li key={e.line}>
               Line {e.line} (<code className="font-mono">{e.value}</code>): {e.error}
@@ -129,11 +130,9 @@ function EnumSelect({ value, options, onChange }: EnumSelectProps) {
         onClick={() => setOpen((o) => !o)}
         aria-haspopup="listbox"
         aria-expanded={open}
-        className="flex w-full items-center justify-between rounded border border-[color:var(--color-border)] bg-[color:var(--color-bg)] px-2 py-1.5 text-left font-mono text-xs hover:border-[color:var(--color-fg-muted)]"
+        className="border-input bg-card text-body focus-visible:border-ring focus-visible:shadow-focus-ring flex h-8 w-full items-center justify-between rounded-md border px-3 text-left font-mono focus-visible:outline-hidden disabled:opacity-45"
       >
-        <span className={value ? "" : "text-[color:var(--color-fg-muted)]"}>
-          {value || "Select…"}
-        </span>
+        <span className={value ? "" : "text-muted-foreground"}>{value || "Select…"}</span>
         <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden className="ml-2 opacity-60">
           <path
             d="M2 4l3 3 3-3"
@@ -148,7 +147,7 @@ function EnumSelect({ value, options, onChange }: EnumSelectProps) {
       {open ? (
         <ul
           role="listbox"
-          className="absolute right-0 left-0 z-10 mt-1 max-h-60 overflow-auto rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg)] py-1 text-xs shadow-lg"
+          className="border-border bg-card absolute right-0 left-0 z-10 mt-1 max-h-60 overflow-auto rounded-md border py-1 text-xs"
         >
           {options.map((o) => (
             <li
@@ -161,9 +160,7 @@ function EnumSelect({ value, options, onChange }: EnumSelectProps) {
                 setOpen(false);
               }}
               className={`cursor-pointer px-2 py-1.5 font-mono ${
-                o === value
-                  ? "bg-[color:var(--color-bg-subtle)] font-medium"
-                  : "hover:bg-[color:var(--color-bg-subtle)]"
+                o === value ? "bg-background font-medium" : "hover:bg-background"
               }`}
             >
               {o}

@@ -33,8 +33,8 @@ export default async function TeamsListPage() {
     <div className="space-y-6">
       <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Teams</h1>
-          <p className="mt-1 text-sm text-[color:var(--color-fg-muted)]">
+          <h1 className="text-h1">Teams</h1>
+          <p className="text-muted-foreground mt-1 text-sm">
             {teams.length} team{teams.length === 1 ? "" : "s"}.
           </p>
         </div>
@@ -42,7 +42,7 @@ export default async function TeamsListPage() {
       </header>
 
       {teams.length === 0 ? (
-        <div className="rounded-md border border-dashed border-[color:var(--color-border)] bg-[color:var(--color-bg-subtle)] p-8 text-center text-sm text-[color:var(--color-fg-muted)]">
+        <div className="border-border bg-background text-muted-foreground rounded-md border border-dashed p-8 text-center text-sm">
           No teams yet.
         </div>
       ) : (

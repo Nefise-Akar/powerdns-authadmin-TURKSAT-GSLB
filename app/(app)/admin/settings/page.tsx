@@ -17,6 +17,7 @@ import { isSettingsReadOnly } from "@/lib/auth/settings-lock";
 import { listAllSettings } from "@/lib/db/repositories/settings";
 import { SETTING_DEFAULTS, type KnownSettingKey } from "@/lib/validators/settings";
 import { SettingsForm } from "./_components/settings-form";
+import { buttonClass } from "@/components/ui/button";
 
 export default async function SettingsPage() {
   const { ability, globalPermissions } = await requireUserForPage({ can: "settings.read" });
@@ -65,8 +66,8 @@ export default async function SettingsPage() {
   return (
     <div className="mx-auto max-w-2xl space-y-6">
       <header>
-        <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
-        <p className="mt-1 text-sm text-[color:var(--color-fg-muted)]">
+        <h1 className="text-h1">Settings</h1>
+        <p className="text-muted-foreground mt-1 text-sm">
           Runtime-mutable app settings.{" "}
           {canReadAuth ? (
             <>
@@ -85,22 +86,19 @@ export default async function SettingsPage() {
       <SettingsForm initial={initial} canWrite={canWrite} lockedByPolicy={lockedByPolicy} />
 
       {canBackup ? (
-        <section className="rounded-lg border border-[color:var(--color-border)] bg-[color:var(--color-bg-subtle)] p-5">
+        <section className="border-border bg-background rounded-md border p-5">
           <div className="flex items-start gap-4">
-            <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-[color:var(--color-accent)]/10 text-[color:var(--color-accent)]">
+            <span className="bg-accent text-primary inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md">
               <Database className="h-5 w-5" aria-hidden />
             </span>
             <div className="min-w-0 flex-1">
-              <h2 className="text-base font-semibold">Backup &amp; Restore</h2>
-              <p className="mt-1 text-sm text-[color:var(--color-fg-muted)]">
+              <h2 className="text-base font-semibold">Backup &amp; restore</h2>
+              <p className="text-muted-foreground mt-1 text-sm">
                 Snapshot the app database as a JSON file or merge one back in. Super-admin gated;
                 excludes PDNS zone data and the symmetric secrets.
               </p>
             </div>
-            <Link
-              href="/admin/settings/backup"
-              className="shrink-0 rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg)] px-3 py-1.5 text-sm font-medium hover:bg-[color:var(--color-bg-muted)]"
-            >
+            <Link href="/admin/settings/backup" className={buttonClass({ className: "shrink-0" })}>
               Open
             </Link>
           </div>

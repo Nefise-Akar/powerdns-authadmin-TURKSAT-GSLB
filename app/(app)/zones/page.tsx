@@ -56,6 +56,8 @@ import { ZonesTable, type ZoneRow } from "./_components/zones-table";
 import { pdnsBackgroundPollingEnabled } from "@/lib/env";
 import { PollingDisabledHint } from "@/components/domain/polling-disabled-hint";
 import { ServerRealtimeSubscriber } from "./_components/server-realtime-subscriber";
+import { buttonClass } from "@/components/ui/button";
+import { Alert } from "@/components/ui/alert";
 
 export const metadata: Metadata = { title: "Zones" };
 
@@ -240,14 +242,14 @@ export default async function ZonesPage() {
       <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <div className="flex items-baseline gap-3">
-            <h1 className="text-2xl font-semibold tracking-tight">Zones</h1>
+            <h1 className="text-h1">Zones</h1>
             {pdnsBackgroundPollingEnabled ? (
               <ServerRealtimeSubscriber serverSlugs={channelSlugs} inSync={!anyLagging} />
             ) : (
               <PollingDisabledHint />
             )}
           </div>
-          <p className="mt-1 text-sm text-[color:var(--color-fg-muted)]">
+          <p className="text-muted-foreground mt-1 text-sm">
             {visibleRows.length} zone{visibleRows.length === 1 ? "" : "s"} across {backends.length}{" "}
             backend{backends.length === 1 ? "" : "s"}
             {errors.length > 0 ? ` · ${errors.length} unreachable` : ""}.
@@ -257,23 +259,21 @@ export default async function ZonesPage() {
       </header>
 
       {errors.length > 0 ? (
-        <div className="rounded-md border border-[color:var(--color-error)] bg-[color:var(--color-error)]/10 p-4 text-sm text-[color:var(--color-error)]">
-          <strong>Some backends are unreachable.</strong>
-          <ul className="mt-2 list-disc pl-5 text-xs">
+        <Alert variant="destructive" title="some backends are unreachable">
+          <ul className="list-disc pl-5">
             {errors.map((e) => (
               <li key={e.backendName}>
                 <code className="font-mono">{e.backendName}</code> - {e.message}
               </li>
             ))}
           </ul>
-        </div>
+        </Alert>
       ) : null}
 
       {hiddenSummary ? (
-        <div className="rounded-md border border-[color:var(--color-warn)] bg-[color:var(--color-warn)]/10 p-3 text-xs">
-          <strong>
-            {hiddenSummary.count} duplicate zone{hiddenSummary.count === 1 ? "" : "s"} hidden.
-          </strong>{" "}
+        <Alert
+          title={`${hiddenSummary.count} duplicate zone${hiddenSummary.count === 1 ? "" : "s"} hidden`}
+        >
           Each zone is listed once per horizon (resolved to its primary, or the first secondary when
           no primary is managed). These copies are on backends with no managed primary - standalone
           secondaries mirroring an unmanaged primary, or the same name on another primary serving
@@ -286,7 +286,7 @@ export default async function ZonesPage() {
             </span>
           ))}
           .
-        </div>
+        </Alert>
       ) : null}
 
       <ZonesTable
@@ -573,9 +573,9 @@ function foldLastEdit(
 
 function NoServersState({ canCreateServer }: { canCreateServer: boolean }) {
   return (
-    <div className="mx-auto max-w-xl rounded-md border border-dashed border-[color:var(--color-border)] bg-[color:var(--color-bg-subtle)] p-8 text-center">
-      <h1 className="text-lg font-semibold">No PowerDNS backends configured</h1>
-      <p className="mt-2 text-sm text-[color:var(--color-fg-muted)]">
+    <div className="border-border bg-background mx-auto max-w-xl rounded-md border border-dashed p-8 text-center">
+      <h1 className="text-display">No PowerDNS backends configured</h1>
+      <p className="text-muted-foreground mt-2 text-sm">
         {canCreateServer
           ? "Connect a PowerDNS Authoritative server (or define a cluster) to see and manage its zones."
           : "Ask an administrator to add a PowerDNS backend before you can manage zones."}
@@ -583,7 +583,7 @@ function NoServersState({ canCreateServer }: { canCreateServer: boolean }) {
       {canCreateServer ? (
         <Link
           href="/admin/servers/new"
-          className="mt-4 inline-block rounded-md bg-[color:var(--color-accent)] px-4 py-2 text-sm font-medium text-[color:var(--color-accent-fg)] hover:opacity-95"
+          className={buttonClass({ variant: "primary", className: "mt-4" })}
         >
           Add a PowerDNS server
         </Link>

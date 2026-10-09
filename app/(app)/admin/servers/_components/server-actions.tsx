@@ -11,6 +11,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useDialog } from "@/components/ui/dialog";
 import { apiFetch, mutate } from "@/lib/client/api-fetch";
+import { buttonClass } from "@/components/ui/button";
 
 interface ServerActionsProps {
   id: string;
@@ -107,30 +108,32 @@ export function ServerActions({ id }: ServerActionsProps) {
   }
 
   return (
-    <section className="space-y-4 rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg-subtle)] p-5">
+    <section className="border-border bg-background space-y-4 rounded-md border p-5">
       <header>
         <h2 className="text-sm font-medium">Diagnostics</h2>
-        <p className="mt-1 text-xs text-[color:var(--color-fg-muted)]">
+        <p className="text-muted-foreground mt-1 text-xs">
           Test the connection to verify credentials and capability flags.
         </p>
       </header>
 
       <div className="flex items-center gap-3">
         <button
+          aria-busy={testing}
           type="button"
           onClick={handleTest}
           disabled={testing}
-          className="rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg)] px-4 py-2 text-sm hover:bg-[color:var(--color-bg-muted)] disabled:opacity-50"
+          className={buttonClass()}
         >
-          {testing ? "Testing…" : "Test connection"}
+          Test connection
         </button>
         <button
+          aria-busy={deleting}
           type="button"
           onClick={handleDelete}
           disabled={deleting}
-          className="ml-auto rounded-md border border-[color:var(--color-error)] px-4 py-2 text-sm text-[color:var(--color-error)] hover:bg-[color:var(--color-error)]/10 disabled:opacity-50"
+          className={buttonClass({ variant: "destructive", className: "ml-auto" })}
         >
-          {deleting ? "Deleting…" : "Delete"}
+          Delete
         </button>
       </div>
 
@@ -138,9 +141,7 @@ export function ServerActions({ id }: ServerActionsProps) {
         <div
           className={[
             "rounded-md border p-3 text-sm",
-            result.ok
-              ? "border-[color:var(--color-success)] bg-[color:var(--color-success)]/10"
-              : "border-[color:var(--color-error)] bg-[color:var(--color-error)]/10",
+            result.ok ? "border-success bg-background" : "border-destructive bg-destructive-muted",
           ].join(" ")}
         >
           {result.ok ? (
@@ -180,7 +181,7 @@ export function ServerActions({ id }: ServerActionsProps) {
               </div>
               <p className="mt-1 text-xs">{result.hint ?? "Unknown error."}</p>
               {result.requestId ? (
-                <p className="mt-2 font-mono text-[0.625rem] text-[color:var(--color-fg-muted)]">
+                <p className="text-muted-foreground text-mono-xs mt-2 font-mono">
                   request-id: {result.requestId}
                 </p>
               ) : null}

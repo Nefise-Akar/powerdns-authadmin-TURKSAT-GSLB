@@ -25,6 +25,8 @@ import { jsonToDiffLines } from "@/lib/diff/json-lines";
 import { LiveFeedSubscriber } from "@/components/ui/live-feed-subscriber";
 import { AuditFilterForm } from "./_components/audit-filter-form";
 import { AuditTable, type AuditRowClient } from "./_components/audit-table";
+import { buttonClass } from "@/components/ui/button";
+import { Alert } from "@/components/ui/alert";
 
 /**
  * Quick-filter chips. Each is a curated subset of the audit query
@@ -121,11 +123,7 @@ export default async function AuditLogPage({ searchParams }: PageProps) {
 
   const parsed = auditQuerySchema.safeParse(flat);
   if (!parsed.success) {
-    return (
-      <div className="rounded-md border border-[color:var(--color-error)] bg-[color:var(--color-error)]/10 p-4 text-sm text-[color:var(--color-error)]">
-        Invalid filters in URL.
-      </div>
-    );
+    return <Alert variant="destructive" title="invalid filters in the URL" />;
   }
   const filters = parsed.data;
   const limit = filters.limit ?? 50;
@@ -260,10 +258,10 @@ export default async function AuditLogPage({ searchParams }: PageProps) {
     <div className="space-y-6">
       <header>
         <div className="flex items-baseline gap-3">
-          <h1 className="text-2xl font-semibold tracking-tight">Audit log</h1>
+          <h1 className="text-h1">Audit log</h1>
           <LiveFeedSubscriber eventTypes={["audit.appended"]} />
         </div>
-        <p className="mt-1 text-sm text-[color:var(--color-fg-muted)]">
+        <p className="text-muted-foreground mt-1 text-sm">
           Append-only record of state-changing actions. Filters are passed as query parameters and
           can be bookmarked.
         </p>
@@ -277,7 +275,7 @@ export default async function AuditLogPage({ searchParams }: PageProps) {
               key={q.label}
               href={href}
               title={q.description}
-              className="rounded-full border border-[color:var(--color-border)] bg-[color:var(--color-bg-subtle)] px-3 py-1 text-xs hover:bg-[color:var(--color-bg-muted)]"
+              className={buttonClass({ size: "sm" })}
             >
               {q.label}
             </Link>
@@ -315,7 +313,7 @@ export default async function AuditLogPage({ searchParams }: PageProps) {
       />
 
       <div className="flex items-center justify-between gap-3">
-        <p className="text-xs text-[color:var(--color-fg-muted)]">
+        <p className="text-muted-foreground text-xs">
           Showing {page.entries.length === 0 ? 0 : offset + 1}–{offset + page.entries.length} of{" "}
           {page.total}.
         </p>
@@ -328,7 +326,7 @@ export default async function AuditLogPage({ searchParams }: PageProps) {
                 ),
               ),
             ).toString()}`}
-            className="rounded-md border border-[color:var(--color-border)] px-3 py-1 text-xs hover:bg-[color:var(--color-bg-muted)]"
+            className={buttonClass({ size: "sm" })}
             // Force a real download rather than navigating - Next's
             // <Link> normally prefetches; the API route streams CSV
             // so let the browser handle it as a binary response.
@@ -345,14 +343,14 @@ export default async function AuditLogPage({ searchParams }: PageProps) {
 
       <nav className="flex items-center justify-between text-sm">
         {prevHref ? (
-          <Link href={prevHref} className="text-[color:var(--color-accent)] hover:underline">
+          <Link href={prevHref} className="text-primary hover:text-primary-hover hover:underline">
             ← Newer
           </Link>
         ) : (
           <span />
         )}
         {nextHref ? (
-          <Link href={nextHref} className="text-[color:var(--color-accent)] hover:underline">
+          <Link href={nextHref} className="text-primary hover:text-primary-hover hover:underline">
             Older →
           </Link>
         ) : (

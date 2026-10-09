@@ -46,10 +46,10 @@ export function ZoneTemplatesTable({
             <div>
               <div className="font-medium">{r.name}</div>
               {r.description ? (
-                <div className="text-xs text-[color:var(--color-fg-muted)]">{r.description}</div>
+                <div className="text-muted-foreground text-xs">{r.description}</div>
               ) : null}
               {r.defaultForNames.length > 0 ? (
-                <div className="mt-1 inline-flex items-center gap-1 text-xs text-[color:var(--color-success)]">
+                <div className="text-success mt-1 inline-flex items-center gap-1 text-xs">
                   <svg aria-hidden viewBox="0 0 16 16" className="h-3 w-3" fill="currentColor">
                     <path d="M6.173 11.207 2.93 7.964l1.06-1.06 2.183 2.182 5.834-5.834 1.06 1.06z" />
                   </svg>
@@ -66,7 +66,7 @@ export function ZoneTemplatesTable({
         accessorKey: "slug",
         header: "Slug",
         cell: (ctx) => (
-          <code className="rounded bg-[color:var(--color-bg-subtle)] px-1 font-mono text-xs">
+          <code className="bg-background rounded px-1 font-mono text-xs">
             {ctx.getValue<string>()}
           </code>
         ),
@@ -76,7 +76,7 @@ export function ZoneTemplatesTable({
         header: "Nameservers",
         cell: (ctx) => {
           const n = ctx.getValue<number>();
-          if (n === 0) return <span className="text-[color:var(--color-fg-muted)]">-</span>;
+          if (n === 0) return <span className="text-muted-foreground">-</span>;
           return (
             <span className="font-mono text-xs">
               {n} {n === 1 ? "NS" : "NSs"}
@@ -98,9 +98,9 @@ export function ZoneTemplatesTable({
         sortUndefined: "last",
         cell: (ctx) => {
           const iso = ctx.getValue<string | null>();
-          if (!iso) return <span className="text-xs text-[color:var(--color-fg-muted)]">-</span>;
+          if (!iso) return <span className="text-muted-foreground text-xs">-</span>;
           return (
-            <span className="text-xs text-[color:var(--color-fg-muted)]" title={iso}>
+            <span className="text-muted-foreground text-xs" title={iso}>
               {freshnessOf(iso).label}
             </span>
           );
@@ -115,7 +115,7 @@ export function ZoneTemplatesTable({
       cell: (ctx) => (
         <Link
           href={`/admin/zone-templates/${ctx.row.original.id}`}
-          className="text-[color:var(--color-accent)] hover:underline"
+          className="text-primary hover:text-primary-hover hover:underline"
         >
           {canManage ? "Edit" : "View"}
         </Link>
@@ -129,7 +129,7 @@ export function ZoneTemplatesTable({
     <DataTable
       columns={columns}
       data={rows}
-      searchPlaceholder="Search templates by name or slug…"
+      searchPlaceholder="Search templates"
       initialSort={[{ id: "name", desc: false }]}
       sortParam="sort"
       pageSizeParam="pageSize"

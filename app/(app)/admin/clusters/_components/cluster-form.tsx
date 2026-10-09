@@ -4,6 +4,9 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useDialog } from "@/components/ui/dialog";
 import { apiFetch } from "@/lib/client/api-fetch";
+import { buttonClass } from "@/components/ui/button";
+import { Check } from "lucide-react";
+import { inputClass, textareaClass } from "@/components/ui/field";
 
 const STRATEGIES = [
   {
@@ -161,17 +164,15 @@ export function ClusterForm({
           onChange={(e) => setSlug(e.target.value)}
           disabled={mode === "edit" || busy}
           placeholder="prod"
-          className="w-full rounded border border-[color:var(--color-border)] bg-[color:var(--color-bg)] px-2 py-1.5 font-mono text-sm disabled:bg-[color:var(--color-bg-subtle)] disabled:text-[color:var(--color-fg-muted)]"
+          className={`w-full font-mono ${inputClass}`}
         />
-        <p className="text-xs text-[color:var(--color-fg-muted)]">
+        <p className="text-muted-foreground text-xs">
           {mode === "edit"
             ? "Slug is immutable; provisioning YAML cluster_slug references rely on this value."
             : "Lowercase letters, digits, and hyphens. Starts with a letter."}
         </p>
         {fieldErrors["slug"] ? (
-          <p className="text-xs text-[color:var(--color-error)]">
-            {fieldErrors["slug"].join("; ")}
-          </p>
+          <p className="text-destructive text-xs">{fieldErrors["slug"].join("; ")}</p>
         ) : null}
       </div>
 
@@ -186,12 +187,10 @@ export function ClusterForm({
           onChange={(e) => setName(e.target.value)}
           disabled={busy}
           placeholder="Production cluster"
-          className="w-full rounded border border-[color:var(--color-border)] bg-[color:var(--color-bg)] px-2 py-1.5 text-sm"
+          className={`w-full ${inputClass}`}
         />
         {fieldErrors["name"] ? (
-          <p className="text-xs text-[color:var(--color-error)]">
-            {fieldErrors["name"].join("; ")}
-          </p>
+          <p className="text-destructive text-xs">{fieldErrors["name"].join("; ")}</p>
         ) : null}
       </div>
 
@@ -205,14 +204,14 @@ export function ClusterForm({
           onChange={(e) => setDescription(e.target.value)}
           disabled={busy}
           rows={2}
-          className="w-full rounded border border-[color:var(--color-border)] bg-[color:var(--color-bg)] px-2 py-1.5 text-sm"
+          className={`w-full ${textareaClass}`}
         />
       </div>
 
       {showStrategy ? (
         <div className="space-y-2">
           <label className="block text-sm font-medium">Peer selection strategy</label>
-          <p className="text-xs text-[color:var(--color-fg-muted)]">
+          <p className="text-muted-foreground text-xs">
             How the app picks which writable peer to route a read/write through. Only applies to
             multi-primary clusters (≥2 writable peers).
           </p>
@@ -220,7 +219,7 @@ export function ClusterForm({
             {STRATEGIES.map((s) => (
               <label
                 key={s.value}
-                className="flex cursor-pointer items-start gap-3 rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg-subtle)] p-3 text-sm"
+                className="border-border bg-background flex cursor-pointer items-start gap-3 rounded-md border p-3 text-sm"
               >
                 <input
                   type="radio"
@@ -229,13 +228,11 @@ export function ClusterForm({
                   checked={writeStrategy === s.value}
                   onChange={() => setWriteStrategy(s.value)}
                   disabled={busy}
-                  className="mt-0.5 cursor-pointer accent-[color:var(--color-accent)]"
+                  className="accent-primary mt-0.5 cursor-pointer"
                 />
                 <span>
                   <span className="font-medium">{s.label}</span>
-                  <span className="mt-0.5 block text-xs text-[color:var(--color-fg-muted)]">
-                    {s.hint}
-                  </span>
+                  <span className="text-muted-foreground mt-0.5 block text-xs">{s.hint}</span>
                 </span>
               </label>
             ))}
@@ -247,11 +244,9 @@ export function ClusterForm({
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <label className="block text-sm font-medium">Members</label>
-            <span className="text-xs text-[color:var(--color-fg-muted)]">
-              {selectedMembers.size} selected
-            </span>
+            <span className="text-muted-foreground text-xs">{selectedMembers.size} selected</span>
           </div>
-          <p className="text-xs text-[color:var(--color-fg-muted)]">
+          <p className="text-muted-foreground text-xs">
             Add ungrouped backends now, or assign them later from each server&rsquo;s page. Only
             servers that don&rsquo;t already belong to a group are listed.
           </p>
@@ -264,9 +259,7 @@ export function ClusterForm({
             disabled={busy}
           />
           {fieldErrors["memberServerIds"] ? (
-            <p className="text-xs text-[color:var(--color-error)]">
-              {fieldErrors["memberServerIds"].join("; ")}
-            </p>
+            <p className="text-destructive text-xs">{fieldErrors["memberServerIds"].join("; ")}</p>
           ) : null}
         </div>
       ) : null}
@@ -276,15 +269,11 @@ export function ClusterForm({
           type="button"
           onClick={() => router.back()}
           disabled={busy}
-          className="rounded border border-[color:var(--color-border)] px-3 py-1.5 text-sm hover:bg-[color:var(--color-bg-subtle)] disabled:opacity-50"
+          className={buttonClass()}
         >
           Cancel
         </button>
-        <button
-          type="submit"
-          disabled={!canSubmit}
-          className="rounded bg-[color:var(--color-accent)] px-4 py-1.5 text-sm font-medium text-[color:var(--color-accent-fg)] hover:opacity-95 disabled:opacity-50"
-        >
+        <button type="submit" disabled={!canSubmit} className={buttonClass({ variant: "primary" })}>
           {busy ? "Saving…" : mode === "create" ? "Create group" : "Save changes"}
         </button>
       </div>
@@ -316,8 +305,8 @@ function ServerMultiSelect({
 }: ServerMultiSelectProps) {
   const allSelected = selected.size === servers.length && servers.length > 0;
   return (
-    <div className="overflow-hidden rounded-md border border-[color:var(--color-border)]">
-      <div className="flex items-center justify-between gap-3 border-b border-[color:var(--color-border)] bg-[color:var(--color-bg-subtle)] px-3 py-1.5 text-xs text-[color:var(--color-fg-muted)]">
+    <div className="border-border overflow-hidden rounded-md border">
+      <div className="border-border bg-background text-muted-foreground flex items-center justify-between gap-3 border-b px-3 py-1.5 text-xs">
         <span>
           {servers.length} ungrouped server{servers.length === 1 ? "" : "s"}
         </span>
@@ -325,12 +314,12 @@ function ServerMultiSelect({
           type="button"
           onClick={allSelected ? onClear : onSelectAll}
           disabled={disabled}
-          className="text-[color:var(--color-accent)] hover:underline disabled:opacity-50"
+          className="text-primary hover:text-primary-hover hover:underline disabled:opacity-45"
         >
           {allSelected ? "Clear all" : "Select all"}
         </button>
       </div>
-      <ul className="max-h-64 divide-y divide-[color:var(--color-border)] overflow-auto">
+      <ul className="divide-border max-h-64 divide-y overflow-auto">
         {servers.map((s) => {
           const isSelected = selected.has(s.id);
           return (
@@ -341,26 +330,24 @@ function ServerMultiSelect({
                 disabled={disabled}
                 aria-pressed={isSelected}
                 className={`flex w-full items-center gap-3 px-3 py-2 text-left transition-colors disabled:opacity-50 ${
-                  isSelected
-                    ? "bg-[color-mix(in_oklch,var(--color-accent)_12%,transparent)]"
-                    : "hover:bg-[color:var(--color-bg-subtle)]"
+                  isSelected ? "bg-accent" : "hover:bg-background"
                 }`}
               >
                 <span
                   aria-hidden
-                  className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border text-[0.625rem] ${
+                  className={`flex size-4 shrink-0 items-center justify-center rounded-sm border ${
                     isSelected
-                      ? "border-[color:var(--color-accent)] bg-[color:var(--color-accent)] text-[color:var(--color-accent-fg)]"
-                      : "border-[color:var(--color-border)] bg-[color:var(--color-bg)]"
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "border-input bg-card"
                   }`}
                 >
-                  {isSelected ? "✓" : ""}
+                  {isSelected ? <Check size={12} strokeWidth={2.25} /> : null}
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm font-medium">{s.name}</span>
-                  <span className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-[color:var(--color-fg-muted)]">
+                  <span className="text-muted-foreground mt-0.5 flex flex-wrap items-center gap-2 text-xs">
                     <code className="font-mono">{s.slug}</code>
-                    <span className="rounded border border-[color:var(--color-border)] bg-[color:var(--color-bg)] px-1.5 py-0.5 text-[0.625rem] tracking-wide uppercase">
+                    <span className="bg-tag text-mono-xs text-tag-foreground inline-flex h-5 items-center rounded-sm px-1.5 font-mono whitespace-nowrap">
                       {s.role}
                     </span>
                   </span>

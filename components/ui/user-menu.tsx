@@ -3,8 +3,9 @@
 /**
  * components/ui/user-menu.tsx
  *
- * Top-right avatar dropdown. Shows the signed-in user's name + email and
- * exposes Sign out (and, later, "Profile" / "API tokens" links).
+ * Top-right account menu. The trigger is the avatar - initials only, no
+ * photo. The menu shows the signed-in user's name + email, Profile, the docs
+ * and source links (with the running version), and Sign out.
  *
  * Implementation notes:
  *   - Hand-rolled popover with click-outside + Escape-to-close. future work will
@@ -16,15 +17,25 @@
  */
 
 import { useEffect, useRef, useState } from "react";
-import { LogOut, User as UserIcon } from "lucide-react";
+import { BookText, GitBranch, LogOut, User as UserIcon } from "lucide-react";
 import { apiFetch } from "@/lib/client/api-fetch";
 
 interface UserMenuProps {
   email: string;
   name: string | null;
+  version: string;
+  docsUrl: string;
+  sourceUrl: string;
 }
 
-export function UserMenu({ email, name }: UserMenuProps) {
+/** Up to two initials from the name ("Bootstrap Admin" → "BA"), else the email's first letter. */
+function initialsOf(name: string | null, email: string): string {
+  const words = (name ?? "").trim().split(/\s+/).filter(Boolean);
+  const letters = words.length ? words.slice(0, 2).map((w) => w[0]) : [email[0] ?? "?"];
+  return letters.join("").toUpperCase();
+}
+
+export function UserMenu({ email, name, version, docsUrl, sourceUrl }: UserMenuProps) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -46,8 +57,7 @@ export function UserMenu({ email, name }: UserMenuProps) {
     };
   }, [open]);
 
-  const display = name ?? email;
-  const initial = (name?.[0] ?? email[0] ?? "?").toUpperCase();
+  const initials = initialsOf(name, email);
 
   // Sign-out is a state-changing POST. `apiFetch` adds the CSRF header
   // so `requireCsrf` on /api/auth/logout accepts it. The server replies
@@ -82,39 +92,40 @@ export function UserMenu({ email, name }: UserMenuProps) {
         onClick={() => setOpen((v) => !v)}
         aria-haspopup="menu"
         aria-expanded={open}
-        className="flex items-center gap-2 rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg)] px-2 py-1 text-sm hover:bg-[color:var(--color-bg-subtle)]"
+        aria-label={`Account menu: ${initials}`}
+        className="bg-accent text-label text-accent-foreground focus-visible:shadow-focus-ring flex size-8 items-center justify-center rounded-md font-semibold tracking-[0.02em] focus-visible:outline-hidden"
       >
-        <span
-          aria-hidden
-          className="flex h-6 w-6 items-center justify-center rounded-full bg-[color:var(--color-accent)] text-xs font-medium text-[color:var(--color-accent-fg)]"
-        >
-          {initial}
-        </span>
-        <span className="hidden max-w-[16ch] truncate sm:inline">{display}</span>
+        <span aria-hidden>{initials}</span>
       </button>
 
       {open ? (
         <div
           role="menu"
-          className="absolute right-0 z-50 mt-2 w-56 origin-top-right rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg)] shadow-lg"
+          className="border-border bg-popover text-popover-foreground absolute right-0 z-50 mt-1 w-64 rounded-md border"
         >
-          <div className="border-b border-[color:var(--color-border)] px-3 py-2 text-xs">
-            <div className="font-medium text-[color:var(--color-fg)]">{name ?? "Signed in"}</div>
-            <div className="truncate text-[color:var(--color-fg-muted)]" title={email}>
+          <div className="border-border border-b px-3 py-2">
+            <div className="text-body-strong">{name ?? "Signed in"}</div>
+            <div className="text-meta text-muted-foreground truncate" title={email}>
               {email}
             </div>
           </div>
           <div className="py-1">
-            <MenuLink href="/profile" icon={<UserIcon className="h-4 w-4" />}>
+            <MenuLink href="/profile" icon={<UserIcon />}>
               Profile
             </MenuLink>
-            <button
-              type="button"
-              role="menuitem"
-              onClick={signOut}
-              className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-[color:var(--color-fg)] hover:bg-[color:var(--color-bg-subtle)]"
-            >
-              <LogOut className="h-4 w-4" aria-hidden />
+            <MenuLink href={docsUrl} icon={<BookText />} external>
+              Documentation
+            </MenuLink>
+            <MenuLink href={sourceUrl} icon={<GitBranch />} external>
+              Source code
+              <span className="text-mono-sm text-muted-foreground ml-auto font-mono tabular-nums">
+                v{version}
+              </span>
+            </MenuLink>
+          </div>
+          <div className="border-border border-t py-1">
+            <button type="button" role="menuitem" onClick={signOut} className={MENU_ITEM}>
+              <LogOut aria-hidden />
               Sign out
             </button>
           </div>
@@ -124,36 +135,32 @@ export function UserMenu({ email, name }: UserMenuProps) {
   );
 }
 
+const MENU_ITEM =
+  "flex h-8 w-full items-center gap-2 px-3 text-left text-body text-foreground hover:bg-background focus-visible:shadow-focus-ring focus-visible:outline-hidden [&_svg]:size-4 [&_svg]:shrink-0 [&_svg]:stroke-[1.75] [&_svg]:text-muted-foreground";
+
 function MenuLink({
   href,
   icon,
   children,
-  disabled,
+  external = false,
 }: {
   href: string;
   icon: React.ReactNode;
   children: React.ReactNode;
-  disabled?: boolean;
+  external?: boolean;
 }) {
-  if (disabled) {
-    return (
-      <span
-        aria-disabled
-        className="flex cursor-not-allowed items-center gap-2 px-3 py-2 text-sm text-[color:var(--color-fg-subtle)]"
-      >
-        {icon}
-        {children}
-      </span>
-    );
-  }
   return (
     <a
       href={href}
       role="menuitem"
-      className="flex items-center gap-2 px-3 py-2 text-sm text-[color:var(--color-fg)] hover:bg-[color:var(--color-bg-subtle)]"
+      className={MENU_ITEM}
+      {...(external ? { target: "_blank", rel: "noreferrer noopener" } : {})}
     >
-      {icon}
+      <span aria-hidden className="contents">
+        {icon}
+      </span>
       {children}
+      {external ? <span className="sr-only"> (opens in a new tab)</span> : null}
     </a>
   );
 }

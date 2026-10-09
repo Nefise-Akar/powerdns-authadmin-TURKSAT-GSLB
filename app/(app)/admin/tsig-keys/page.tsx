@@ -31,6 +31,7 @@ import { logger } from "@/lib/logger";
 import { redact } from "@/lib/errors/redact";
 import { TsigActions } from "./_components/tsig-actions";
 import { TsigKeysReadOnly } from "./_components/tsig-keys-readonly";
+import { Alert } from "@/components/ui/alert";
 
 const PRIMARY_KINDS = new Set(["master", "primary"]);
 
@@ -52,15 +53,12 @@ export default async function TsigKeysPage({ searchParams }: PageProps) {
     return (
       <div className="space-y-4">
         <header>
-          <h1 className="text-2xl font-semibold tracking-tight">TSIG keys</h1>
+          <h1 className="text-h1">TSIG keys</h1>
         </header>
-        <div className="rounded-md border border-[color:var(--color-warn)] bg-[color:var(--color-warn)]/10 p-6 text-sm">
-          <strong>No backend selected.</strong> Add a server under{" "}
-          <Link href="/admin/servers" className="underline">
-            /admin/servers
-          </Link>{" "}
-          first.
-        </div>
+        <Alert
+          title="no backend selected"
+          action={<Link href="/admin/servers">Add a server</Link>}
+        />
       </div>
     );
   }
@@ -131,8 +129,8 @@ export default async function TsigKeysPage({ searchParams }: PageProps) {
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="text-2xl font-semibold tracking-tight">TSIG keys</h1>
-        <p className="mt-1 text-sm text-[color:var(--color-fg-muted)]">
+        <h1 className="text-h1">TSIG keys</h1>
+        <p className="text-muted-foreground mt-1 text-sm">
           Shared HMAC secrets used to authenticate AXFR / IXFR / NOTIFY between primaries and
           secondaries.
         </p>
@@ -148,8 +146,8 @@ export default async function TsigKeysPage({ searchParams }: PageProps) {
                 href={`/admin/tsig-keys?server=${encodeURIComponent(s.slug)}`}
                 className={
                   s.slug === selected.slug
-                    ? "rounded border border-[color:var(--color-accent)] bg-[color:var(--color-accent)] px-2 py-1 text-[color:var(--color-accent-fg)]"
-                    : "rounded border border-[color:var(--color-border)] px-2 py-1 hover:bg-[color:var(--color-bg-muted)]"
+                    ? "border-primary bg-primary text-primary-foreground rounded border px-2 py-1"
+                    : "border-border hover:bg-muted rounded border px-2 py-1"
                 }
               >
                 {s.name}
@@ -159,10 +157,9 @@ export default async function TsigKeysPage({ searchParams }: PageProps) {
       ) : null}
 
       {fetchError ? (
-        <div className="rounded-md border border-[color:var(--color-error)] bg-[color:var(--color-error)]/10 p-4 text-sm">
-          <strong>Could not list TSIG keys.</strong>
-          <p className="mt-1 text-xs">{fetchError}</p>
-        </div>
+        <Alert variant="destructive" title="could not list TSIG keys">
+          {fetchError}
+        </Alert>
       ) : null}
 
       {canManage ? (

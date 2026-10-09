@@ -17,6 +17,8 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { useDialog } from "@/components/ui/dialog";
 import { apiFetch } from "@/lib/client/api-fetch";
+import { buttonClass } from "@/components/ui/button";
+import { inputClass, textareaClass } from "@/components/ui/field";
 
 export interface RoleFormProps {
   mode: "create" | "edit";
@@ -148,17 +150,15 @@ export function RoleForm({
           onChange={(e) => setSlug(e.target.value)}
           disabled={mode === "edit" || busy}
           placeholder="zone-noc"
-          className="w-full rounded border border-[color:var(--color-border)] bg-[color:var(--color-bg)] px-2 py-1.5 font-mono text-sm disabled:bg-[color:var(--color-bg-subtle)] disabled:text-[color:var(--color-fg-muted)]"
+          className={`w-full font-mono ${inputClass}`}
         />
-        <p className="text-xs text-[color:var(--color-fg-muted)]">
+        <p className="text-muted-foreground text-xs">
           {mode === "edit"
             ? "Slug is the immutable lookup key - used by OIDC group mappings and any provisioning YAML referencing this role."
             : "Lowercase letters, digits, and hyphens. Starts with a letter. Cannot be changed after creation."}
         </p>
         {fieldErrors["slug"] ? (
-          <p className="text-xs text-[color:var(--color-error)]">
-            {fieldErrors["slug"].join("; ")}
-          </p>
+          <p className="text-destructive text-xs">{fieldErrors["slug"].join("; ")}</p>
         ) : null}
       </div>
 
@@ -173,12 +173,10 @@ export function RoleForm({
           onChange={(e) => setName(e.target.value)}
           disabled={busy}
           placeholder="NOC Zone Operator"
-          className="w-full rounded border border-[color:var(--color-border)] bg-[color:var(--color-bg)] px-2 py-1.5 text-sm"
+          className={`w-full ${inputClass}`}
         />
         {fieldErrors["name"] ? (
-          <p className="text-xs text-[color:var(--color-error)]">
-            {fieldErrors["name"].join("; ")}
-          </p>
+          <p className="text-destructive text-xs">{fieldErrors["name"].join("; ")}</p>
         ) : null}
       </div>
 
@@ -193,22 +191,22 @@ export function RoleForm({
           disabled={busy}
           rows={2}
           placeholder="Brief summary of what this role can do."
-          className="w-full rounded border border-[color:var(--color-border)] bg-[color:var(--color-bg)] px-2 py-1.5 text-sm"
+          className={`w-full ${textareaClass}`}
         />
       </div>
 
-      <div className="rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg-subtle)] p-4">
+      <div className="border-border bg-background rounded-md border p-4">
         <label className="flex cursor-pointer items-start gap-3 text-sm">
           <input
             type="checkbox"
             checked={requiresMfa}
             onChange={(e) => setRequiresMfa(e.target.checked)}
             disabled={busy}
-            className="mt-0.5 h-4 w-4 cursor-pointer accent-[color:var(--color-accent)]"
+            className="accent-primary mt-0.5 h-4 w-4 cursor-pointer"
           />
           <span>
             <span className="font-medium">Require MFA</span>
-            <span className="mt-0.5 block text-xs text-[color:var(--color-fg-muted)]">
+            <span className="text-muted-foreground mt-0.5 block text-xs">
               Users holding this role at any scope must have TOTP enrolled before they can use the
               app.
             </span>
@@ -218,11 +216,9 @@ export function RoleForm({
 
       <section className="space-y-3">
         <div className="flex items-baseline justify-between">
-          <h2 className="text-sm font-medium tracking-wide text-[color:var(--color-fg-muted)] uppercase">
-            Permissions ({selected.size})
-          </h2>
+          <h2 className="text-h3 text-foreground">Permissions ({selected.size})</h2>
           {fieldErrors["permissions"] ? (
-            <span className="text-xs text-[color:var(--color-error)]">
+            <span className="text-destructive text-xs">
               {fieldErrors["permissions"].join("; ")}
             </span>
           ) : null}
@@ -232,15 +228,10 @@ export function RoleForm({
             const allOn = perms.every((p) => selected.has(p));
             const someOn = perms.some((p) => selected.has(p));
             return (
-              <div
-                key={resource}
-                className="rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg-subtle)] p-3"
-              >
+              <div key={resource} className="border-border bg-background rounded-md border p-3">
                 <div className="mb-2 flex items-center justify-between">
-                  <h3 className="text-xs font-medium tracking-wide text-[color:var(--color-fg-muted)] uppercase">
-                    {resource}
-                  </h3>
-                  <label className="flex cursor-pointer items-center gap-1.5 text-[0.625rem] tracking-wide text-[color:var(--color-fg-muted)] uppercase">
+                  <h3 className="text-caption text-muted-foreground">{resource}</h3>
+                  <label className="text-caption text-muted-foreground flex cursor-pointer items-center gap-1.5">
                     <input
                       type="checkbox"
                       checked={allOn}
@@ -249,7 +240,7 @@ export function RoleForm({
                       }}
                       onChange={() => toggleGroup(perms, allOn)}
                       disabled={busy}
-                      className="h-3 w-3 cursor-pointer accent-[color:var(--color-accent)]"
+                      className="accent-primary h-3 w-3 cursor-pointer"
                     />
                     <span>all</span>
                   </label>
@@ -263,7 +254,7 @@ export function RoleForm({
                           checked={selected.has(p)}
                           onChange={() => togglePermission(p)}
                           disabled={busy}
-                          className="h-3 w-3 cursor-pointer accent-[color:var(--color-accent)]"
+                          className="accent-primary h-3 w-3 cursor-pointer"
                         />
                         <span>{p}</span>
                       </label>
@@ -281,15 +272,11 @@ export function RoleForm({
           type="button"
           onClick={() => router.back()}
           disabled={busy}
-          className="rounded border border-[color:var(--color-border)] px-3 py-1.5 text-sm hover:bg-[color:var(--color-bg-subtle)] disabled:opacity-50"
+          className={buttonClass()}
         >
           Cancel
         </button>
-        <button
-          type="submit"
-          disabled={!canSubmit}
-          className="rounded bg-[color:var(--color-accent)] px-4 py-1.5 text-sm font-medium text-[color:var(--color-accent-fg)] hover:opacity-95 disabled:opacity-50"
-        >
+        <button type="submit" disabled={!canSubmit} className={buttonClass({ variant: "primary" })}>
           {busy ? "Saving…" : mode === "create" ? "Add role" : "Save changes"}
         </button>
       </div>

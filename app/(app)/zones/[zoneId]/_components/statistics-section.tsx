@@ -21,9 +21,7 @@ export async function ZoneStatisticsSection({ serverSlugs, zoneName }: Props) {
   return (
     <div className="space-y-6">
       <section>
-        <h2 className="mb-3 text-sm font-medium tracking-wide text-[color:var(--color-fg-muted)] uppercase">
-          Activity (last 7 days)
-        </h2>
+        <h2 className="text-h3 text-foreground mb-2">Activity (last 7 days)</h2>
         <dl className="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-4">
           <Stat label="Records added" value={zoneCounts.recordCreate} />
           <Stat label="Records updated" value={zoneCounts.recordUpdate} />
@@ -42,9 +40,7 @@ export async function ZoneStatisticsSection({ serverSlugs, zoneName }: Props) {
 function Stat({ label, value }: { label: string; value: number }) {
   return (
     <div>
-      <dt className="text-[0.625rem] tracking-wide text-[color:var(--color-fg-muted)] uppercase">
-        {label}
-      </dt>
+      <dt className="text-caption text-muted-foreground">{label}</dt>
       <dd className="font-mono text-lg font-medium">{value}</dd>
     </div>
   );

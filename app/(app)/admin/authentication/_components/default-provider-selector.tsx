@@ -20,6 +20,7 @@ import { useState } from "react";
 import { useDialog } from "@/components/ui/dialog";
 import { SelectMenu } from "@/components/ui/select-menu";
 import { mutate } from "@/lib/client/api-fetch";
+import { buttonClass } from "@/components/ui/button";
 
 export interface DefaultProviderOption {
   /** Setting value form: "local" or "<type>:<slug>". */
@@ -88,7 +89,7 @@ export function DefaultProviderSelector({ initial, options, canEdit }: Props) {
     <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
       <label className="flex-1">
         <span className="block text-sm font-medium">Default sign-in method</span>
-        <span className="mt-0.5 mb-2 block text-xs text-[color:var(--color-fg-muted)]">
+        <span className="text-muted-foreground mt-0.5 mb-2 block text-xs">
           When set to anything other than Local Auth, <code>/login</code> auto-redirects to that
           provider's initiate URL. Escape hatch: <code>/login?force-local=1</code>.
         </span>
@@ -107,12 +108,13 @@ export function DefaultProviderSelector({ initial, options, canEdit }: Props) {
       </label>
       {canEdit ? (
         <button
+          aria-busy={busy}
           type="button"
           onClick={handleSave}
           disabled={!dirty || busy}
-          className="shrink-0 rounded bg-[color:var(--color-accent)] px-3 py-1.5 text-xs font-medium text-[color:var(--color-accent-fg)] hover:opacity-95 disabled:opacity-50"
+          className={buttonClass({ variant: "primary", size: "sm", className: "shrink-0" })}
         >
-          {busy ? "Saving…" : "Save"}
+          Save
         </button>
       ) : null}
     </div>

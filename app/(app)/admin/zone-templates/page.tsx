@@ -43,8 +43,8 @@ export default async function ZoneTemplatesListPage() {
     <div className="space-y-6">
       <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Zone templates</h1>
-          <p className="mt-1 text-sm text-[color:var(--color-fg-muted)]">
+          <h1 className="text-h1">Zone templates</h1>
+          <p className="text-muted-foreground mt-1 text-sm">
             Reusable scaffolds applied when creating a new zone - NS records, SOA timers, and any
             prelude records you want on every zone of this kind.
           </p>
@@ -53,8 +53,8 @@ export default async function ZoneTemplatesListPage() {
       </header>
 
       {templates.length === 0 ? (
-        <div className="rounded-md border border-dashed border-[color:var(--color-border)] bg-[color:var(--color-bg-subtle)] p-8 text-center text-sm">
-          <p className="text-[color:var(--color-fg-muted)]">
+        <div className="border-border bg-background rounded-md border border-dashed p-8 text-center text-sm">
+          <p className="text-muted-foreground">
             No templates yet.{" "}
             {canManage ? (
               <>

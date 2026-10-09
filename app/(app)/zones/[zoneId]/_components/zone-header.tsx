@@ -64,14 +64,17 @@ export function ZoneHeader({
   return (
     <>
       <div>
-        <Link href={backLink} className="text-sm text-[color:var(--color-accent)] hover:underline">
+        <Link
+          href={backLink}
+          className="text-primary hover:text-primary-hover text-sm hover:underline"
+        >
           ← Back to zones
         </Link>
       </div>
 
       <header className="space-y-3">
         <div className="flex flex-wrap items-baseline justify-between gap-3">
-          <h1 className="font-mono text-2xl font-semibold tracking-tight">
+          <h1 className="text-h1 font-mono">
             {displayZoneName(zone.name)}
             <ZoneHorizonBadge horizon={horizon} className="ml-2 align-middle" />
           </h1>
@@ -85,10 +88,10 @@ export function ZoneHeader({
           <Stat label="DNSSEC" value={zone.dnssec ? "on" : "off"} />
         </dl>
         {canReadAudit ? (
-          <p className="text-xs text-[color:var(--color-fg-muted)]">
+          <p className="text-muted-foreground text-xs">
             {lastEdit ? (
               <>
-                <span className="font-medium text-[color:var(--color-fg)]">Last edit:</span>{" "}
+                <span className="text-foreground font-medium">Last edit:</span>{" "}
                 {freshnessOf(lastEdit.ts.toISOString()).label}
                 {lastEdit.actorEmail ? (
                   <>
@@ -101,7 +104,7 @@ export function ZoneHeader({
                 {" - "}
                 <Link
                   href={historyHref}
-                  className="text-[color:var(--color-accent)] hover:underline"
+                  className="text-primary hover:text-primary-hover hover:underline"
                 >
                   see history
                 </Link>
@@ -111,11 +114,11 @@ export function ZoneHeader({
             )}
           </p>
         ) : null}
-        <p className="text-xs text-[color:var(--color-fg-muted)]">
+        <p className="text-muted-foreground text-xs">
           Backend: {cluster ? `${cluster.name} (cluster · via peer ${server.name})` : server.name} ·{" "}
           {nonSoaCount} RRset{nonSoaCount === 1 ? "" : "s"}
           {isPrimary ? (
-            <span className="ml-2 inline-flex items-center gap-1 rounded bg-[color:var(--color-bg-muted)] px-1.5 py-0.5 text-[0.65rem] font-medium tracking-wide text-[color:var(--color-fg-muted)] uppercase">
+            <span className="bg-tag text-mono-xs text-tag-foreground ml-2 inline-flex h-5 items-center gap-1 rounded-sm px-1.5 font-mono whitespace-nowrap">
               auto-notify on edit
             </span>
           ) : null}
@@ -129,9 +132,7 @@ export function ZoneHeader({
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <dt className="text-xs tracking-wide text-[color:var(--color-fg-muted)] uppercase">
-        {label}
-      </dt>
+      <dt className="text-caption text-muted-foreground">{label}</dt>
       <dd className="font-mono text-sm">{value}</dd>
     </div>
   );

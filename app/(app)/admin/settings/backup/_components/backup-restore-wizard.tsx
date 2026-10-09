@@ -20,9 +20,12 @@
  */
 
 import { useRef, useState } from "react";
-import { Download, Upload, ArrowLeft, ShieldCheck, AlertTriangle, Lock } from "lucide-react";
+import { Download, Upload, ArrowLeft, ShieldCheck, AlertTriangle } from "lucide-react";
 import { useDialog } from "@/components/ui/dialog";
 import { mutate } from "@/lib/client/api-fetch";
+import { buttonClass } from "@/components/ui/button";
+import { inputClass } from "@/components/ui/field";
+import { Alert } from "@/components/ui/alert";
 
 type Step = "choose" | "backup" | "restore-upload" | "restore-confirm" | "restore-result";
 
@@ -133,8 +136,8 @@ export function BackupRestoreWizard({ readOnly = false }: { readOnly?: boolean }
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <header>
-        <h1 className="text-2xl font-semibold tracking-tight">Backup &amp; Restore</h1>
-        <p className="mt-1 text-sm text-[color:var(--color-fg-muted)]">
+        <h1 className="text-h1">Backup &amp; restore</h1>
+        <p className="text-muted-foreground mt-1 text-sm">
           Snapshot the app database for disaster recovery, migration to a new host, or pre-upgrade
           insurance.
         </p>
@@ -151,7 +154,7 @@ export function BackupRestoreWizard({ readOnly = false }: { readOnly?: boolean }
         <button
           type="button"
           onClick={() => resetTo("choose")}
-          className="inline-flex items-center gap-1 text-sm text-[color:var(--color-fg-muted)] hover:text-[color:var(--color-fg)]"
+          className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-sm"
         >
           <ArrowLeft className="h-3.5 w-3.5" aria-hidden /> Back
         </button>
@@ -253,24 +256,21 @@ function ChooseCard({
 }) {
   const accentBorder =
     accent === "accent"
-      ? "border-[color:var(--color-accent)]/40 hover:border-[color:var(--color-accent)]"
-      : "border-[color:var(--color-warn)]/40 hover:border-[color:var(--color-warn)]";
-  const accentBg =
-    accent === "accent"
-      ? "bg-[color:var(--color-accent)]/10 text-[color:var(--color-accent)]"
-      : "bg-[color:var(--color-warn)]/10 text-[color:var(--color-warn-fg)]";
+      ? "border-border hover:border-primary"
+      : "border-warning-border hover:border-warning-border";
+  const accentBg = accent === "accent" ? "bg-accent text-primary" : "bg-warning-muted text-warning";
   return (
     <button
       type="button"
       disabled={disabled}
       onClick={onClick}
-      className={`flex flex-col items-start gap-3 rounded-lg border-2 ${accentBorder} bg-[color:var(--color-bg-subtle)] p-5 text-left transition-colors disabled:cursor-not-allowed disabled:border-[color:var(--color-border)] disabled:opacity-60 disabled:hover:border-[color:var(--color-border)]`}
+      className={`flex flex-col items-start gap-3 rounded-md border ${accentBorder} bg-background disabled:border-border disabled:hover:border-border p-4 text-left disabled:cursor-default disabled:opacity-45`}
     >
       <span className={`inline-flex h-10 w-10 items-center justify-center rounded-md ${accentBg}`}>
         {icon}
       </span>
       <span className="text-base font-semibold">{title}</span>
-      <span className="text-sm text-[color:var(--color-fg-muted)]">{body}</span>
+      <span className="text-muted-foreground text-sm">{body}</span>
     </button>
   );
 }
@@ -332,7 +332,7 @@ function BackupStep({ readOnly, onToast }: { readOnly: boolean; onToast: (text: 
         <button
           type="button"
           disabled
-          className="inline-flex w-full cursor-not-allowed items-center justify-center gap-2 rounded-md bg-[color:var(--color-accent)] px-4 py-2.5 text-sm font-medium text-[color:var(--color-accent-fg)] opacity-50 sm:w-auto sm:px-6"
+          className={buttonClass({ variant: "primary", className: "w-full opacity-45 sm:w-auto" })}
         >
           <Download className="h-4 w-4" aria-hidden /> Download backup
         </button>
@@ -340,7 +340,7 @@ function BackupStep({ readOnly, onToast }: { readOnly: boolean; onToast: (text: 
         <a
           href="/api/admin/backup/export"
           onClick={() => onToast("Streaming pda-backup-<date>.json...")}
-          className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-[color:var(--color-accent)] px-4 py-2.5 text-sm font-medium text-[color:var(--color-accent-fg)] hover:opacity-95 sm:w-auto sm:px-6"
+          className={buttonClass({ variant: "primary", className: "w-full sm:w-auto" })}
         >
           <Download className="h-4 w-4" aria-hidden /> Download backup
         </a>
@@ -394,20 +394,16 @@ function RestoreUploadStep({
               const picked = e.target.files?.[0];
               if (picked) onPick(picked);
             }}
-            className="block w-full text-sm file:mr-3 file:rounded file:border file:border-[color:var(--color-border)] file:bg-[color:var(--color-bg-subtle)] file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-[color:var(--color-fg)] hover:file:bg-[color:var(--color-bg-muted)] disabled:cursor-not-allowed disabled:opacity-60"
+            className="file:border-border file:bg-background file:text-foreground hover:file:bg-muted block w-full text-sm file:mr-3 file:rounded file:border file:px-3 file:py-1.5 file:text-sm file:font-medium disabled:cursor-not-allowed disabled:opacity-45"
           />
         </label>
         {file ? (
-          <div className="mt-3 flex items-center gap-3 text-xs text-[color:var(--color-fg-muted)]">
+          <div className="text-muted-foreground mt-3 flex items-center gap-3 text-xs">
             <span>
-              <strong className="text-[color:var(--color-fg)]">{file.name}</strong> ·{" "}
+              <strong className="text-foreground">{file.name}</strong> ·{" "}
               {(file.size / 1024).toFixed(1)} KB
             </span>
-            <button
-              type="button"
-              onClick={onClear}
-              className="text-[color:var(--color-error)] hover:underline"
-            >
+            <button type="button" onClick={onClear} className="text-destructive hover:underline">
               Remove
             </button>
           </div>
@@ -419,31 +415,28 @@ function RestoreUploadStep({
       {bundlePreview ? (
         <Panel title="Bundle contents">
           <dl className="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-1 text-sm">
-            <dt className="text-[color:var(--color-fg-muted)]">Schema version</dt>
+            <dt className="text-muted-foreground">Schema version</dt>
             <dd>
               <Code>{bundlePreview.schemaVersion}</Code>
             </dd>
-            <dt className="text-[color:var(--color-fg-muted)]">Source app version</dt>
+            <dt className="text-muted-foreground">Source app version</dt>
             <dd>
               <Code>{bundlePreview.appVersion}</Code>
             </dd>
-            <dt className="text-[color:var(--color-fg-muted)]">Exported at</dt>
+            <dt className="text-muted-foreground">Exported at</dt>
             <dd className="font-mono text-xs">{bundlePreview.exportedAt}</dd>
-            <dt className="text-[color:var(--color-fg-muted)]">Total rows</dt>
+            <dt className="text-muted-foreground">Total rows</dt>
             <dd>{bundlePreview.totalRows.toLocaleString()}</dd>
           </dl>
           <details className="mt-4">
-            <summary className="cursor-pointer text-xs text-[color:var(--color-fg-muted)] hover:text-[color:var(--color-fg)]">
+            <summary className="text-muted-foreground hover:text-foreground cursor-pointer text-xs">
               Per-table breakdown
             </summary>
             <ul className="mt-2 grid grid-cols-2 gap-x-4 gap-y-0.5 text-xs">
               {bundlePreview.rowCountsByTable.map(([name, n]) => (
-                <li
-                  key={name}
-                  className="flex justify-between border-b border-[color:var(--color-border)]/40 py-0.5"
-                >
+                <li key={name} className="border-border flex justify-between border-b py-0.5">
                   <code className="font-mono">{name}</code>
-                  <span className="text-[color:var(--color-fg-muted)]">{n.toLocaleString()}</span>
+                  <span className="text-muted-foreground">{n.toLocaleString()}</span>
                 </li>
               ))}
             </ul>
@@ -455,7 +448,7 @@ function RestoreUploadStep({
         type="button"
         onClick={onNext}
         disabled={readOnly || !bundlePreview}
-        className="inline-flex items-center gap-2 rounded-md bg-[color:var(--color-accent)] px-4 py-2 text-sm font-medium text-[color:var(--color-accent-fg)] hover:opacity-95 disabled:opacity-50"
+        className={buttonClass({ variant: "primary" })}
       >
         Continue →
       </button>
@@ -523,7 +516,7 @@ function RestoreConfirmStep({
           onChange={(e) => onConfirmPhraseChange(e.target.value)}
           placeholder={CONFIRM_PHRASE}
           disabled={readOnly}
-          className="block w-full max-w-xs rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg)] px-3 py-2 font-mono text-sm focus:ring-2 focus:ring-[color:var(--color-warn)] focus:outline-none"
+          className={`w-full max-w-xs font-mono ${inputClass}`}
           autoComplete="off"
         />
       </Panel>
@@ -531,12 +524,13 @@ function RestoreConfirmStep({
       {restoreError ? <ErrorBanner>{restoreError}</ErrorBanner> : null}
 
       <button
+        aria-busy={submitting}
         type="button"
         onClick={onRun}
         disabled={!canRun}
-        className="inline-flex items-center gap-2 rounded-md bg-[color:var(--color-warn)] px-4 py-2.5 text-sm font-medium text-[color:var(--color-warn-fg)] hover:opacity-95 disabled:opacity-50"
+        className={buttonClass({ variant: "destructive" })}
       >
-        {submitting ? "Restoring…" : "Run restore"}
+        Run restore
       </button>
     </div>
   );
@@ -561,14 +555,14 @@ function RestoreResultStep({
 
       {tables.length === 0 ? (
         <Panel title="No rows applied">
-          <p className="text-sm text-[color:var(--color-fg-muted)]">
+          <p className="text-muted-foreground text-sm">
             The bundle had no rows in any recognised table.
           </p>
         </Panel>
       ) : (
         <Panel title="Rows by table">
           <table className="w-full text-sm">
-            <thead className="text-xs text-[color:var(--color-fg-muted)] uppercase">
+            <thead className="text-label text-muted-foreground">
               <tr>
                 <th className="pb-2 text-left">Table</th>
                 <th className="pb-2 text-right">Attempted</th>
@@ -578,15 +572,13 @@ function RestoreResultStep({
             </thead>
             <tbody>
               {tables.map(([name, c]) => (
-                <tr key={name} className="border-t border-[color:var(--color-border)]">
+                <tr key={name} className="border-border border-b">
                   <td className="py-1.5">
                     <code className="font-mono text-xs">{name}</code>
                   </td>
                   <td className="py-1.5 text-right tabular-nums">{c.attempted}</td>
-                  <td className="py-1.5 text-right text-[color:var(--color-success)] tabular-nums">
-                    {c.inserted}
-                  </td>
-                  <td className="py-1.5 text-right text-[color:var(--color-fg-muted)] tabular-nums">
+                  <td className="text-success py-1.5 text-right tabular-nums">{c.inserted}</td>
+                  <td className="text-muted-foreground py-1.5 text-right tabular-nums">
                     {c.skipped}
                   </td>
                 </tr>
@@ -596,11 +588,7 @@ function RestoreResultStep({
         </Panel>
       )}
 
-      <button
-        type="button"
-        onClick={onDone}
-        className="inline-flex items-center gap-2 rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg-subtle)] px-4 py-2 text-sm font-medium hover:bg-[color:var(--color-bg-muted)]"
-      >
+      <button type="button" onClick={onDone} className={buttonClass()}>
         Done
       </button>
     </div>
@@ -622,20 +610,18 @@ function Hero({
 }) {
   const toneClass =
     tone === "accent"
-      ? "bg-[color:var(--color-accent)]/10 text-[color:var(--color-accent)]"
+      ? "bg-accent text-primary"
       : tone === "warn"
-        ? "bg-[color:var(--color-warn)]/10 text-[color:var(--color-warn-fg)]"
-        : "bg-[color:var(--color-success)]/10 text-[color:var(--color-success)]";
+        ? "bg-warning-muted text-warning"
+        : "bg-background text-success";
   const borderTone =
     tone === "accent"
-      ? "border-[color:var(--color-accent)]/30"
+      ? "border-border"
       : tone === "warn"
-        ? "border-[color:var(--color-warn)]/30"
-        : "border-[color:var(--color-success)]/30";
+        ? "border-warning-border"
+        : "border-success";
   return (
-    <div
-      className={`flex gap-4 rounded-lg border ${borderTone} bg-[color:var(--color-bg-subtle)] p-5`}
-    >
+    <div className={`flex gap-4 rounded-md border ${borderTone} bg-background p-4`}>
       <span
         className={`inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md ${toneClass}`}
       >
@@ -643,19 +629,14 @@ function Hero({
       </span>
       <div className="space-y-1">
         <h2 className="text-base font-semibold">{title}</h2>
-        <p className="text-sm text-[color:var(--color-fg-muted)]">{children}</p>
+        <p className="text-muted-foreground text-sm">{children}</p>
       </div>
     </div>
   );
 }
 
 function ReadOnlyBanner({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="flex gap-3 rounded-lg border border-[color:var(--color-warn)]/35 bg-[color:var(--color-warn)]/10 p-4 text-sm text-[color:var(--color-fg)]">
-      <Lock className="mt-0.5 h-4 w-4 shrink-0 text-[color:var(--color-warn-fg)]" aria-hidden />
-      <p>{children}</p>
-    </div>
-  );
+  return <Alert>{children}</Alert>;
 }
 
 function Panel({
@@ -667,29 +648,22 @@ function Panel({
   tone?: "default" | "warn";
   children: React.ReactNode;
 }) {
-  const border =
-    tone === "warn" ? "border-[color:var(--color-warn)]/30" : "border-[color:var(--color-border)]";
+  const border = tone === "warn" ? "border-warning-border" : "border-border";
   return (
-    <section className={`rounded-lg border ${border} bg-[color:var(--color-bg)] p-5`}>
-      <h3 className="mb-3 text-sm font-medium tracking-wide text-[color:var(--color-fg-muted)] uppercase">
-        {title}
-      </h3>
+    <section className={`rounded-md border ${border} bg-card p-4`}>
+      <h3 className="text-h3 text-foreground mb-2">{title}</h3>
       {children}
     </section>
   );
 }
 
 function Code({ children }: { children: React.ReactNode }) {
-  return (
-    <code className="rounded bg-[color:var(--color-bg-muted)] px-1.5 py-0.5 font-mono text-[0.8125rem]">
-      {children}
-    </code>
-  );
+  return <code className="bg-muted text-mono rounded-sm px-1.5 py-0.5 font-mono">{children}</code>;
 }
 
 function Pill({ children }: { children: React.ReactNode }) {
   return (
-    <code className="mr-1 inline-block rounded bg-[color:var(--color-bg-muted)] px-1.5 py-0.5 font-mono text-[0.6875rem] text-[color:var(--color-fg-muted)]">
+    <code className="bg-tag text-mono-xs text-tag-foreground mr-1 inline-flex h-5 items-center rounded-sm px-1.5 font-mono whitespace-nowrap">
       {children}
     </code>
   );
@@ -697,12 +671,8 @@ function Pill({ children }: { children: React.ReactNode }) {
 
 function ErrorBanner({ children }: { children: React.ReactNode }) {
   return (
-    <div
-      role="alert"
-      className="rounded-md border border-[color:var(--color-error)] bg-[color:var(--color-error)]/10 p-3 text-sm text-[color:var(--color-error)]"
-    >
-      <strong className="mr-2">Error</strong>
+    <Alert variant="destructive" live>
       {children}
-    </div>
+    </Alert>
   );
 }

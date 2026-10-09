@@ -10,7 +10,7 @@ interface Props {
 export function ZoneTemplateTabs({ active, templateId }: Props) {
   const base = `/admin/zone-templates/${templateId}`;
   return (
-    <div className="border-b border-[color:var(--color-border)]">
+    <div className="border-border border-b">
       <nav className="-mb-px flex gap-6 text-sm">
         <TabLink href={base} active={active === "records"}>
           Records
@@ -41,8 +41,8 @@ function TabLink({
       aria-current={active ? "page" : undefined}
       className={
         active
-          ? "border-b-2 border-[color:var(--color-accent)] px-1 pb-3 font-medium text-[color:var(--color-fg)]"
-          : "border-b-2 border-transparent px-1 pb-3 text-[color:var(--color-fg-muted)] hover:text-[color:var(--color-fg)]"
+          ? "border-primary text-foreground border-b-2 px-1 pb-3 font-medium"
+          : "text-muted-foreground hover:text-foreground border-b-2 border-transparent px-1 pb-3"
       }
     >
       {children}

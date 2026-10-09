@@ -12,6 +12,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useDialog } from "@/components/ui/dialog";
 import { mutate } from "@/lib/client/api-fetch";
+import { buttonClass } from "@/components/ui/button";
 
 interface Props {
   zoneIdEncoded: string;
@@ -141,37 +142,40 @@ export function DnssecZoneActions(props: Props) {
   }
 
   const buttonBase =
-    "rounded px-3 py-1.5 text-xs font-medium disabled:opacity-50 border border-[color:var(--color-border)] hover:bg-[color:var(--color-bg-muted)]";
+    "rounded px-3 py-1.5 text-xs font-medium disabled:opacity-45 border border-border hover:bg-muted";
 
   return (
     <div className="flex flex-wrap gap-2">
       {props.signed ? (
         <>
           <button
+            aria-busy={busy === "rectify"}
             type="button"
             onClick={handleRectify}
             disabled={busy !== null}
             className={buttonBase}
           >
-            {busy === "rectify" ? "Rectifying…" : "Rectify zone"}
+            Rectify zone
           </button>
           <button
+            aria-busy={busy === "disable"}
             type="button"
             onClick={handleDisable}
             disabled={busy !== null}
-            className="rounded border border-[color:var(--color-error)] px-3 py-1.5 text-xs font-medium text-[color:var(--color-error)] hover:bg-[color:var(--color-error)]/10 disabled:opacity-50"
+            className={buttonClass({ variant: "destructive", size: "sm" })}
           >
-            {busy === "disable" ? "Disabling…" : "Disable DNSSEC"}
+            Disable DNSSEC
           </button>
         </>
       ) : (
         <button
+          aria-busy={busy === "enable"}
           type="button"
           onClick={handleEnable}
           disabled={busy !== null}
-          className="rounded bg-[color:var(--color-accent)] px-3 py-1.5 text-xs font-medium text-[color:var(--color-accent-fg)] hover:opacity-95 disabled:opacity-50"
+          className={buttonClass({ variant: "primary", size: "sm" })}
         >
-          {busy === "enable" ? "Enabling…" : "Enable DNSSEC"}
+          Enable DNSSEC
         </button>
       )}
     </div>

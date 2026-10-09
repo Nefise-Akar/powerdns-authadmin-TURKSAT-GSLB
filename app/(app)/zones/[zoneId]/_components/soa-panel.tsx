@@ -29,6 +29,8 @@ import {
   soaSanityWarnings,
   type SoaFields,
 } from "@/lib/validators/soa";
+import { buttonClass } from "@/components/ui/button";
+import { inputClass as baseInputClass } from "@/components/ui/field";
 
 interface SoaPanelProps {
   zoneName: string;
@@ -151,12 +153,10 @@ export function SoaPanel(props: SoaPanelProps) {
   }
 
   return (
-    <section className="rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg)] p-5">
+    <section className="border-border bg-card rounded-md border p-5">
       <header className="mb-4">
-        <h2 className="text-sm font-medium tracking-wide text-[color:var(--color-fg-muted)] uppercase">
-          SOA - zone timers
-        </h2>
-        <p className="mt-1 text-xs text-[color:var(--color-fg-muted)]">
+        <h2 className="text-h3 text-foreground">SOA - zone timers</h2>
+        <p className="text-muted-foreground mt-1 text-xs">
           Start-of-authority record. PowerDNS manages the serial automatically; adjust the four
           timers and the responsible party here instead of editing SOA RDATA directly.
         </p>
@@ -222,16 +222,16 @@ export function SoaPanel(props: SoaPanelProps) {
           />
         </div>
 
-        <div className="rounded-md border border-dashed border-[color:var(--color-border)] bg-[color:var(--color-bg-subtle)] px-3 py-2 text-xs">
-          <span className="font-medium text-[color:var(--color-fg-muted)]">Serial:</span>{" "}
+        <div className="border-border bg-background rounded-md border border-dashed px-3 py-2 text-xs">
+          <span className="text-muted-foreground font-medium">Serial:</span>{" "}
           <span className="font-mono">{props.current?.serial ?? "-"}</span>
-          <span className="ml-3 text-[color:var(--color-fg-subtle)]">
+          <span className="text-muted-foreground ml-3">
             (PowerDNS auto-increments on any zone change)
           </span>
         </div>
 
         {warnings.length > 0 ? (
-          <ul className="space-y-1 rounded-md border border-[color:var(--color-warn)] bg-[color:var(--color-warn)]/10 p-3 text-xs text-[color:var(--color-warn)]">
+          <ul className="border-warning-border bg-warning-muted text-warning space-y-1 rounded-md border p-3 text-xs">
             {warnings.map((w, idx) => (
               <li key={idx}>{w}</li>
             ))}
@@ -239,7 +239,7 @@ export function SoaPanel(props: SoaPanelProps) {
         ) : null}
 
         {error ? (
-          <p className="text-sm text-[color:var(--color-error)]" role="alert">
+          <p className="text-destructive text-sm" role="alert">
             {error}
           </p>
         ) : null}
@@ -250,20 +250,21 @@ export function SoaPanel(props: SoaPanelProps) {
               type="button"
               onClick={() => setDraft(initial)}
               disabled={!dirty || saving}
-              className="rounded-md border border-[color:var(--color-border)] px-4 py-2 text-sm hover:bg-[color:var(--color-bg-subtle)] disabled:opacity-50"
+              className={buttonClass()}
             >
               Revert
             </button>
             <button
+              aria-busy={saving}
               type="submit"
               disabled={!dirty || saving}
-              className="rounded-md bg-[color:var(--color-accent)] px-4 py-2 text-sm font-medium text-[color:var(--color-accent-fg)] hover:opacity-95 disabled:opacity-50"
+              className={buttonClass({ variant: "primary" })}
             >
-              {saving ? "Saving…" : "Save SOA"}
+              Save SOA
             </button>
           </div>
         ) : (
-          <p className="text-xs text-[color:var(--color-fg-muted)]">
+          <p className="text-muted-foreground text-xs">
             Read-only - the record.update permission is required to edit SOA.
           </p>
         )}
@@ -272,8 +273,7 @@ export function SoaPanel(props: SoaPanelProps) {
   );
 }
 
-const inputClass =
-  "mt-1 block w-full rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--color-accent)] disabled:opacity-60";
+const inputClass = `mt-1.5 ${baseInputClass}`;
 
 function Field({
   label,
@@ -286,9 +286,9 @@ function Field({
 }) {
   return (
     <div>
-      <label className="block text-sm font-medium">{label}</label>
+      <label className="text-label block">{label}</label>
       {children}
-      {hint ? <p className="mt-1 text-xs text-[color:var(--color-fg-muted)]">{hint}</p> : null}
+      {hint ? <p className="text-caption text-muted-foreground mt-1.5">{hint}</p> : null}
     </div>
   );
 }

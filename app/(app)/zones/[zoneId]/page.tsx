@@ -69,6 +69,7 @@ import { ZoneTabs } from "./_components/zone-tabs";
 import { ScrollToTab } from "./_components/scroll-to-tab";
 import { redactSnapshot } from "@/lib/audit/log";
 import type { PdnsZoneDetail } from "@/lib/pdns/types";
+import { Alert } from "@/components/ui/alert";
 
 interface PageProps {
   params: Promise<{ zoneId: string }>;
@@ -130,26 +131,15 @@ export default async function ZoneDetailPage({ params, searchParams }: PageProps
   if (requestedClusterSlug) {
     const cluster = await findClusterBySlug(requestedClusterSlug);
     if (!cluster) {
-      return (
-        <div className="rounded-md border border-[color:var(--color-warn)] bg-[color:var(--color-warn)]/10 p-6 text-sm">
-          <strong>Unknown cluster.</strong>{" "}
-          <Link href="/zones" className="underline">
-            Back to zones
-          </Link>
-          .
-        </div>
-      );
+      return <Alert title="unknown cluster" action={<Link href="/zones">Back to zones</Link>} />;
     }
     const peers = await listActivePeersForCluster(cluster.id);
     if (peers.length === 0) {
       return (
-        <div className="rounded-md border border-[color:var(--color-warn)] bg-[color:var(--color-warn)]/10 p-6 text-sm">
-          <strong>Cluster has no active peers.</strong>{" "}
-          <Link href="/zones" className="underline">
-            Back to zones
-          </Link>
-          .
-        </div>
+        <Alert
+          title="cluster has no active peers"
+          action={<Link href="/zones">Back to zones</Link>}
+        />
       );
     }
     resolvedCluster = cluster;
@@ -160,13 +150,7 @@ export default async function ZoneDetailPage({ params, searchParams }: PageProps
       : await findDefaultPdnsServer();
     if (explicit?.disabledAt !== null) {
       return (
-        <div className="rounded-md border border-[color:var(--color-warn)] bg-[color:var(--color-warn)]/10 p-6 text-sm">
-          <strong>No backend selected.</strong>{" "}
-          <Link href="/zones" className="underline">
-            Pick a server
-          </Link>{" "}
-          to load this zone.
-        </div>
+        <Alert title="no backend selected" action={<Link href="/zones">Pick a server</Link>} />
       );
     }
     if (explicit.clusterId) {
@@ -250,12 +234,15 @@ export default async function ZoneDetailPage({ params, searchParams }: PageProps
   if (fetchError || !zone) {
     return (
       <div className="space-y-4">
-        <Link href={backLink} className="text-sm text-[color:var(--color-accent)] hover:underline">
+        <Link
+          href={backLink}
+          className="text-primary hover:text-primary-hover text-sm hover:underline"
+        >
           ← Back to zones
         </Link>
-        <div className="rounded-md border border-[color:var(--color-error)] bg-[color:var(--color-error)]/10 p-4 text-sm text-[color:var(--color-error)]">
-          <strong>Could not load zone.</strong> {fetchError ?? "Empty response from PowerDNS."}
-        </div>
+        <Alert variant="destructive" title="could not load zone">
+          {fetchError ?? "Empty response from PowerDNS."}
+        </Alert>
       </div>
     );
   }
@@ -464,22 +451,16 @@ export default async function ZoneDetailPage({ params, searchParams }: PageProps
       />
 
       {isReadOnlyZone ? (
-        <div className="flex items-start gap-2 rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg-subtle)] p-3 text-sm">
-          <Lock
-            aria-hidden
-            className="mt-0.5 h-4 w-4 shrink-0 text-[color:var(--color-fg-muted)]"
-          />
+        <div className="border-border bg-background flex items-start gap-2 rounded-md border p-3 text-sm">
+          <Lock aria-hidden className="text-muted-foreground mt-0.5 h-4 w-4 shrink-0" />
           <p>
             <strong>Read-only mirror.</strong> This is a {zone.kind} zone - its records and DNSSEC
             are served from its primary over AXFR and can&apos;t be edited here. Replication
             settings (masters, transfer metadata) remain editable.
             {mirrorUpstream ? (
-              <span className="text-[color:var(--color-fg-muted)]">
-                {" "}
-                Mirrors {mirrorUpstream.name}.
-              </span>
+              <span className="text-muted-foreground"> Mirrors {mirrorUpstream.name}.</span>
             ) : mirrorExternal.length > 0 ? (
-              <span className="text-[color:var(--color-fg-muted)]">
+              <span className="text-muted-foreground">
                 {" "}
                 Mirrors external {mirrorExternal.join(", ")}.
               </span>

@@ -2,16 +2,30 @@
 
 /**
  * Chart wrappers tuned for the per-server PDNS statistics we capture in
- * `pdns_server_stats`. Two shapes:
+ * `pdns_server_stats`. Three shapes:
  *
  *   `<CounterRateChart>` - takes the raw (ts, value) samples of a
  *     cumulative counter and plots the per-second delta line. Suitable
  *     for `udp4-queries`, `query-cache-hit`, etc.
  *
- *   `<MapPieChart>` - takes the latest `MapStatisticItem` snapshot
- *     (`[{name, value}, ...]`) and renders a donut. Suitable for
- *     `response-by-qtype`, `response-by-rcode`, `response-sizes`.
+ *   `<ValueLineChart>` - plots point-in-time values as they are.
+ *
+ *   `<MapBarChart>` - takes the latest `MapStatisticItem` snapshot
+ *     (`[{name, value}, ...]`) and renders a sorted horizontal bar list.
+ *     Suitable for `response-by-qtype`, `response-by-rcode`,
+ *     `response-sizes`.
+ *
+ * Single-series lines in the accent color, no area fill, the latest value
+ * written at the line's end; bars carry their value - no legends.
  */
+
+/** Template label: the point's value (dimension 1 of a `[ts, value]` pair). */
+const END_LABEL = { show: true, formatter: "{@[1]}", color: "var(--foreground)", fontSize: 11 };
+
+/** Two decimals is plenty for a rate on a chart label. */
+function round2(n: number): number {
+  return Math.round(n * 100) / 100;
+}
 
 import { Chart } from "@/components/ui/chart";
 
@@ -50,7 +64,7 @@ export function CounterRateChart({
     if (dt <= 0) continue;
     const dv = cur.value - prev.value;
     if (dv < 0) continue;
-    points.push([cur.ts, dv / dt]);
+    points.push([cur.ts, round2(dv / dt)]);
   }
   return (
     <Chart
@@ -84,14 +98,14 @@ export function CounterRateChart({
             data: points,
             showSymbol: false,
             smooth: true,
-            areaStyle: { opacity: 0.12 },
             lineStyle: { width: 1.5 },
+            endLabel: END_LABEL,
           },
         ],
-        // containLabel (from the Chart wrapper) reserves room for tick labels;
-        // these margins just add a little breathing room around them. top:22
-        // is headroom for the axis-name unit.
-        grid: { left: 6, right: 14, top: 22, bottom: 6 },
+        // containLabel (from the Chart wrapper) reserves room for tick labels
+        // but not the end label, hence the wider right margin. top:22 is
+        // headroom for the axis-name unit.
+        grid: { left: 6, right: 44, top: 22, bottom: 6 },
       }}
     />
   );
@@ -107,7 +121,7 @@ interface ValueLineChartProps {
 /** Plot the raw values (no rate diff) - useful for gauges like `latency`,
  *  `cpu-iowait`, `fd-usage` that are point-in-time, not counters. */
 export function ValueLineChart({ samples, label, height = 200, yAxisLabel }: ValueLineChartProps) {
-  const points = samples.map((s) => [s.ts, s.value] as [string, number]);
+  const points = samples.map((s) => [s.ts, round2(s.value)] as [string, number]);
   return (
     <Chart
       height={height}
@@ -135,25 +149,24 @@ export function ValueLineChart({ samples, label, height = 200, yAxisLabel }: Val
             data: points,
             showSymbol: false,
             smooth: true,
-            areaStyle: { opacity: 0.12 },
             lineStyle: { width: 1.5 },
+            endLabel: END_LABEL,
           },
         ],
-        grid: { left: 6, right: 14, top: 22, bottom: 6 },
+        grid: { left: 6, right: 44, top: 22, bottom: 6 },
       }}
     />
   );
 }
 
-interface MapPieChartProps {
+interface MapBarChartProps {
   /** Latest `MapStatisticItem.value` - array of name/value pairs. */
   entries: Array<{ name: string; value: string }>;
-  title?: string;
   height?: number;
   /** Hide buckets whose value is 0 (PDNS sends a bunch of zero-rcode rows). */
   hideZeros?: boolean;
   /**
-   * By default slices are sorted by value (largest first) - right for
+   * By default bars are sorted by value (largest first) - right for
    * categorical maps like qtype/rcode. Set this to keep the caller's
    * order instead, for data that has a meaningful sequence of its own
    * (e.g. response-size buckets, which read best ordered by size).
@@ -161,13 +174,12 @@ interface MapPieChartProps {
   preserveOrder?: boolean;
 }
 
-export function MapPieChart({
+export function MapBarChart({
   entries,
-  title,
   height = 240,
   hideZeros = true,
   preserveOrder = false,
-}: MapPieChartProps) {
+}: MapBarChartProps) {
   const mapped = entries
     .map((e) => ({ name: e.name, value: Number(e.value) || 0 }))
     .filter((d) => (hideZeros ? d.value > 0 : true));
@@ -176,37 +188,25 @@ export function MapPieChart({
     <Chart
       height={height}
       option={{
-        ...(title ? { title: { text: title, textStyle: { fontSize: 12 }, left: 8, top: 4 } } : {}),
-        tooltip: { trigger: "item", confine: true },
-        // Donut sits in the left lane, legend in the right lane. The two
-        // never overlap because the legend is anchored at left:"52%" (its
-        // text grows rightward from there) while the donut's outer radius
-        // is sized off the card *height*, keeping it well inside the left
-        // half. `overflow: "truncate"` clips long rcode labels (e.g.
-        // "Server Not Authoritative for zone / Not Authorized") with an
-        // ellipsis instead of letting them sprawl across the chart - the
-        // full name still shows in the hover tooltip.
-        legend: {
-          type: "scroll",
-          orient: "vertical",
-          left: "55%",
-          top: "middle",
-          icon: "circle",
-          itemWidth: 9,
-          itemHeight: 9,
-          itemGap: 8,
-          pageIconSize: 9,
-          textStyle: { fontSize: 11, overflow: "truncate", width: 110 },
+        tooltip: { trigger: "axis", axisPointer: { type: "shadow" }, confine: true },
+        grid: { left: 6, right: 56, top: 6, bottom: 6 },
+        xAxis: { type: "value", show: false },
+        yAxis: {
+          type: "category",
+          data: data.map((d) => d.name),
+          inverse: true,
+          axisTick: { show: false },
+          // Long rcode names ("Server Not Authoritative for zone / Not
+          // Authorized") truncate with an ellipsis; the tooltip has the rest.
+          axisLabel: { fontSize: 11, width: 110, overflow: "truncate" },
         },
         series: [
           {
-            type: "pie",
-            radius: ["38%", "60%"],
-            center: ["24%", "50%"],
-            data,
-            itemStyle: { borderRadius: 3, borderColor: "transparent", borderWidth: 1 },
-            label: { show: false },
-            labelLine: { show: false },
+            type: "bar",
+            data: data.map((d) => d.value),
+            barMaxWidth: 14,
+            itemStyle: { borderRadius: [0, 2, 2, 0] },
+            label: { show: true, position: "right", color: "var(--foreground)", fontSize: 11 },
           },
         ],
       }}

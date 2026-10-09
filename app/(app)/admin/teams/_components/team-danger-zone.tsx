@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useDialog } from "@/components/ui/dialog";
 import { apiFetch } from "@/lib/client/api-fetch";
+import { buttonClass } from "@/components/ui/button";
 
 export function TeamDangerZone({ teamId, teamName }: { teamId: string; teamName: string }) {
   const router = useRouter();
@@ -43,23 +44,22 @@ export function TeamDangerZone({ teamId, teamName }: { teamId: string; teamName:
   }
 
   return (
-    <section className="rounded-md border border-[color:var(--color-error)] p-5">
-      <h2 className="text-sm font-medium tracking-wide text-[color:var(--color-error)] uppercase">
-        Danger zone
-      </h2>
-      <p className="mt-2 text-sm text-[color:var(--color-fg-muted)]">
+    <section className="border-destructive rounded-md border p-5">
+      <h2 className="text-h3 text-foreground">Danger zone</h2>
+      <p className="text-muted-foreground mt-2 text-sm">
         Deleting a team removes its members. Audit history is preserved.
       </p>
       <button
+        aria-busy={deleting}
         type="button"
         onClick={handleDelete}
         disabled={deleting}
-        className="mt-3 rounded-md border border-[color:var(--color-error)] px-3 py-2 text-sm text-[color:var(--color-error)] hover:bg-[color:var(--color-error)]/10 disabled:opacity-50"
+        className={buttonClass({ variant: "destructive", className: "mt-3" })}
       >
-        {deleting ? "Deleting…" : "Delete team"}
+        Delete team
       </button>
       {error ? (
-        <p className="mt-2 text-sm text-[color:var(--color-error)]" role="alert">
+        <p className="text-destructive mt-2 text-sm" role="alert">
           {error}
         </p>
       ) : null}

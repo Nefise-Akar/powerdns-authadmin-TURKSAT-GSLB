@@ -17,7 +17,7 @@ export function TabBodySkeleton({ tab }: { tab: string }) {
     return (
       <div className="space-y-4">
         <Skeleton className="h-5 w-72" />
-        <div className="rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg-subtle)] p-4">
+        <div className="border-border bg-background rounded-md border p-4">
           <div className="grid grid-cols-2 gap-x-6 gap-y-2 sm:grid-cols-4">
             {Array.from({ length: 4 }).map((_, i) => (
               <div key={i} className="space-y-1.5">
@@ -28,10 +28,7 @@ export function TabBodySkeleton({ tab }: { tab: string }) {
           </div>
         </div>
         {Array.from({ length: 2 }).map((_, i) => (
-          <div
-            key={i}
-            className="space-y-3 rounded-md border border-[color:var(--color-border)] p-5"
-          >
+          <div key={i} className="border-border space-y-3 rounded-md border p-5">
             <Skeleton className="h-4 w-40" />
             <Skeleton className="h-3 w-3/4" />
             <Skeleton className="h-3 w-2/3" />
@@ -48,7 +45,7 @@ export function TabBodySkeleton({ tab }: { tab: string }) {
           <Skeleton className="h-7 w-36" />
         </div>
         {Array.from({ length: 3 }).map((_, i) => (
-          <div key={i} className="rounded-md border border-[color:var(--color-border)] p-4">
+          <div key={i} className="border-border rounded-md border p-4">
             <Skeleton className="h-4 w-32" />
             <Skeleton className="mt-2 h-3 w-72" />
             <Skeleton className="mt-3 h-12 w-full" />
@@ -67,7 +64,7 @@ export function TabBodySkeleton({ tab }: { tab: string }) {
   }
   if (tab === "settings" || tab === "soa") {
     return (
-      <div className="space-y-4 rounded-md border border-[color:var(--color-border)] p-5">
+      <div className="border-border space-y-4 rounded-md border p-5">
         <Skeleton className="h-4 w-32" />
         <div className="grid gap-3 sm:grid-cols-2">
           {Array.from({ length: 4 }).map((_, i) => (

@@ -48,8 +48,8 @@ export default async function PdnsClustersListPage() {
     <div className="space-y-6">
       <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Clusters</h1>
-          <p className="mt-1 text-sm text-[color:var(--color-fg-muted)]">
+          <h1 className="text-h1">Clusters</h1>
+          <p className="text-muted-foreground mt-1 text-sm">
             Related backends polled + compared together - a multi-primary cluster (writable peers
             sharing storage) or a primary with its read-only secondaries. The peer-selection
             strategy applies only to multi-primary clusters.
@@ -59,7 +59,7 @@ export default async function PdnsClustersListPage() {
       </header>
 
       {clusters.length === 0 ? (
-        <div className="rounded-md border border-dashed border-[color:var(--color-border)] bg-[color:var(--color-bg-subtle)] p-6 text-sm text-[color:var(--color-fg-muted)]">
+        <div className="border-border bg-background text-muted-foreground rounded-md border border-dashed p-6 text-sm">
           No clusters defined yet. A cluster relates backends that replicate together - the writable
           peers of a multi-primary cluster, or a primary with its read-only secondaries. Standalone
           backends don&rsquo;t need a cluster row.

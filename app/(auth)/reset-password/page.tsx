@@ -29,10 +29,8 @@ export default async function ResetPasswordPage({
   return (
     <>
       <header className="mb-6">
-        <h1 className="text-2xl font-semibold tracking-tight">
-          {token ? "Set a new password" : "Forgot password"}
-        </h1>
-        <p className="mt-1 text-sm text-[color:var(--color-fg-muted)]">
+        <h1 className="text-h1">{token ? "Set a new password" : "Forgot password"}</h1>
+        <p className="text-muted-foreground mt-1 text-sm">
           {token
             ? "Enter a new password to complete the reset."
             : "We'll record a reset link in the audit log; your administrator will share it with you."}
@@ -43,7 +41,7 @@ export default async function ResetPasswordPage({
       ) : (
         <ForgotPasswordForm turnstileSiteKey={env.TURNSTILE_SITE_KEY} />
       )}
-      <p className="mt-6 text-xs text-[color:var(--color-fg-muted)]">
+      <p className="text-muted-foreground mt-6 text-xs">
         <Link href="/login" className="underline">
           ← Back to sign in
         </Link>

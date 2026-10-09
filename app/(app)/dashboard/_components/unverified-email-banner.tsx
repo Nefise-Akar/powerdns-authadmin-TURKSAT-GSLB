@@ -11,6 +11,8 @@
 import { useState } from "react";
 import { useDialog } from "@/components/ui/dialog";
 import { mutate } from "@/lib/client/api-fetch";
+import { buttonClass } from "@/components/ui/button";
+import { Alert } from "@/components/ui/alert";
 
 export function UnverifiedEmailBanner() {
   const { toast } = useDialog();
@@ -41,31 +43,31 @@ export function UnverifiedEmailBanner() {
   }
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-[color:var(--color-warn)] bg-[color:var(--color-warn)]/10 p-3 text-sm">
-      <div>
-        <strong>Your email isn't verified.</strong>{" "}
-        <span className="text-[color:var(--color-fg-muted)]">
-          Send a verification link to confirm your address. Your administrator will share it with
-          you out-of-band until transactional email is configured.
-        </span>
-      </div>
-      <div className="flex gap-2">
-        <button
-          type="button"
-          onClick={handleSend}
-          disabled={busy}
-          className="rounded bg-[color:var(--color-accent)] px-3 py-1 text-xs font-medium text-[color:var(--color-accent-fg)] hover:opacity-95 disabled:opacity-50"
-        >
-          {busy ? "Sending…" : "Send verification link"}
-        </button>
-        <button
-          type="button"
-          onClick={() => setHidden(true)}
-          className="rounded border border-[color:var(--color-border)] px-3 py-1 text-xs hover:bg-[color:var(--color-bg-muted)]"
-        >
-          Dismiss
-        </button>
-      </div>
-    </div>
+    <Alert
+      title="email not verified"
+      action={
+        <div className="mt-1 flex gap-2">
+          <button
+            aria-busy={busy}
+            type="button"
+            onClick={handleSend}
+            disabled={busy}
+            className={buttonClass({ variant: "primary", size: "sm" })}
+          >
+            Send verification link
+          </button>
+          <button
+            type="button"
+            onClick={() => setHidden(true)}
+            className={buttonClass({ size: "sm" })}
+          >
+            Dismiss
+          </button>
+        </div>
+      }
+    >
+      Send a verification link to confirm your address. Your administrator will share it with you
+      out-of-band until transactional email is configured.
+    </Alert>
   );
 }

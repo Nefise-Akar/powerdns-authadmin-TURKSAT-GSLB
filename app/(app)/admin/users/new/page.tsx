@@ -22,8 +22,8 @@ export default async function NewUserPage() {
   return (
     <div className="mx-auto max-w-2xl space-y-6">
       <header>
-        <h1 className="text-2xl font-semibold tracking-tight">Add user</h1>
-        <p className="mt-1 text-sm text-[color:var(--color-fg-muted)]">
+        <h1 className="text-h1">Add user</h1>
+        <p className="text-muted-foreground mt-1 text-sm">
           Create a local account (with a one-time bootstrap password) or an SSO-only account that
           signs in exclusively through your identity provider.
         </p>

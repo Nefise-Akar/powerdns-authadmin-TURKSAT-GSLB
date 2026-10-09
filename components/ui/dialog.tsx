@@ -8,7 +8,7 @@
  * `useDialog()` hook:
  *
  *   const { confirm, toast } = useDialog();
- *   if (await confirm({ title: "Delete user?", variant: "danger" })) { … }
+ *   if (await confirm({ title: "Delete user?", confirmLabel: "Delete user", variant: "danger" })) { … }
  *   toast({ kind: "success", description: "Saved." });
  *
  * Both are global: the `DialogProvider` mounts once in `app/(app)/layout.tsx`
@@ -36,6 +36,11 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { X } from "lucide-react";
+import { Alert } from "@/components/ui/alert";
+import { buttonClass, iconButtonClass } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { inputClass } from "@/components/ui/field";
 
 // =============================================================================
 // Shared body-scroll-lock - counter-based so stacked dialogs cooperate.
@@ -102,7 +107,11 @@ export interface ConfirmOptions {
   title: string;
   /** Body text. Accepts a node so callers can prepend an icon, bold a phrase, etc. */
   description?: ReactNode;
-  confirmLabel?: string;
+  /**
+   * Required: the button says what happens ("Delete key", "Revoke"), never a
+   * bare "OK" / "Confirm" - the design system rules those out.
+   */
+  confirmLabel: string;
   cancelLabel?: string;
   variant?: DialogVariant;
   /** When true (default), backdrop click cancels. Disable for high-stakes prompts. */
@@ -120,7 +129,8 @@ export interface PromptOptions {
   placeholder?: string;
   /** Label text above the input. Defaults to the title. */
   label?: string;
-  confirmLabel?: string;
+  /** Required, as for `confirm`: name the outcome of submitting. */
+  confirmLabel: string;
   cancelLabel?: string;
   /**
    * Optional synchronous validator. Return null when the value is
@@ -372,57 +382,37 @@ function ConfirmModal({
           aria-modal="true"
           aria-labelledby={titleId}
           aria-describedby={descriptionId}
-          className="relative w-full max-w-md rounded-lg border border-[color:var(--color-border)] bg-[color:var(--color-bg)] p-6 shadow-xl"
+          className="border-border bg-card text-card-foreground relative w-full max-w-md rounded-md border p-6"
         >
-          <h2 id={titleId} className="text-lg font-semibold">
+          <h2 id={titleId} className="text-h2">
             {state.title}
           </h2>
           {state.description ? (
-            <p id={descriptionId} className="mt-2 text-sm text-[color:var(--color-fg-muted)]">
+            <p id={descriptionId} className="text-body text-muted-foreground mt-1">
               {state.description}
             </p>
           ) : null}
           {state.checkbox ? (
             <div className="mt-4">
-              <label className="flex items-start gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={checked}
-                  onChange={(e) => setChecked(e.target.checked)}
-                  className="mt-0.5"
-                />
-                <span>{state.checkbox.label}</span>
-              </label>
+              <Checkbox checked={checked} onChange={setChecked} label={state.checkbox.label} />
               {!checked && state.checkbox.warningWhenUnchecked ? (
-                <div
-                  role="alert"
-                  className="mt-3 rounded-md border border-[color:var(--color-error)] bg-[color:var(--color-error)]/10 px-3 py-2 text-sm text-[color:var(--color-error)]"
-                >
+                <Alert live className="mt-3">
                   {state.checkbox.warningWhenUnchecked}
-                </div>
+                </Alert>
               ) : null}
             </div>
           ) : null}
-          <div className="mt-6 flex items-center justify-end gap-3">
-            <button
-              type="button"
-              onClick={cancel}
-              className="rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg)] px-4 py-2 text-sm hover:bg-[color:var(--color-bg-subtle)]"
-            >
+          <div className="mt-6 flex items-center justify-end gap-2">
+            <button type="button" onClick={cancel} className={buttonClass()}>
               {state.cancelLabel ?? "Cancel"}
             </button>
             <button
               type="button"
               data-dialog-focus="true"
               onClick={() => onResolve({ confirmed: true, checked })}
-              className={[
-                "rounded-md px-4 py-2 text-sm font-medium",
-                variant === "danger"
-                  ? "bg-[color:var(--color-error)] text-white hover:opacity-95"
-                  : "bg-[color:var(--color-accent)] text-[color:var(--color-accent-fg)] hover:opacity-95",
-              ].join(" ")}
+              className={buttonClass({ variant: variant === "danger" ? "destructive" : "primary" })}
             >
-              {state.confirmLabel ?? "Confirm"}
+              {state.confirmLabel}
             </button>
           </div>
         </div>
@@ -529,18 +519,18 @@ function PromptModal({
             e.preventDefault();
             submit();
           }}
-          className="relative w-full max-w-md rounded-lg border border-[color:var(--color-border)] bg-[color:var(--color-bg)] p-6 shadow-xl"
+          className="border-border bg-card text-card-foreground relative w-full max-w-md rounded-md border p-6"
         >
-          <h2 id={titleId} className="text-lg font-semibold">
+          <h2 id={titleId} className="text-h2">
             {state.title}
           </h2>
           {state.description ? (
-            <p id={descriptionId} className="mt-2 text-sm text-[color:var(--color-fg-muted)]">
+            <p id={descriptionId} className="text-body text-muted-foreground mt-1">
               {state.description}
             </p>
           ) : null}
-          <div className="mt-4">
-            <label htmlFor={inputId} className="block text-sm font-medium">
+          <div className="mt-4 flex flex-col gap-1.5">
+            <label htmlFor={inputId} className="text-label">
               {state.label ?? state.title}
             </label>
             <input
@@ -555,28 +545,24 @@ function PromptModal({
               placeholder={state.placeholder}
               aria-invalid={error ? "true" : "false"}
               aria-describedby={errorId}
-              className="mt-1 block w-full rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg)] px-3 py-2 text-sm focus:ring-2 focus:ring-[color:var(--color-accent)] focus:outline-none"
+              className={inputClass}
             />
             {error ? (
-              <p id={errorId} className="mt-1 text-xs text-[color:var(--color-error)]" role="alert">
+              <p id={errorId} className="text-caption text-destructive" role="alert">
                 {error}
               </p>
             ) : null}
           </div>
-          <div className="mt-6 flex items-center justify-end gap-3">
-            <button
-              type="button"
-              onClick={() => onResolve(null)}
-              className="rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg)] px-4 py-2 text-sm hover:bg-[color:var(--color-bg-subtle)]"
-            >
+          <div className="mt-6 flex items-center justify-end gap-2">
+            <button type="button" onClick={() => onResolve(null)} className={buttonClass()}>
               {state.cancelLabel ?? "Cancel"}
             </button>
             <button
               type="submit"
               data-dialog-focus="true"
-              className="rounded-md bg-[color:var(--color-accent)] px-4 py-2 text-sm font-medium text-[color:var(--color-accent-fg)] hover:opacity-95"
+              className={buttonClass({ variant: "primary" })}
             >
-              {state.confirmLabel ?? "OK"}
+              {state.confirmLabel}
             </button>
           </div>
         </form>
@@ -702,16 +688,13 @@ export function Dialog({
           aria-modal="true"
           aria-labelledby={titleId.current}
           aria-describedby={descriptionId.current}
-          className={`relative my-4 w-full ${maxWidthClass} rounded-lg border border-[color:var(--color-border)] bg-[color:var(--color-bg)] p-6 shadow-xl`}
+          className={`relative my-4 w-full ${maxWidthClass} border-border bg-card text-card-foreground rounded-md border p-6`}
         >
-          <h2 id={titleId.current} className={hideTitle ? "sr-only" : "text-lg font-semibold"}>
+          <h2 id={titleId.current} className={hideTitle ? "sr-only" : "text-h2"}>
             {title}
           </h2>
           {description ? (
-            <p
-              id={descriptionId.current}
-              className="mt-2 text-sm text-[color:var(--color-fg-muted)]"
-            >
+            <p id={descriptionId.current} className="text-body text-muted-foreground mt-1">
               {description}
             </p>
           ) : null}
@@ -762,42 +745,47 @@ function ToastViewport({
   );
 }
 
+// Status is carried by the dot color and the text, never by color alone; the
+// border stays a plain card edge except for errors and warnings.
+const TOAST_DOT = {
+  success: "bg-success",
+  error: "bg-destructive",
+  warn: "bg-warning",
+  info: "bg-info",
+} as const;
+const TOAST_BORDER = {
+  success: "border-border",
+  error: "border-destructive",
+  warn: "border-warning-border",
+  info: "border-border",
+} as const;
+
 function ToastCard({ toast, onDismiss }: { toast: ToastState; onDismiss: () => void }) {
   const kind = toast.kind ?? "info";
-  const borderColor =
-    kind === "success"
-      ? "var(--color-success)"
-      : kind === "error"
-        ? "var(--color-error)"
-        : kind === "warn"
-          ? "var(--color-warn)"
-          : "var(--color-border)";
 
   return (
     <div
       role={kind === "error" ? "alert" : "status"}
-      style={{ borderColor: `color-mix(in oklch, ${borderColor} 50%, transparent)` }}
-      className="pointer-events-auto w-80 max-w-[90vw] rounded-md border bg-[color:var(--color-bg)] p-3 text-sm shadow-lg"
+      className={`bg-card text-body text-card-foreground pointer-events-auto w-80 max-w-[90vw] rounded-md border px-4 py-3 ${TOAST_BORDER[kind]}`}
     >
-      <div className="flex items-start gap-3">
+      <div className="flex items-start gap-2">
         <span
           aria-hidden
-          className="mt-1 h-2 w-2 flex-none rounded-full"
-          style={{ backgroundColor: borderColor }}
+          className={`mt-[7px] size-1.5 flex-none rounded-full ${TOAST_DOT[kind]}`}
         />
-        <div className="flex-1">
-          {toast.title ? <div className="font-medium">{toast.title}</div> : null}
-          <div className={toast.title ? "text-[color:var(--color-fg-muted)]" : ""}>
+        <div className="min-w-0 flex-1">
+          {toast.title ? <div className="text-body-strong">{toast.title}</div> : null}
+          <div className={toast.title ? "text-body-sm text-muted-foreground" : ""}>
             {toast.description}
           </div>
         </div>
         <button
           type="button"
           onClick={onDismiss}
-          aria-label="Dismiss"
-          className="text-xs text-[color:var(--color-fg-muted)] hover:text-[color:var(--color-fg)]"
+          aria-label="Dismiss notification"
+          className={iconButtonClass("xs")}
         >
-          ×
+          <X aria-hidden strokeWidth={2.25} />
         </button>
       </div>
     </div>

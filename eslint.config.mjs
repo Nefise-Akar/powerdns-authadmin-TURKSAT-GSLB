@@ -233,7 +233,6 @@ export default tseslint.config(
       "playwright.config.ts",
       "vitest.config.ts",
       "vitest.config.integration.ts",
-      "tailwind.config.ts",
       "postcss.config.mjs",
       "eslint.config.mjs",
       "drizzle.sqlite.config.ts",

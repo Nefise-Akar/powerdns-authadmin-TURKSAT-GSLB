@@ -37,15 +37,15 @@ export default async function NewAuthProviderPage() {
       <div>
         <Link
           href="/admin/authentication"
-          className="text-sm text-[color:var(--color-accent)] hover:underline"
+          className="text-primary hover:text-primary-hover text-sm hover:underline"
         >
           ← Back to Authentication
         </Link>
       </div>
 
       <header>
-        <h1 className="text-2xl font-semibold tracking-tight">Add provider</h1>
-        <p className="mt-1 text-sm text-[color:var(--color-fg-muted)]">
+        <h1 className="text-h1">Add provider</h1>
+        <p className="text-muted-foreground mt-1 text-sm">
           Choose what kind of identity provider you're adding. The form below changes to match.
         </p>
       </header>

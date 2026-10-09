@@ -18,7 +18,7 @@ export default function AuditLoading() {
         <Skeleton className="h-7 w-32" />
         <Skeleton className="h-3 w-80" />
       </header>
-      <div className="rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg-subtle)] p-4">
+      <div className="border-border bg-background rounded-md border p-4">
         <div className="grid gap-3 sm:grid-cols-3">
           {Array.from({ length: 6 }).map((_, idx) => (
             <div key={idx} className="space-y-1.5">

@@ -29,6 +29,8 @@ import { apiFetch } from "@/lib/client/api-fetch";
 import { TsigKeySelector } from "@/components/domain/tsig-key-selector";
 import { SelectMenu } from "@/components/ui/select-menu";
 import { Switch } from "@/components/ui/switch";
+import { buttonClass } from "@/components/ui/button";
+import { inputClass as baseInputClass } from "@/components/ui/field";
 
 /**
  * Operator-facing backend option. A logical backend is either a
@@ -376,7 +378,7 @@ export function CreateZoneForm(props: Props) {
 
   if (props.backends.length === 0) {
     return (
-      <div className="rounded-md border border-dashed border-[color:var(--color-border)] bg-[color:var(--color-bg-subtle)] p-8 text-center text-sm">
+      <div className="border-border bg-background rounded-md border border-dashed p-8 text-center text-sm">
         No PowerDNS backends configured. Ask an administrator to add one before creating zones.
       </div>
     );
@@ -398,7 +400,7 @@ export function CreateZoneForm(props: Props) {
             className={`${inputClass} font-mono`}
           />
           {canonicalName ? (
-            <p className="mt-1 text-xs text-[color:var(--color-fg-muted)]">
+            <p className="text-muted-foreground mt-1 text-xs">
               Stored as <code className="font-mono">{canonicalName}</code>
             </p>
           ) : null}
@@ -419,7 +421,7 @@ export function CreateZoneForm(props: Props) {
               className="mt-1 w-full"
             />
             {selectedTemplate ? (
-              <div className="mt-1 space-y-1 text-xs text-[color:var(--color-fg-muted)]">
+              <div className="text-muted-foreground mt-1 space-y-1 text-xs">
                 <p>
                   Seeds {selectedTemplate.nameservers.length} NS record
                   {selectedTemplate.nameservers.length === 1 ? "" : "s"} and{" "}
@@ -442,7 +444,7 @@ export function CreateZoneForm(props: Props) {
             ) : null}
           </Field>
         ) : (
-          <p className="text-xs text-[color:var(--color-fg-muted)]">
+          <p className="text-muted-foreground text-xs">
             No templates defined yet. Templates prefill NS records, SOA timers, and prelude records
             - set them up under Admin → Zone templates to make this picker appear.
           </p>
@@ -455,7 +457,7 @@ export function CreateZoneForm(props: Props) {
             options={KINDS.map((k) => ({ value: k.value, label: k.label }))}
             className="mt-1 w-full"
           />
-          <p className="mt-1 text-xs text-[color:var(--color-fg-muted)]">
+          <p className="text-muted-foreground mt-1 text-xs">
             {KINDS.find((k) => k.value === kind)?.hint}
           </p>
         </Field>
@@ -469,7 +471,7 @@ export function CreateZoneForm(props: Props) {
             />
             <span className="text-sm">This is an internal zone.</span>
           </div>
-          <p className="mt-1 text-xs text-[color:var(--color-fg-muted)]">
+          <p className="text-muted-foreground mt-1 text-xs">
             Tick this for the internal half of a split-horizon setup. An internal zone is listed
             separately from a public zone of the same name and carries an{" "}
             <span className="font-mono">INTERNAL</span> badge. AuthAdmin-side only - nothing is sent
@@ -504,12 +506,12 @@ export function CreateZoneForm(props: Props) {
           </Field>
         ) : selectedBackend ? (
           <div className="space-y-1">
-            <div className="flex items-baseline gap-2 rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg-subtle)] px-3 py-2 text-sm">
+            <div className="border-border bg-background flex items-baseline gap-2 rounded-md border px-3 py-2 text-sm">
               <span className="font-medium">{selectedBackend.name}</span>
-              <span className="rounded bg-[color:var(--color-accent)]/15 px-1.5 py-0.5 font-mono text-[0.625rem] tracking-wide text-[color:var(--color-accent)] uppercase">
+              <span className="bg-tag text-mono-xs text-tag-foreground inline-flex h-5 items-center rounded-sm px-1.5 font-mono whitespace-nowrap">
                 {selectedBackend.kind}
               </span>
-              <code className="ml-auto font-mono text-xs text-[color:var(--color-fg-muted)]">
+              <code className="text-muted-foreground ml-auto font-mono text-xs">
                 {selectedBackend.slug}
               </code>
             </div>
@@ -532,7 +534,7 @@ export function CreateZoneForm(props: Props) {
             }}
           />
           {fieldErrors["tsigKeyName"] ? (
-            <p className="text-xs text-[color:var(--color-error)]" role="alert">
+            <p className="text-destructive text-xs" role="alert">
               {fieldErrors["tsigKeyName"].join(" ")}
             </p>
           ) : null}
@@ -546,7 +548,7 @@ export function CreateZoneForm(props: Props) {
         >
           <div className="space-y-2">
             {masters.length === 0 ? (
-              <p className="text-xs text-[color:var(--color-fg-muted)]">No primaries yet.</p>
+              <p className="text-muted-foreground text-xs">No primaries yet.</p>
             ) : null}
             {masters.map((m, i) => (
               <div key={i} className="flex items-center gap-2">
@@ -559,17 +561,13 @@ export function CreateZoneForm(props: Props) {
                 <button
                   type="button"
                   onClick={() => removeMaster(i)}
-                  className="text-xs text-[color:var(--color-error)] hover:underline"
+                  className="text-destructive text-xs hover:underline"
                 >
                   Remove
                 </button>
               </div>
             ))}
-            <button
-              type="button"
-              onClick={addMaster}
-              className="rounded-md border border-[color:var(--color-border)] px-3 py-1.5 text-xs hover:bg-[color:var(--color-bg-subtle)]"
-            >
+            <button type="button" onClick={addMaster} className={buttonClass({ size: "sm" })}>
               Add master IP
             </button>
           </div>
@@ -596,22 +594,16 @@ export function CreateZoneForm(props: Props) {
                   <button
                     type="button"
                     onClick={() => removeNs(i)}
-                    className="text-xs text-[color:var(--color-error)] hover:underline"
+                    className="text-destructive text-xs hover:underline"
                   >
                     Remove
                   </button>
                 </div>
               ))}
-              <button
-                type="button"
-                onClick={addNs}
-                className="rounded-md border border-[color:var(--color-border)] px-3 py-1.5 text-xs hover:bg-[color:var(--color-bg-subtle)]"
-              >
+              <button type="button" onClick={addNs} className={buttonClass({ size: "sm" })}>
                 Add name server
               </button>
-              {nsWarning ? (
-                <p className="text-xs text-[color:var(--color-warn)]">{nsWarning}</p>
-              ) : null}
+              {nsWarning ? <p className="text-warning text-xs">{nsWarning}</p> : null}
             </div>
           </Section>
 
@@ -641,24 +633,21 @@ export function CreateZoneForm(props: Props) {
       )}
 
       {error ? (
-        <p className="text-sm text-[color:var(--color-error)]" role="alert">
+        <p className="text-destructive text-sm" role="alert">
           {error}
         </p>
       ) : null}
 
       <div className="flex items-center gap-3">
         <button
+          aria-busy={saving}
           type="submit"
           disabled={saving}
-          className="rounded-md bg-[color:var(--color-accent)] px-4 py-2 text-sm font-medium text-[color:var(--color-accent-fg)] hover:opacity-95 disabled:opacity-50"
+          className={buttonClass({ variant: "primary" })}
         >
-          {saving ? "Adding…" : "Add zone"}
+          Add zone
         </button>
-        <button
-          type="button"
-          onClick={() => router.push("/zones")}
-          className="rounded-md border border-[color:var(--color-border)] px-4 py-2 text-sm hover:bg-[color:var(--color-bg-subtle)]"
-        >
+        <button type="button" onClick={() => router.push("/zones")} className={buttonClass()}>
           Cancel
         </button>
       </div>
@@ -666,8 +655,7 @@ export function CreateZoneForm(props: Props) {
   );
 }
 
-const inputClass =
-  "mt-1 block w-full rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--color-accent)]";
+const inputClass = `mt-1.5 ${baseInputClass}`;
 
 function Section({
   title,
@@ -679,14 +667,10 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <section className="space-y-3 rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg)] p-5">
+    <section className="border-border bg-card space-y-3 rounded-md border p-5">
       <header>
-        <h2 className="text-sm font-medium tracking-wide text-[color:var(--color-fg-muted)] uppercase">
-          {title}
-        </h2>
-        {subtitle ? (
-          <p className="mt-1 text-xs text-[color:var(--color-fg-muted)]">{subtitle}</p>
-        ) : null}
+        <h2 className="text-h3 text-foreground">{title}</h2>
+        {subtitle ? <p className="text-muted-foreground mt-1 text-xs">{subtitle}</p> : null}
       </header>
       {children}
     </section>
@@ -702,17 +686,14 @@ function Section({
 function SecondariesList({ secondaries }: { secondaries: Array<{ slug: string; name: string }> }) {
   if (secondaries.length === 0) return null;
   return (
-    <ul className="mt-1 ml-4 space-y-0.5 border-l border-[color:var(--color-border)] pl-3">
+    <ul className="border-border mt-1 ml-4 space-y-0.5 border-l pl-3">
       {secondaries.map((s) => (
-        <li
-          key={s.slug}
-          className="flex items-baseline gap-2 text-xs text-[color:var(--color-fg-muted)]"
-        >
-          <span aria-hidden className="text-[color:var(--color-fg-muted)]">
+        <li key={s.slug} className="text-muted-foreground flex items-baseline gap-2 text-xs">
+          <span aria-hidden className="text-muted-foreground">
             ↳
           </span>
           <span>{s.name}</span>
-          <span className="rounded bg-[color:var(--color-bg-subtle)] px-1.5 py-0.5 font-mono text-[0.625rem] tracking-wide uppercase">
+          <span className="bg-tag text-mono-xs text-tag-foreground inline-flex h-5 items-center rounded-sm px-1.5 font-mono whitespace-nowrap">
             secondary
           </span>
           <code className="ml-auto font-mono">{s.slug}</code>
@@ -735,11 +716,11 @@ function Field({
 }) {
   return (
     <div>
-      <label className="block text-sm font-medium">{label}</label>
+      <label className="text-label block">{label}</label>
       {children}
-      {hint ? <p className="mt-1 text-xs text-[color:var(--color-fg-muted)]">{hint}</p> : null}
+      {hint ? <p className="text-caption text-muted-foreground mt-1.5">{hint}</p> : null}
       {errors && errors.length > 0 ? (
-        <p className="mt-1 text-xs text-[color:var(--color-error)]" role="alert">
+        <p className="text-caption text-destructive mt-1.5" role="alert">
           {errors.join(" ")}
         </p>
       ) : null}

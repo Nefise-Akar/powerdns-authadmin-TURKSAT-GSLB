@@ -56,7 +56,7 @@ async function PrimarySecondariesSync({
   const diffs = await compareZoneRecords(primary, zone);
   if (diffs.length === 0) {
     return (
-      <div className="rounded-md border border-dashed border-[color:var(--color-border)] bg-[color:var(--color-bg-subtle)] p-6 text-center text-sm text-[color:var(--color-fg-muted)]">
+      <div className="border-border bg-background text-muted-foreground rounded-md border border-dashed p-6 text-center text-sm">
         No secondaries configured for <code className="font-mono">{primary.name}</code>. Add one on
         the{" "}
         <Link href={`/admin/servers/${primary.id}`} className="underline">
@@ -94,7 +94,7 @@ async function ClusterSync({
 }) {
   if (peers.length < 2) {
     return (
-      <div className="rounded-md border border-dashed border-[color:var(--color-border)] bg-[color:var(--color-bg-subtle)] p-6 text-center text-sm text-[color:var(--color-fg-muted)]">
+      <div className="border-border bg-background text-muted-foreground rounded-md border border-dashed p-6 text-center text-sm">
         Cluster <code className="font-mono">{cluster.name}</code> has fewer than two active peers -
         nothing to compare. Add a peer on the{" "}
         <Link href={`/admin/clusters/${cluster.slug}`} className="underline">
@@ -154,10 +154,8 @@ function DiffList({
   return (
     <div className="space-y-4">
       <header>
-        <h2 className="text-sm font-medium tracking-wide text-[color:var(--color-fg-muted)] uppercase">
-          {headerTitle}
-        </h2>
-        <p className="mt-1 text-xs text-[color:var(--color-fg-muted)]">{headerSubtitle}</p>
+        <h2 className="text-h3 text-foreground">{headerTitle}</h2>
+        <p className="text-muted-foreground mt-1 text-xs">{headerSubtitle}</p>
       </header>
 
       <ul className="space-y-4">
@@ -169,21 +167,21 @@ function DiffList({
           const refreshDue = d.error === null && d.refreshDue && recordsMatch;
           const settled = inSync || refreshDue;
           const tone = d.error
-            ? "border-[color:var(--color-error)]"
+            ? "border-destructive"
             : settled
-              ? "border-[color:var(--color-success)]"
-              : "border-[color:var(--color-warn)]";
+              ? "border-success"
+              : "border-warning-border";
           return (
             <li key={d.server.id} className={`overflow-hidden rounded-md border ${tone}`}>
-              <header className="flex flex-wrap items-baseline justify-between gap-2 border-b border-[color:var(--color-border)] bg-[color:var(--color-bg-subtle)] px-4 py-2 text-xs">
+              <header className="border-border bg-background flex flex-wrap items-baseline justify-between gap-2 border-b px-4 py-2 text-xs">
                 <div className="flex flex-wrap items-baseline gap-2">
                   <Link
                     href={`/admin/servers/${d.server.id}`}
-                    className="font-medium text-[color:var(--color-accent)] hover:underline"
+                    className="text-primary hover:text-primary-hover font-medium hover:underline"
                   >
                     {d.server.name}
                   </Link>
-                  <span className="text-[color:var(--color-fg-muted)]">{d.server.slug}</span>
+                  <span className="text-muted-foreground">{d.server.slug}</span>
                 </div>
                 <div className="flex flex-wrap items-baseline gap-3 text-xs">
                   <span>
@@ -215,9 +213,9 @@ function DiffList({
                 </div>
               </header>
               {d.error ? (
-                <p className="px-4 py-3 text-xs text-[color:var(--color-error)]">{d.error}</p>
+                <p className="text-destructive px-4 py-3 text-xs">{d.error}</p>
               ) : settled ? (
-                <p className="px-4 py-3 text-xs text-[color:var(--color-fg-muted)]">
+                <p className="text-muted-foreground px-4 py-3 text-xs">
                   {refreshDue
                     ? "Records match. The served serial advanced at this week's SOA-EDIT rollover, which PowerDNS doesn't NOTIFY - the secondary picks it up at its next SOA refresh."
                     : d.synopsis}
@@ -252,12 +250,14 @@ function PresignedNote({ count }: { count: number }) {
 function Badge({ text, tone }: { text: string; tone: "success" | "warn" | "error" }) {
   const tint =
     tone === "success"
-      ? "bg-[color-mix(in_oklch,var(--color-success)_20%,transparent)] text-[color:var(--color-success)]"
+      ? "bg-background text-success"
       : tone === "warn"
-        ? "bg-[color-mix(in_oklch,var(--color-warn)_20%,transparent)] text-[color:var(--color-warn)]"
-        : "bg-[color-mix(in_oklch,var(--color-error)_20%,transparent)] text-[color:var(--color-error)]";
+        ? "bg-warning-muted text-warning"
+        : "bg-destructive-muted text-destructive";
   return (
-    <span className={`rounded px-1.5 py-0.5 font-mono text-[0.625rem] uppercase ${tint}`}>
+    <span
+      className={`text-mono-xs inline-flex h-5 items-center rounded-sm px-1.5 font-mono ${tint}`}
+    >
       {text}
     </span>
   );

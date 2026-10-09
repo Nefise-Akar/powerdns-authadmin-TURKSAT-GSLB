@@ -16,6 +16,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useDialog } from "@/components/ui/dialog";
 import { mutate } from "@/lib/client/api-fetch";
+import { buttonClass } from "@/components/ui/button";
 
 interface Props {
   roleId: string;
@@ -59,30 +60,31 @@ export function RequireMfaToggle({ roleId, initialValue }: Props) {
   }
 
   return (
-    <div className="flex items-start justify-between gap-4 rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg-subtle)] p-4">
+    <div className="border-border bg-background flex items-start justify-between gap-4 rounded-md border p-4">
       <label className="flex flex-1 cursor-pointer items-start gap-3 text-sm">
         <input
           type="checkbox"
           checked={value}
           onChange={(e) => setValue(e.target.checked)}
           disabled={busy}
-          className="mt-0.5 h-4 w-4 cursor-pointer accent-[color:var(--color-accent)] disabled:cursor-not-allowed disabled:opacity-50"
+          className="accent-primary mt-0.5 h-4 w-4 cursor-pointer disabled:cursor-not-allowed disabled:opacity-45"
         />
         <span>
           <span className="font-medium">Require MFA</span>
-          <span className="mt-0.5 block text-xs text-[color:var(--color-fg-muted)]">
+          <span className="text-muted-foreground mt-0.5 block text-xs">
             Users assigned this role at any scope must have TOTP enrolled. Anyone holding the role
             without MFA is shunted to /profile to enroll before they can use the app.
           </span>
         </span>
       </label>
       <button
+        aria-busy={busy}
         type="button"
         onClick={handleSave}
         disabled={!dirty || busy}
-        className="shrink-0 rounded bg-[color:var(--color-accent)] px-3 py-1.5 text-xs font-medium text-[color:var(--color-accent-fg)] hover:opacity-95 disabled:opacity-50"
+        className={buttonClass({ variant: "primary", size: "sm", className: "shrink-0" })}
       >
-        {busy ? "Saving…" : "Save"}
+        Save
       </button>
     </div>
   );

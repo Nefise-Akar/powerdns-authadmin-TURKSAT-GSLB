@@ -6,6 +6,8 @@ import { useDialog } from "@/components/ui/dialog";
 import { LocalTime } from "@/components/ui/local-time";
 import { SelectMenu } from "@/components/ui/select-menu";
 import { apiFetch, mutate } from "@/lib/client/api-fetch";
+import { buttonClass } from "@/components/ui/button";
+import { inputClass } from "@/components/ui/field";
 
 interface Member {
   userId: string;
@@ -100,39 +102,35 @@ export function TeamMembersPanel(props: PanelProps) {
   }
 
   return (
-    <section className="space-y-4 rounded-md border border-[color:var(--color-border)] p-5">
+    <section className="border-border space-y-4 rounded-md border p-5">
       <header>
-        <h2 className="text-sm font-medium tracking-wide text-[color:var(--color-fg-muted)] uppercase">
-          Members ({props.members.length})
-        </h2>
+        <h2 className="text-h3 text-foreground">Members ({props.members.length})</h2>
       </header>
 
       {props.members.length === 0 ? (
-        <p className="text-sm text-[color:var(--color-fg-muted)]">No members yet.</p>
+        <p className="text-muted-foreground text-sm">No members yet.</p>
       ) : (
-        <div className="overflow-hidden rounded-lg border border-[color:var(--color-border)]">
+        <div className="overflow-hidden">
           <table className="w-full text-sm">
-            <thead className="bg-[color:var(--color-bg-muted)] text-left text-xs font-medium tracking-wide text-[color:var(--color-fg-muted)] uppercase">
+            <thead className="border-border bg-background text-label text-muted-foreground border-y text-left">
               <tr>
-                <th className="px-4 py-2.5">Email</th>
-                <th className="px-4 py-2.5">Role</th>
-                <th className="px-4 py-2.5">Joined</th>
-                <th className="px-4 py-2.5"></th>
+                <th className="h-9 px-2 font-medium first:pl-3">Email</th>
+                <th className="h-9 px-2 font-medium first:pl-3">Role</th>
+                <th className="h-9 px-2 font-medium first:pl-3">Joined</th>
+                <th className="h-9 px-2 font-medium first:pl-3"></th>
               </tr>
             </thead>
             <tbody>
               {props.members.map((m) => (
                 <tr
                   key={m.userId}
-                  className="border-t border-[color:var(--color-border)] transition-colors even:bg-[color:var(--color-bg-subtle)] hover:bg-[color-mix(in_oklch,var(--color-accent)_14%,transparent)]"
+                  className="border-border even:bg-background hover:bg-background border-t transition-colors"
                 >
-                  <td className="px-4 py-3 align-top">
+                  <td className="px-2 py-2 align-top first:pl-3">
                     <div className="font-medium">{m.email}</div>
-                    {m.name ? (
-                      <div className="text-xs text-[color:var(--color-fg-muted)]">{m.name}</div>
-                    ) : null}
+                    {m.name ? <div className="text-muted-foreground text-xs">{m.name}</div> : null}
                   </td>
-                  <td className="px-4 py-3 align-top text-xs">
+                  <td className="px-2 py-2 align-top text-xs first:pl-3">
                     {props.canManage ? (
                       <SelectMenu
                         value={m.teamRole}
@@ -148,18 +146,19 @@ export function TeamMembersPanel(props: PanelProps) {
                       m.teamRole
                     )}
                   </td>
-                  <td className="px-4 py-3 align-top text-xs">
+                  <td className="px-2 py-2 align-top text-xs first:pl-3">
                     <LocalTime ts={m.addedAt} />
                   </td>
-                  <td className="px-4 py-3 text-right align-top">
+                  <td className="px-2 py-2 text-right align-top first:pl-3">
                     {props.canManage ? (
                       <button
+                        aria-busy={removing === m.userId}
                         type="button"
                         onClick={() => handleRemove(m.userId)}
                         disabled={removing === m.userId}
-                        className="text-xs text-[color:var(--color-error)] hover:underline disabled:opacity-50"
+                        className="text-destructive text-xs hover:underline disabled:opacity-45"
                       >
-                        {removing === m.userId ? "Removing…" : "Remove"}
+                        Remove
                       </button>
                     ) : null}
                   </td>
@@ -173,11 +172,9 @@ export function TeamMembersPanel(props: PanelProps) {
       {props.canManage ? (
         <form
           onSubmit={handleAdd}
-          className="space-y-3 rounded-md border border-dashed border-[color:var(--color-border)] bg-[color:var(--color-bg-subtle)] p-4"
+          className="border-border bg-background space-y-3 rounded-md border border-dashed p-4"
         >
-          <p className="text-xs font-medium tracking-wide text-[color:var(--color-fg-muted)] uppercase">
-            Add member
-          </p>
+          <p className="text-caption text-muted-foreground">Add member</p>
           <div className="grid gap-3 sm:grid-cols-[1fr_max-content_max-content]">
             <input
               type="email"
@@ -185,7 +182,7 @@ export function TeamMembersPanel(props: PanelProps) {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="user@example.com"
-              className="rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg)] px-3 py-2 text-sm"
+              className={inputClass}
             />
             <SelectMenu
               value={teamRole}
@@ -198,15 +195,16 @@ export function TeamMembersPanel(props: PanelProps) {
               className="w-32 text-sm"
             />
             <button
+              aria-busy={adding}
               type="submit"
               disabled={adding}
-              className="rounded-md bg-[color:var(--color-accent)] px-4 py-2 text-sm font-medium text-[color:var(--color-accent-fg)] hover:opacity-95 disabled:opacity-50"
+              className={buttonClass({ variant: "primary" })}
             >
-              {adding ? "Adding…" : "Add"}
+              Add
             </button>
           </div>
           {error ? (
-            <p className="text-xs text-[color:var(--color-error)]" role="alert">
+            <p className="text-destructive text-xs" role="alert">
               {error}
             </p>
           ) : null}

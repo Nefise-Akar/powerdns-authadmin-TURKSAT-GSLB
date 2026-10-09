@@ -11,15 +11,16 @@
  * Behavior:
  *   - Default is "system" (follows the OS / browser preference).
  *   - User choice is persisted to localStorage under `pda-theme`.
- *   - The actual `.dark` class on <html> is applied by the inline
+ *   - The actual `data-theme` attribute on <html> is applied by the inline
  *     `theme-init` script in `app/layout.tsx` BEFORE React hydrates -
  *     this prevents a flash-of-wrong-theme on page load.
- *   - This component just updates the preference + the live class and
+ *   - This component just updates the preference + the live attribute and
  *     listens for OS-level changes when in "system" mode.
  */
 
 import { useEffect, useState } from "react";
 import { Monitor, Moon, Sun, type LucideIcon } from "lucide-react";
+import { iconButtonClass } from "@/components/ui/button";
 
 type Theme = "light" | "dark" | "system";
 
@@ -46,14 +47,14 @@ function resolveEffective(theme: Theme): "light" | "dark" {
   return theme;
 }
 
-/** Apply the effective theme by toggling the `.dark` class on <html>. */
+/** Apply the effective theme by setting `data-theme` on <html>. */
 function applyEffective(effective: "light" | "dark"): void {
-  document.documentElement.classList.toggle("dark", effective === "dark");
+  document.documentElement.setAttribute("data-theme", effective);
 }
 
 export function ThemeToggle({ className = "" }: { className?: string }) {
   // We avoid SSR mismatch by reading the user choice only after mount.
-  // The pre-hydration script in app/layout.tsx applies the class first,
+  // The pre-hydration script in app/layout.tsx applies the theme first,
   // so the visual theme is correct before this component renders.
   const [theme, setTheme] = useState<Theme>("system");
 
@@ -90,12 +91,9 @@ export function ThemeToggle({ className = "" }: { className?: string }) {
       onClick={cycle}
       aria-label={tooltip}
       title={tooltip}
-      className={[
-        "flex h-7 w-7 items-center justify-center rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg)] text-[color:var(--color-fg-muted)] transition-colors hover:bg-[color:var(--color-bg-subtle)] hover:text-[color:var(--color-fg)]",
-        className,
-      ].join(" ")}
+      className={iconButtonClass("lg", className)}
     >
-      <Icon aria-hidden className="h-4 w-4" />
+      <Icon aria-hidden strokeWidth={1.75} />
     </button>
   );
 }

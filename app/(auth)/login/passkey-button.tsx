@@ -19,6 +19,7 @@ import { useState } from "react";
 import { Fingerprint } from "lucide-react";
 import { startAuthentication } from "@simplewebauthn/browser";
 import { apiFetch } from "@/lib/client/api-fetch";
+import { buttonClass } from "@/components/ui/button";
 
 export function PasskeyButton({ next = "/dashboard" }: { next?: string }) {
   const [busy, setBusy] = useState(false);
@@ -71,16 +72,17 @@ export function PasskeyButton({ next = "/dashboard" }: { next?: string }) {
   return (
     <div className="space-y-2">
       <button
+        aria-busy={busy}
         type="button"
         onClick={handleClick}
         disabled={busy}
-        className="flex w-full items-center justify-center gap-2 rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg-subtle)] px-4 py-2 text-sm font-medium hover:bg-[color:var(--color-bg-muted)] disabled:opacity-50"
+        className={buttonClass({ className: "flex w-full" })}
       >
         <Fingerprint className="h-4 w-4" aria-hidden />
-        <span>{busy ? "Waiting for device…" : "Passkey"}</span>
+        <span>Passkey</span>
       </button>
       {error ? (
-        <p className="text-xs text-[color:var(--color-error)]" role="alert">
+        <p className="text-destructive text-xs" role="alert">
           {error}
         </p>
       ) : null}

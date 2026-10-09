@@ -14,6 +14,7 @@ import { AddMetadataKind } from "../metadata/_components/add-metadata-kind";
 import { KIND_SPECS, ZONE_OBJECT_KINDS } from "../metadata/_components/kind-specs";
 import { MetadataEditor } from "../metadata/_components/metadata-editor";
 import { ZoneTsigTransfer } from "./zone-tsig-transfer";
+import { Alert } from "@/components/ui/alert";
 
 interface Props {
   zoneIdEncoded: string;
@@ -38,9 +39,9 @@ export async function MetadataSection({
 }: Props) {
   if (!canRead) {
     return (
-      <div className="rounded-md border border-[color:var(--color-warn)] bg-[color:var(--color-warn)]/10 p-4 text-sm">
+      <Alert title="no permission">
         You don&apos;t have permission to view metadata for this zone.
-      </div>
+      </Alert>
     );
   }
 
@@ -51,11 +52,7 @@ export async function MetadataSection({
     items = await client.listZoneMetadata(zoneName);
   } catch (err) {
     if (err instanceof PdnsNotFoundError) {
-      return (
-        <div className="rounded-md border border-[color:var(--color-error)] bg-[color:var(--color-error)]/10 p-4 text-sm">
-          Zone not found on backend.
-        </div>
-      );
+      return <Alert variant="destructive" title="zone not found on backend" />;
     }
     fetchError = err instanceof Error ? redact(err.message) : "Unknown error";
     logger.warn(
@@ -108,7 +105,7 @@ export async function MetadataSection({
       <div className="flex flex-wrap items-end justify-between gap-3">
         <h2 className="text-lg font-semibold">
           Zone metadata{" "}
-          <span className="text-sm font-normal text-[color:var(--color-fg-muted)]">
+          <span className="text-muted-foreground text-sm font-normal">
             - per-zone configuration the PDNS daemon honors at lookup and transfer time.
           </span>
         </h2>
@@ -122,14 +119,13 @@ export async function MetadataSection({
       </div>
 
       {fetchError ? (
-        <div className="rounded-md border border-[color:var(--color-error)] bg-[color:var(--color-error)]/10 p-4 text-sm">
-          <strong>Could not list metadata.</strong>
-          <p className="mt-1 text-xs">{fetchError}</p>
-        </div>
+        <Alert variant="destructive" title="could not list metadata">
+          {fetchError}
+        </Alert>
       ) : null}
 
       {sorted?.length === 0 ? (
-        <div className="rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg-subtle)] p-5 text-sm">
+        <div className="border-border bg-background rounded-md border p-5 text-sm">
           No metadata configured. The zone uses PDNS defaults for transfers, notifications, and
           signing.
         </div>
@@ -140,22 +136,17 @@ export async function MetadataSection({
           {sorted.map((m) => {
             const desc = KIND_SPECS[m.kind]?.description;
             return (
-              <li
-                key={m.kind}
-                className="rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg)] p-5"
-              >
+              <li key={m.kind} className="border-border bg-card rounded-md border p-5">
                 <header className="flex flex-wrap items-baseline gap-x-3">
                   <h3 className="font-mono text-sm font-medium">{m.kind}</h3>
-                  <span className="text-xs text-[color:var(--color-fg-muted)]">
+                  <span className="text-muted-foreground text-xs">
                     {m.metadata.length} value
                     {m.metadata.length === 1 ? "" : "s"}
                   </span>
                 </header>
-                {desc ? (
-                  <p className="mt-1 text-xs text-[color:var(--color-fg-muted)]">{desc}</p>
-                ) : null}
+                {desc ? <p className="text-muted-foreground mt-1 text-xs">{desc}</p> : null}
                 {m.metadata.length > 0 ? (
-                  <ul className="mt-3 space-y-1 rounded bg-[color:var(--color-bg-subtle)] p-3 font-mono text-xs">
+                  <ul className="bg-background mt-3 space-y-1 rounded p-3 font-mono text-xs">
                     {m.metadata.map((v, i) => (
                       <li key={i}>
                         <code className="break-all">{v}</code>
@@ -163,9 +154,7 @@ export async function MetadataSection({
                     ))}
                   </ul>
                 ) : (
-                  <p className="mt-3 text-xs text-[color:var(--color-fg-muted)] italic">
-                    (kind set but empty)
-                  </p>
+                  <p className="text-muted-foreground mt-3 text-xs italic">(kind set but empty)</p>
                 )}
                 {canWrite ? (
                   <MetadataEditor

@@ -25,6 +25,7 @@ import { useState } from "react";
 import { useDialog } from "@/components/ui/dialog";
 import { LocalTime } from "@/components/ui/local-time";
 import { mutate } from "@/lib/client/api-fetch";
+import { buttonClass } from "@/components/ui/button";
 
 interface SessionRow {
   id: string;
@@ -127,50 +128,54 @@ export function SessionsPanel({ userId, canManage, isSelf, sessions }: Props) {
   }
 
   return (
-    <section className="rounded-md border border-[color:var(--color-border)] p-5">
+    <section className="border-border rounded-md border p-5">
       <div className="mb-3 flex items-center justify-between gap-3">
-        <h2 className="text-sm font-medium tracking-wide text-[color:var(--color-fg-muted)] uppercase">
-          Sessions ({sessions.length})
-        </h2>
+        <h2 className="text-h3 text-foreground">Sessions ({sessions.length})</h2>
         {canManage && sessions.length > 0 ? (
           <button
+            aria-busy={busyId === "all"}
             type="button"
             onClick={handleRevokeAll}
             disabled={busyId !== null}
-            className="rounded border border-[color:var(--color-error)] px-3 py-1 text-xs text-[color:var(--color-error)] hover:bg-[color:var(--color-error)]/10 disabled:opacity-50"
+            className={buttonClass({ variant: "destructive", size: "sm" })}
           >
-            {busyId === "all" ? "Revoking…" : "Revoke all"}
+            Revoke all
           </button>
         ) : null}
       </div>
 
       {sessions.length === 0 ? (
-        <p className="text-sm text-[color:var(--color-fg-muted)]">No active sessions.</p>
+        <p className="text-muted-foreground text-sm">No active sessions.</p>
       ) : (
-        <ul className="divide-y divide-[color:var(--color-border)]">
+        <ul className="divide-border divide-y">
           {sessions.map((s) => (
             <li key={s.id} className="flex items-start justify-between gap-3 py-3">
               <div className="min-w-0 flex-1 space-y-0.5 text-xs">
-                <div className="truncate font-mono text-[color:var(--color-fg-muted)]">
+                <div className="text-muted-foreground truncate font-mono">
                   {s.ip ?? "ip-unknown"}
                   {" · "}
                   last seen <LocalTime ts={s.lastSeenAt} />
                 </div>
-                <div className="truncate text-[color:var(--color-fg-muted)]">
+                <div className="text-muted-foreground truncate">
                   {s.userAgent ?? "no user-agent"}
                 </div>
-                <div className="text-[color:var(--color-fg-subtle)]">
+                <div className="text-muted-foreground">
                   expires <LocalTime ts={s.expiresAt} />
                 </div>
               </div>
               {canManage ? (
                 <button
+                  aria-busy={busyId === s.id}
                   type="button"
                   onClick={() => handleRevokeOne(s.id)}
                   disabled={busyId !== null}
-                  className="shrink-0 rounded border border-[color:var(--color-error)] px-2 py-1 text-[0.6875rem] text-[color:var(--color-error)] hover:bg-[color:var(--color-error)]/10 disabled:opacity-50"
+                  className={buttonClass({
+                    variant: "destructive",
+                    size: "sm",
+                    className: "shrink-0",
+                  })}
                 >
-                  {busyId === s.id ? "Revoking…" : "Revoke"}
+                  Revoke
                 </button>
               ) : null}
             </li>

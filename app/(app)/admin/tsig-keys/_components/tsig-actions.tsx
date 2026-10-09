@@ -24,6 +24,7 @@ import { mutate } from "@/lib/client/api-fetch";
 import { createCtaClass } from "@/components/ui/create-button";
 import { DataTable } from "@/components/ui/data-table";
 import { TsigKeyWizard, type InstallSecondary } from "./tsig-key-wizard";
+import { buttonClass } from "@/components/ui/button";
 
 interface Row {
   id: string;
@@ -84,7 +85,7 @@ export function TsigActions({
           <svg
             viewBox="0 0 24 24"
             aria-hidden
-            className="mt-0.5 h-4 w-4 shrink-0 text-[color:var(--color-warn)]"
+            className="text-warning mt-0.5 h-4 w-4 shrink-0"
             fill="none"
             stroke="currentColor"
             strokeWidth="2"
@@ -252,7 +253,7 @@ function TsigKeysTable({
         accessorKey: "algorithm",
         header: "Algorithm",
         cell: (ctx) => (
-          <span className="rounded bg-[color:var(--color-bg-muted)] px-2 py-0.5 font-mono text-xs">
+          <span className="bg-muted rounded px-2 py-0.5 font-mono text-xs">
             {ctx.getValue<string>()}
           </span>
         ),
@@ -266,9 +267,7 @@ function TsigKeysTable({
             <div className="max-w-sm space-y-1">
               <span
                 className={`inline-flex rounded px-2 py-0.5 text-xs font-medium ${
-                  row.zoneCount > 0
-                    ? "bg-[color:var(--color-accent)]/15 text-[color:var(--color-accent)]"
-                    : "bg-[color:var(--color-bg-muted)] text-[color:var(--color-fg-muted)]"
+                  row.zoneCount > 0 ? "bg-accent text-primary" : "bg-muted text-muted-foreground"
                 }`}
               >
                 {row.zoneCount === 0
@@ -281,13 +280,13 @@ function TsigKeysTable({
                     <span
                       key={zone}
                       title={zone}
-                      className="max-w-44 truncate rounded bg-[color:var(--color-bg-subtle)] px-1.5 py-0.5 font-mono text-[0.625rem] text-[color:var(--color-fg-muted)]"
+                      className="bg-tag text-mono-xs text-tag-foreground inline-flex h-5 max-w-44 items-center truncate rounded-sm px-1.5 font-mono whitespace-nowrap"
                     >
                       {zone}
                     </span>
                   ))}
                   {row.zones.length > 3 ? (
-                    <span className="rounded bg-[color:var(--color-bg-subtle)] px-1.5 py-0.5 text-[0.625rem] text-[color:var(--color-fg-muted)]">
+                    <span className="bg-tag text-mono-xs text-tag-foreground inline-flex h-5 items-center rounded-sm px-1.5 font-mono whitespace-nowrap">
                       +{row.zones.length - 3}
                     </span>
                   ) : null}
@@ -309,7 +308,7 @@ function TsigKeysTable({
                 <button
                   type="button"
                   onClick={() => onEditZones(row)}
-                  className="inline-flex items-center gap-1 rounded border border-[color:var(--color-border)] px-2 py-1 text-xs hover:bg-[color:var(--color-bg-muted)]"
+                  className={buttonClass({ size: "sm" })}
                 >
                   <Pencil className="h-3.5 w-3.5" aria-hidden />
                   Edit
@@ -319,20 +318,21 @@ function TsigKeysTable({
                 <button
                   type="button"
                   onClick={() => onInstall(row)}
-                  className="inline-flex items-center gap-1 rounded border border-[color:var(--color-border)] px-2 py-1 text-xs hover:bg-[color:var(--color-bg-muted)]"
+                  className={buttonClass({ size: "sm" })}
                 >
                   <UploadCloud className="h-3.5 w-3.5" aria-hidden />
                   Install
                 </button>
               ) : null}
               <button
+                aria-busy={busyDeleteId === row.id}
                 type="button"
                 onClick={() => onDelete(row)}
                 disabled={busyDeleteId === row.id}
-                className="inline-flex items-center gap-1 rounded border border-[color:var(--color-error)] px-2 py-1 text-xs text-[color:var(--color-error)] hover:bg-[color:var(--color-error)]/10 disabled:opacity-50"
+                className={buttonClass({ variant: "destructive", size: "sm" })}
               >
                 <Trash2 className="h-3.5 w-3.5" aria-hidden />
-                {busyDeleteId === row.id ? "Deleting…" : "Delete"}
+                Delete
               </button>
             </div>
           );

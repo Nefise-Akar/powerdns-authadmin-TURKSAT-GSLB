@@ -34,7 +34,8 @@ import { tlsaEditor, smimeaEditor } from "./tlsa";
 import { dsEditor } from "./ds";
 import { txtEditor } from "./txt";
 import { svcbEditor, httpsEditor } from "./svcb";
-import { inputClass } from "./_form";
+import { Alert } from "@/components/ui/alert";
+import { inputClass, textareaClass } from "./_form";
 
 const REGISTRY: Record<string, RREditor<unknown>> = {
   MX: mxEditor as RREditor<unknown>,
@@ -141,17 +142,17 @@ function StructuredField({
   if (stickyRaw) {
     return (
       <div className="space-y-2">
-        <div className="rounded-md border border-[color:var(--color-warn)] bg-[color:var(--color-warn)]/10 p-3 text-xs">
-          <strong>Raw mode:</strong> this record doesn&apos;t match the expected{" "}
-          <code>{editor.type}</code> wire format. Editing the wire-format text directly. Fix the
-          structure and save to bring it back in line with the RFC.
-        </div>
+        <Alert title="raw mode">
+          This record doesn&apos;t match the expected <code>{editor.type}</code> wire format, so
+          you&apos;re editing the wire-format text directly. Fix the structure and save to bring it
+          back in line with the RFC.
+        </Alert>
         <textarea
           id={id}
           value={value}
           onChange={(e) => onChange(e.target.value)}
           rows={3}
-          className={`${inputClass} font-mono`}
+          className={`${textareaClass} font-mono`}
           spellCheck={false}
         />
       </div>
@@ -163,10 +164,8 @@ function StructuredField({
   return (
     <div className="space-y-3">
       <Editor value={struct} onChange={handleStructChange} />
-      <div className="rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg-subtle)] px-3 py-2">
-        <div className="text-[10px] tracking-wide text-[color:var(--color-fg-muted)] uppercase">
-          Wire format sent to PDNS
-        </div>
+      <div className="border-border bg-background rounded-md border px-3 py-2">
+        <div className="text-caption text-muted-foreground">Wire format sent to PDNS</div>
         <code className="block font-mono text-xs break-all">{wire}</code>
       </div>
     </div>

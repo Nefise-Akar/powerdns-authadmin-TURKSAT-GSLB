@@ -1,9 +1,10 @@
 /**
  * components/ui/skeleton.tsx
  *
- * Primitive placeholder shapes for loading states. The shimmer animation is
- * defined in `app/globals.css` (`.pda-skeleton` + `@keyframes pda-shimmer`)
- * so it stays in one place and respects `prefers-reduced-motion`.
+ * Primitive placeholder shapes for loading states. Blocks are static `muted`
+ * fills with 2px corners - no shimmer gradient (it would invent in-between
+ * tones) and never `accent`, which means "selected". Placeholders keep the
+ * real layout, so tables use 36px rows.
  *
  * Use in two ways:
  *
@@ -29,7 +30,7 @@ interface BaseProps {
 }
 
 /**
- * Solid shimmering box. Sizes itself from `style.width` / `style.height` or
+ * Solid placeholder box. Sizes itself from `style.width` / `style.height` or
  * the className you pass (e.g. `h-4 w-24`).
  */
 export function Skeleton({ className = "", style, label = "Loading…" }: BaseProps) {
@@ -38,7 +39,7 @@ export function Skeleton({ className = "", style, label = "Loading…" }: BasePr
       role="status"
       aria-label={label}
       aria-busy
-      className={`pda-skeleton inline-block ${className}`}
+      className={`bg-muted inline-block rounded-sm ${className}`}
       style={style}
     />
   );
@@ -71,7 +72,7 @@ export function SkeletonLines({
 /** Card frame with a label + value placeholder - matches the dashboard KPI card. */
 export function SkeletonKpi() {
   return (
-    <div className="rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg-subtle)] p-4">
+    <div className="border-border bg-card rounded-md border p-4">
       <Skeleton className="h-3 w-20" />
       <Skeleton className="mt-3 h-7 w-16" />
       <Skeleton className="mt-2 h-3 w-24" />
@@ -90,22 +91,20 @@ export function SkeletonTable({
   className?: string;
 }) {
   return (
-    <div
-      className={`overflow-hidden rounded-md border border-[color:var(--color-border)] ${className}`}
-    >
+    <div className={`border-border overflow-hidden border-t ${className}`}>
       <div
-        className="grid gap-3 border-b border-[color:var(--color-border)] bg-[color:var(--color-bg-subtle)] px-4 py-2.5"
+        className="border-border bg-background grid h-9 items-center gap-3 border-b px-3"
         style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}
       >
         {Array.from({ length: cols }).map((_, idx) => (
           <Skeleton key={idx} className="h-3 w-16" />
         ))}
       </div>
-      <div className="divide-y divide-[color:var(--color-border)]">
+      <div className="divide-border divide-y">
         {Array.from({ length: rows }).map((_, rowIdx) => (
           <div
             key={rowIdx}
-            className="grid gap-3 px-4 py-3"
+            className="grid h-9 items-center gap-3 px-3"
             style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}
           >
             {Array.from({ length: cols }).map((_, colIdx) => (
@@ -125,7 +124,7 @@ export function SkeletonTable({
 /** Block matching the chart-card frame on the dashboard. */
 export function SkeletonChart({ height = 260 }: { height?: number }) {
   return (
-    <div className="rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg)] p-4">
+    <div className="border-border bg-card rounded-md border p-4">
       <Skeleton className="h-3 w-32" />
       <Skeleton className="mt-1 h-3 w-48" />
       <Skeleton className="mt-3 block w-full" style={{ height }} />

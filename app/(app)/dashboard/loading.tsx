@@ -10,40 +10,34 @@ export default function DashboardLoading() {
   return (
     <div className="animate-pulse space-y-6">
       <header>
-        <div className="h-8 w-72 rounded bg-[color:var(--color-bg-subtle)]" />
-        <div className="mt-2 h-4 w-96 rounded bg-[color:var(--color-bg-subtle)]" />
+        <div className="bg-background h-8 w-72 rounded" />
+        <div className="bg-background mt-2 h-4 w-96 rounded" />
       </header>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {Array.from({ length: 4 }).map((_, i) => (
-          <div
-            key={i}
-            className="rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg-subtle)] p-4"
-          >
-            <div className="h-3 w-24 rounded bg-[color:var(--color-bg-muted)]" />
-            <div className="mt-2 h-7 w-16 rounded bg-[color:var(--color-bg-muted)]" />
+          <div key={i} className="border-border bg-background rounded-md border p-4">
+            <div className="bg-muted h-3 w-24 rounded" />
+            <div className="bg-muted mt-2 h-7 w-16 rounded" />
           </div>
         ))}
       </div>
 
-      <div className="h-9 border-b border-[color:var(--color-border)]">
+      <div className="border-border h-9 border-b">
         <div className="flex gap-6">
-          <div className="h-4 w-32 rounded bg-[color:var(--color-bg-subtle)]" />
-          <div className="h-4 w-28 rounded bg-[color:var(--color-bg-subtle)]" />
+          <div className="bg-background h-4 w-32 rounded" />
+          <div className="bg-background h-4 w-28 rounded" />
         </div>
       </div>
 
       {Array.from({ length: 2 }).map((_, i) => (
-        <div key={i} className="space-y-3 rounded-md border border-[color:var(--color-border)] p-4">
-          <div className="h-5 w-48 rounded bg-[color:var(--color-bg-subtle)]" />
+        <div key={i} className="border-border space-y-3 rounded-md border p-4">
+          <div className="bg-background h-5 w-48 rounded" />
           <div className="grid gap-3 sm:grid-cols-2">
             {Array.from({ length: 4 }).map((_, j) => (
-              <div
-                key={j}
-                className="rounded border border-[color:var(--color-border)] bg-[color:var(--color-bg-subtle)] p-3"
-              >
-                <div className="h-3 w-32 rounded bg-[color:var(--color-bg-muted)]" />
-                <div className="mt-3 h-40 rounded bg-[color:var(--color-bg-muted)]" />
+              <div key={j} className="border-border bg-background rounded border p-3">
+                <div className="bg-muted h-3 w-32 rounded" />
+                <div className="bg-muted mt-3 h-40 rounded" />
               </div>
             ))}
           </div>

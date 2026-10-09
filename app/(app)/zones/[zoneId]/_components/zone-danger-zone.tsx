@@ -19,6 +19,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useDialog } from "@/components/ui/dialog";
 import { mutate } from "@/lib/client/api-fetch";
+import { buttonClass } from "@/components/ui/button";
+import { inputClass } from "@/components/ui/field";
 
 interface Props {
   zoneIdEncoded: string;
@@ -97,42 +99,37 @@ export function ZoneDangerZone({ zoneIdEncoded, serverSlug, zoneName, canDelete 
   if (!canDelete) return null;
 
   return (
-    <section className="rounded-md border border-[color:var(--color-error)] bg-[color:var(--color-error)]/5 p-5">
+    <section className="border-destructive bg-destructive-muted rounded-md border p-5">
       <header>
-        <h2 className="text-base font-semibold text-[color:var(--color-error)]">Danger zone</h2>
-        <p className="mt-1 text-sm text-[color:var(--color-fg-muted)]">
+        <h2 className="text-destructive text-base font-semibold">Danger zone</h2>
+        <p className="text-muted-foreground mt-1 text-sm">
           Permanently delete this zone from the PowerDNS backend.{" "}
-          <strong className="text-[color:var(--color-error)]">This cannot be undone.</strong> Every
-          record, every comment, every metadata kind is wiped server-side. Existing DNS resolvers
-          will keep serving cached answers until their TTLs expire - but new queries will fail.
+          <strong className="text-destructive">This cannot be undone.</strong> Every record, every
+          comment, every metadata kind is wiped server-side. Existing DNS resolvers will keep
+          serving cached answers until their TTLs expire - but new queries will fail.
         </p>
       </header>
 
       <ol className="mt-4 space-y-4 text-sm">
         <li>
           <div className="flex flex-wrap items-center gap-3">
-            <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-[color:var(--color-bg-muted)] font-mono text-[0.6875rem]">
+            <span className="bg-tag text-mono-xs text-tag-foreground inline-flex h-5 w-5 items-center rounded-sm px-1.5 font-mono whitespace-nowrap">
               1
             </span>
             <span className="font-medium">Download a BIND zonefile backup.</span>
             <button
+              aria-busy={downloading}
               type="button"
               onClick={handleDownload}
               disabled={downloading}
-              className="rounded border border-[color:var(--color-border)] bg-[color:var(--color-bg)] px-3 py-1 text-xs hover:bg-[color:var(--color-bg-subtle)] disabled:opacity-50"
+              className={buttonClass({ size: "sm" })}
             >
-              {downloading
-                ? "Downloading…"
-                : downloaded
-                  ? `Re-download ${cleanName}.zone`
-                  : `Download ${cleanName}.zone`}
+              {downloaded ? `Re-download ${cleanName}.zone` : `Download ${cleanName}.zone`}
             </button>
             {downloaded ? (
-              <span className="text-[0.6875rem] text-[color:var(--color-success)]">
-                ✓ Backup saved to your downloads
-              </span>
+              <span className="text-success text-caption">✓ Backup saved to your downloads</span>
             ) : (
-              <span className="text-[0.6875rem] text-[color:var(--color-fg-muted)]">
+              <span className="text-muted-foreground text-caption">
                 Required before delete unlocks
               </span>
             )}
@@ -141,15 +138,12 @@ export function ZoneDangerZone({ zoneIdEncoded, serverSlug, zoneName, canDelete 
 
         <li className={downloaded ? "" : "opacity-50"}>
           <div className="flex flex-wrap items-center gap-3">
-            <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-[color:var(--color-bg-muted)] font-mono text-[0.6875rem]">
+            <span className="bg-tag text-mono-xs text-tag-foreground inline-flex h-5 w-5 items-center rounded-sm px-1.5 font-mono whitespace-nowrap">
               2
             </span>
             <span className="font-medium">
-              Type{" "}
-              <code className="rounded bg-[color:var(--color-bg-subtle)] px-1 font-mono">
-                {requiredPhrase}
-              </code>{" "}
-              to confirm.
+              Type <code className="bg-background rounded px-1 font-mono">{requiredPhrase}</code> to
+              confirm.
             </span>
           </div>
           <input
@@ -158,7 +152,7 @@ export function ZoneDangerZone({ zoneIdEncoded, serverSlug, zoneName, canDelete 
             onChange={(e) => setConfirmText(e.target.value)}
             disabled={!downloaded}
             placeholder={requiredPhrase}
-            className="mt-2 block w-full max-w-md rounded border border-[color:var(--color-border)] bg-[color:var(--color-bg)] px-3 py-2 font-mono text-sm focus:border-[color:var(--color-error)] focus:outline-none disabled:opacity-60"
+            className={`mt-2 max-w-md font-mono ${inputClass}`}
             spellCheck={false}
             autoComplete="off"
           />
@@ -166,12 +160,13 @@ export function ZoneDangerZone({ zoneIdEncoded, serverSlug, zoneName, canDelete 
 
         <li>
           <button
+            aria-busy={deleting}
             type="button"
             onClick={handleDelete}
             disabled={!downloaded || !phraseMatches || deleting}
-            className="rounded bg-[color:var(--color-error)] px-4 py-2 text-sm font-medium text-white hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-50"
+            className={buttonClass({ variant: "destructive" })}
           >
-            {deleting ? "Deleting…" : `Permanently delete ${cleanName}`}
+            {`Permanently delete ${cleanName}`}
           </button>
         </li>
       </ol>

@@ -30,13 +30,13 @@ export default async function VerifyEmailPage({
     return (
       <>
         <header className="mb-6">
-          <h1 className="text-2xl font-semibold tracking-tight">Verify your email</h1>
-          <p className="mt-1 text-sm text-[color:var(--color-fg-muted)]">
+          <h1 className="text-h1">Verify your email</h1>
+          <p className="text-muted-foreground mt-1 text-sm">
             Open the verification link your administrator sent you. The link is recorded in the
             audit log under <code className="ml-1">auth.email.verify.sent</code>.
           </p>
         </header>
-        <p className="text-xs text-[color:var(--color-fg-muted)]">
+        <p className="text-muted-foreground text-xs">
           <Link href="/login" className="underline">
             ← Back to sign in
           </Link>
@@ -48,13 +48,11 @@ export default async function VerifyEmailPage({
   return (
     <>
       <header className="mb-6">
-        <h1 className="text-2xl font-semibold tracking-tight">Verify your email</h1>
-        <p className="mt-1 text-sm text-[color:var(--color-fg-muted)]">
-          Confirming your email address…
-        </p>
+        <h1 className="text-h1">Verify your email</h1>
+        <p className="text-muted-foreground mt-1 text-sm">Confirming your email address…</p>
       </header>
       <VerifyEmailForm token={token} />
-      <p className="mt-6 text-xs text-[color:var(--color-fg-muted)]">
+      <p className="text-muted-foreground mt-6 text-xs">
         <Link href="/login" className="underline">
           ← Back to sign in
         </Link>

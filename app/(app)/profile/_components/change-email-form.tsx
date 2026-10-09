@@ -18,6 +18,8 @@
 import { useState, type FormEvent } from "react";
 import { useDialog } from "@/components/ui/dialog";
 import { apiFetch } from "@/lib/client/api-fetch";
+import { buttonClass } from "@/components/ui/button";
+import { inputClass } from "@/components/ui/field";
 
 interface ErrorBody {
   error?: string;
@@ -83,10 +85,10 @@ export function ChangeEmailForm() {
           required
           value={newEmail}
           onChange={(e) => setNewEmail(e.target.value)}
-          className="mt-1 block w-full rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg)] px-3 py-2 text-sm focus:ring-2 focus:ring-[color:var(--color-accent)] focus:outline-none"
+          className={`mt-1 w-full ${inputClass}`}
         />
         {fieldErrors["newEmail"]?.length ? (
-          <p className="mt-1 text-xs text-[color:var(--color-error)]" role="alert">
+          <p className="text-destructive mt-1 text-xs" role="alert">
             {fieldErrors["newEmail"].join(" ")}
           </p>
         ) : null}
@@ -102,33 +104,34 @@ export function ChangeEmailForm() {
           required
           value={currentPassword}
           onChange={(e) => setCurrentPassword(e.target.value)}
-          className="mt-1 block w-full rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg)] px-3 py-2 text-sm focus:ring-2 focus:ring-[color:var(--color-accent)] focus:outline-none"
+          className={`mt-1 w-full ${inputClass}`}
         />
         {fieldErrors["currentPassword"]?.length ? (
-          <p className="mt-1 text-xs text-[color:var(--color-error)]" role="alert">
+          <p className="text-destructive mt-1 text-xs" role="alert">
             {fieldErrors["currentPassword"].join(" ")}
           </p>
         ) : null}
       </div>
 
       {error ? (
-        <p className="text-sm text-[color:var(--color-error)]" role="alert">
+        <p className="text-destructive text-sm" role="alert">
           {error}
         </p>
       ) : null}
       {sent ? (
-        <p className="text-sm text-[color:var(--color-success)]">
+        <p className="text-success text-sm">
           Confirmation link issued. Until transactional email lands, your administrator must share
           the URL from the audit log with you.
         </p>
       ) : null}
 
       <button
+        aria-busy={loading}
         type="submit"
         disabled={loading}
-        className="rounded-md bg-[color:var(--color-accent)] px-4 py-2 text-sm font-medium text-[color:var(--color-accent-fg)] hover:opacity-95 disabled:opacity-50"
+        className={buttonClass({ variant: "primary" })}
       >
-        {loading ? "Sending…" : "Request email change"}
+        Request email change
       </button>
     </form>
   );

@@ -26,7 +26,7 @@ import { listSessionsForUser } from "@/lib/db/repositories/sessions";
 import { listApiTokensForUser } from "@/lib/db/repositories/api-tokens";
 import { recentAdminEditsForUser } from "@/lib/db/repositories/audit-log";
 import { AdminAuditPanel } from "@/components/domain/admin-audit-panel";
-import { SectionTabs, SectionTabPanel } from "@/components/ui/section-tabs";
+import { SectionTabs, SectionTabPanel, type SectionTabSpec } from "@/components/ui/section-tabs";
 import { ZONE_GRANT_PERMISSIONS } from "@/lib/rbac/zone-grant-permissions";
 import { UserActions } from "../_components/user-actions";
 import { RoleAssignmentsPanel } from "../_components/role-assignments-panel";
@@ -87,19 +87,19 @@ export default async function UserDetailPage({ params }: PageProps) {
   // permission relevant to that panel - a read-only operator browsing
   // user-detail still sees Account, but won't see (e.g.) Roles unless
   // they hold `role.assign`.
-  const tabs: Array<{ id: string; label: string }> = [{ id: "account", label: "Account" }];
+  const tabs: SectionTabSpec[] = [{ id: "account", label: "Account" }];
   if (canAssignRoles) tabs.push({ id: "roles", label: "Roles" });
   if (canUpdate) tabs.push({ id: "zone-grants", label: "Zone grants" });
-  tabs.push({ id: "sessions", label: `Sessions (${sessions.length})` });
+  tabs.push({ id: "sessions", label: "Sessions", count: sessions.length });
   if (canUpdate) tabs.push({ id: "mfa", label: "Two-factor" });
-  tabs.push({ id: "api-tokens", label: `API tokens (${tokens.length})` });
+  tabs.push({ id: "api-tokens", label: "API tokens", count: tokens.length });
   if (canReadAudit) tabs.push({ id: "audit", label: "Audit" });
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <header>
-        <h1 className="text-2xl font-semibold tracking-tight">{target.name ?? target.email}</h1>
-        <p className="mt-1 text-sm text-[color:var(--color-fg-muted)]">{target.email}</p>
+        <h1 className="text-h1">{target.name ?? target.email}</h1>
+        <p className="text-muted-foreground mt-1 text-sm">{target.email}</p>
       </header>
 
       {/* Top-level actions stay outside the tab system - they act on the
@@ -119,10 +119,8 @@ export default async function UserDetailPage({ params }: PageProps) {
 
       <SectionTabs tabs={tabs} defaultTab="account">
         <SectionTabPanel id="account">
-          <section className="rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg-subtle)] p-5">
-            <h2 className="mb-3 text-sm font-medium tracking-wide text-[color:var(--color-fg-muted)] uppercase">
-              Account
-            </h2>
+          <section className="border-border bg-background rounded-md border p-5">
+            <h2 className="text-h3 text-foreground mb-2">Account</h2>
             <dl className="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-1.5 text-sm">
               <Row label="Status" value={target.disabledAt ? "Disabled" : "Active"} />
               <Row label="Local password" value={target.passwordHash ? "Set" : "SSO-only"} />
@@ -255,7 +253,7 @@ export default async function UserDetailPage({ params }: PageProps) {
 function Row({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="contents">
-      <dt className="text-[color:var(--color-fg-muted)]">{label}</dt>
+      <dt className="text-muted-foreground">{label}</dt>
       <dd className="truncate">{value}</dd>
     </div>
   );

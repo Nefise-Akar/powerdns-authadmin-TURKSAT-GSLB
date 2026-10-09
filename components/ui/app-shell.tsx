@@ -3,31 +3,91 @@
 /**
  * components/ui/app-shell.tsx
  *
- * Responsive chrome for the authenticated app. On `md+` the sidebar is a static
- * 16rem column (the classic desktop layout); below `md` it becomes an off-canvas
- * drawer toggled by the hamburger in the top bar, with a tap-to-dismiss backdrop.
+ * Chrome for the authenticated app, per the Liman shell:
  *
- * The server layout owns auth + builds the sidebar/header content (RBAC-gated),
- * then hands it here as props - this component only manages the mobile drawer
- * state, so the data-fetching stays on the server.
+ *   ┌──────┬──────────────────────────────────────────────┐
+ *   │ rail │ top bar 56 · brand · actions                 │
+ *   │ 72   ├──────────────────────────────────────────────┤
+ *   │      │ section tabs 40 (groups with several pages)  │
+ *   │      │ page                                         │
+ *   │      ├──────────────────────────────────────────────┤
+ *   │      │ status bar 28                                │
+ *   └──────┴──────────────────────────────────────────────┘
+ *
+ * The rail lists one entry per area; an area with several pages (PowerDNS,
+ * Access) gets a tab strip above the page so its pages stay one click apart.
+ * Below `md` the rail is hidden and the same navigation opens as an
+ * off-canvas drawer from the top bar's menu button.
+ *
+ * The server layout owns auth and builds the RBAC-filtered `nav` (plain data,
+ * so it crosses the server/client boundary); this component only resolves
+ * the active entry from the pathname and manages the drawer.
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Menu } from "lucide-react";
+import {
+  FileText,
+  House,
+  LayoutGrid,
+  Menu,
+  Server,
+  ShieldCheck,
+  X,
+  type LucideIcon,
+} from "lucide-react";
 import { HeaderStatusChip } from "@/components/realtime/header-status-chip";
+import { iconButtonClass } from "@/components/ui/button";
+import { tabClass, tabListClass } from "@/components/ui/tabs";
+
+export type NavGroupKey = "dashboard" | "zones" | "powerdns" | "access" | "audit";
+
+export interface NavItem {
+  href: string;
+  label: string;
+}
+
+export interface NavGroup {
+  key: NavGroupKey;
+  label: string;
+  /** First item is where the rail entry links to. */
+  items: NavItem[];
+}
+
+const ICONS: Record<NavGroupKey, LucideIcon> = {
+  dashboard: House,
+  zones: LayoutGrid,
+  powerdns: Server,
+  access: ShieldCheck,
+  audit: FileText,
+};
+
+/** `/dashboard` matches exactly; everything else also matches deeper segments. */
+export function isActivePath(pathname: string | null, href: string): boolean {
+  if (!pathname) return false;
+  if (href === "/dashboard") return pathname === "/dashboard";
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
 
 export function AppShell({
-  sidebar,
+  nav,
+  mark,
+  brand,
   headerControls,
   children,
 }: {
-  sidebar: React.ReactNode;
-  headerControls: React.ReactNode;
-  children: React.ReactNode;
+  nav: NavGroup[];
+  /** Square logo for the rail's 56px logo cell (links home). */
+  mark: ReactNode;
+  /** Wordmark for the top bar's brand block (links home). */
+  brand: ReactNode;
+  headerControls: ReactNode;
+  children: ReactNode;
 }) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
+  const activeGroup = nav.find((g) => g.items.some((i) => isActivePath(pathname, i.href)));
 
   // Close the drawer after navigating (tapping a nav link changes the route).
   useEffect(() => {
@@ -43,8 +103,22 @@ export function AppShell({
   }, [open]);
 
   return (
-    <div className="flex h-dvh overflow-hidden">
-      {/* Backdrop - mobile only, fades in with the drawer. */}
+    <div className="bg-background flex h-dvh overflow-hidden">
+      <nav
+        aria-label="Main navigation"
+        className="border-border bg-rail hidden w-18 shrink-0 flex-col border-r md:flex"
+      >
+        <div className="flex h-14 shrink-0 items-center justify-center">{mark}</div>
+        <ul className="flex flex-col gap-0.5 px-1 py-2">
+          {nav.map((group) => (
+            <li key={group.key}>
+              <RailLink group={group} active={group === activeGroup} />
+            </li>
+          ))}
+        </ul>
+      </nav>
+
+      {/* Mobile drawer: backdrop + panel, both off-screen unless open. */}
       <div
         aria-hidden
         onClick={() => setOpen(false)}
@@ -52,32 +126,42 @@ export function AppShell({
           open ? "opacity-100" : "pointer-events-none opacity-0"
         }`}
       />
-
-      {/* Sidebar - off-canvas drawer on mobile, static column on md+. */}
-      <aside
-        className={`fixed inset-y-0 left-0 z-40 flex w-80 flex-col border-r border-[color:var(--color-border)] bg-[color:var(--color-bg-subtle)] transition-transform duration-200 md:static md:z-auto md:translate-x-0 ${
+      <nav
+        aria-label="Main navigation"
+        className={`border-border bg-rail fixed inset-y-0 left-0 z-40 flex w-72 max-w-[85vw] flex-col border-r transition-transform duration-200 md:hidden ${
           open ? "translate-x-0" : "-translate-x-full"
         }`}
       >
-        {sidebar}
-      </aside>
+        <div className="border-border flex h-14 shrink-0 items-center justify-between border-b pr-4 pl-5">
+          {brand}
+          <button
+            type="button"
+            onClick={() => setOpen(false)}
+            aria-label="Close navigation"
+            className={iconButtonClass("lg")}
+          >
+            <X aria-hidden strokeWidth={2} />
+          </button>
+        </div>
+        <DrawerNav nav={nav} pathname={pathname} />
+      </nav>
 
-      {/* Main column. */}
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-14 shrink-0 items-center gap-3 border-b border-[color:var(--color-border)] bg-[color:var(--color-bg)] px-4">
+        <header className="border-border bg-card flex h-14 shrink-0 items-center gap-4 border-b pr-4 pl-5">
           <button
             type="button"
             onClick={() => setOpen(true)}
             aria-label="Open navigation"
             aria-expanded={open}
-            className="-ml-1 rounded-md p-2 text-[color:var(--color-fg-muted)] hover:bg-[color:var(--color-bg-subtle)] hover:text-[color:var(--color-fg)] md:hidden"
+            className={`${iconButtonClass("lg")} -ml-2 md:hidden`}
           >
-            <Menu className="h-5 w-5" aria-hidden />
+            <Menu aria-hidden strokeWidth={1.75} />
           </button>
-          {/* Single SSE chip for the whole app - its label is driven per page
-              via <HeaderStatusMode/> in components that own a "synced" notion. */}
-          <HeaderStatusChip />
-          <div className="ml-auto flex items-center gap-3">{headerControls}</div>
+          {/* The wordmark is unreadable once squeezed below `sm`; phones get
+              the square mark instead. */}
+          <div className="flex sm:hidden">{mark}</div>
+          <div className="hidden w-46 min-w-0 items-center sm:flex">{brand}</div>
+          <div className="ml-auto flex items-center gap-1">{headerControls}</div>
         </header>
 
         {/* `min-h-0` is the canonical flexbox-clipping fix: a `flex-1` child
@@ -95,10 +179,133 @@ export function AppShell({
             high row counts even with `min-h-0` already in place (each row's
             screen-reader label is one such span; 50 of them push the document to
             ~2000px tall behind a correctly-sized 100dvh shell). */}
-        <main className="relative min-h-0 flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
-          {children}
+        <main className="bg-card relative min-h-0 flex-1 overflow-y-auto">
+          {activeGroup && activeGroup.items.length > 1 ? (
+            <SectionTabs group={activeGroup} pathname={pathname} />
+          ) : null}
+          <div className="px-5 pt-6 pb-8">{children}</div>
         </main>
+
+        <footer className="border-border bg-background text-caption text-muted-foreground flex h-7 shrink-0 items-center gap-4 border-t pr-4 pl-5">
+          <div className="ml-auto flex items-center">
+            {/* Single SSE status for the whole app - its label is driven per
+                page via <HeaderStatusMode/> in components that own a "synced"
+                notion. */}
+            <HeaderStatusChip />
+          </div>
+        </footer>
       </div>
     </div>
+  );
+}
+
+function RailLink({ group, active }: { group: NavGroup; active: boolean }) {
+  const Icon = ICONS[group.key];
+  const href = group.items[0]?.href ?? "/dashboard";
+  return (
+    <Link
+      href={href}
+      aria-current={active ? "page" : undefined}
+      className="group focus-visible:shadow-focus-ring flex flex-col items-center gap-1 rounded-md px-0.5 py-1.5 text-center focus-visible:outline-hidden"
+    >
+      <span
+        className={`flex h-6 w-9 items-center justify-center rounded-md ${
+          active
+            ? "bg-rail-active text-rail-active-foreground"
+            : "text-rail-foreground group-hover:bg-muted group-hover:text-foreground"
+        }`}
+      >
+        <Icon aria-hidden size={20} strokeWidth={1.75} />
+      </span>
+      <span
+        className={`text-rail-label ${
+          active ? "text-rail-foreground-active font-semibold" : "text-rail-foreground"
+        }`}
+      >
+        {group.label}
+      </span>
+    </Link>
+  );
+}
+
+function SectionTabs({ group, pathname }: { group: NavGroup; pathname: string | null }) {
+  return (
+    <nav aria-label={`${group.label} pages`} className={`${tabListClass} px-5`}>
+      {group.items.map((item) => {
+        const active = isActivePath(pathname, item.href);
+        return (
+          <Link
+            key={item.href}
+            href={item.href}
+            aria-current={active ? "page" : undefined}
+            className={tabClass(active)}
+          >
+            {item.label}
+          </Link>
+        );
+      })}
+    </nav>
+  );
+}
+
+function DrawerNav({ nav, pathname }: { nav: NavGroup[]; pathname: string | null }) {
+  return (
+    <ul className="flex-1 overflow-y-auto px-3 py-3">
+      {nav.map((group) => {
+        const Icon = ICONS[group.key];
+        const single = group.items.length === 1;
+        return (
+          <li key={group.key} className="pb-3">
+            {single ? (
+              <DrawerLink item={group.items[0]!} pathname={pathname} icon={<Icon />} />
+            ) : (
+              <>
+                <div className="text-label text-muted-foreground flex h-8 items-center gap-2 px-2">
+                  <Icon aria-hidden size={16} strokeWidth={1.75} />
+                  {group.label}
+                </div>
+                <ul>
+                  {group.items.map((item) => (
+                    <li key={item.href}>
+                      <DrawerLink item={item} pathname={pathname} indent />
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+function DrawerLink({
+  item,
+  pathname,
+  icon,
+  indent = false,
+}: {
+  item: NavItem;
+  pathname: string | null;
+  icon?: ReactNode;
+  indent?: boolean;
+}) {
+  const active = isActivePath(pathname, item.href);
+  return (
+    <Link
+      href={item.href}
+      aria-current={active ? "page" : undefined}
+      className={`focus-visible:shadow-focus-ring flex h-8 items-center gap-2 rounded-md px-2 focus-visible:outline-hidden [&_svg]:size-4 [&_svg]:stroke-[1.75] ${
+        indent ? "pl-8" : ""
+      } ${
+        active
+          ? "bg-rail-active text-body-strong text-rail-active-foreground"
+          : "text-body-medium text-foreground hover:bg-muted"
+      }`}
+    >
+      {icon ? <span aria-hidden>{icon}</span> : null}
+      {item.label}
+    </Link>
   );
 }

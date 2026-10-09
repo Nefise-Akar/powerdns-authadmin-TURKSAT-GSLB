@@ -29,20 +29,18 @@ export function TsigKeySelector({
         onClick={() => onSelect("")}
         aria-pressed={selected === ""}
         className={`flex w-full items-center gap-3 rounded-md border px-3 py-2 text-left text-sm ${
-          selected === ""
-            ? "border-[color:var(--color-accent)] bg-[color:var(--color-accent)]/10"
-            : "border-[color:var(--color-border)] hover:bg-[color:var(--color-bg-subtle)]"
+          selected === "" ? "border-primary bg-accent" : "border-border hover:bg-background"
         }`}
       >
         <span
           aria-hidden
           className={`h-2.5 w-2.5 shrink-0 rounded-full ${
-            selected === "" ? "bg-[color:var(--color-accent)]" : "bg-[color:var(--color-border)]"
+            selected === "" ? "bg-primary" : "bg-border"
           }`}
         />
         <span className="min-w-0">
           <span className="block font-medium">No TSIG key</span>
-          <span className="block text-xs text-[color:var(--color-fg-muted)]">
+          <span className="text-muted-foreground block text-xs">
             Create the zone without transfer authentication.
           </span>
         </span>
@@ -56,20 +54,16 @@ export function TsigKeySelector({
             onClick={() => onSelect(key.name)}
             aria-pressed={active}
             className={`flex w-full items-center gap-3 rounded-md border px-3 py-2 text-left text-sm ${
-              active
-                ? "border-[color:var(--color-accent)] bg-[color:var(--color-accent)]/10"
-                : "border-[color:var(--color-border)] hover:bg-[color:var(--color-bg-subtle)]"
+              active ? "border-primary bg-accent" : "border-border hover:bg-background"
             }`}
           >
             <span
               aria-hidden
-              className={`h-2.5 w-2.5 shrink-0 rounded-full ${
-                active ? "bg-[color:var(--color-accent)]" : "bg-[color:var(--color-border)]"
-              }`}
+              className={`h-2.5 w-2.5 shrink-0 rounded-full ${active ? "bg-primary" : "bg-border"}`}
             />
             <span className="min-w-0 flex-1">
               <span className="block font-mono text-xs break-all">{key.name}</span>
-              <span className="mt-0.5 block text-xs text-[color:var(--color-fg-muted)]">
+              <span className="text-muted-foreground mt-0.5 block text-xs">
                 {key.zoneCount} existing domain{key.zoneCount === 1 ? "" : "s"} use this key
                 {index === 0 ? " - default" : ""}
               </span>

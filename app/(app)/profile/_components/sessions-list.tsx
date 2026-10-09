@@ -98,12 +98,13 @@ export function SessionsList({ sessions }: { sessions: SessionSummary[] }) {
           const row = ctx.row.original;
           return (
             <button
+              aria-busy={busy === row.id}
               type="button"
               onClick={() => revoke(row.id)}
               disabled={busy === row.id}
-              className="text-xs text-[color:var(--color-error)] hover:underline disabled:opacity-50"
+              className="text-destructive text-xs hover:underline disabled:opacity-45"
             >
-              {busy === row.id ? "Revoking…" : "Revoke"}
+              Revoke
             </button>
           );
         },

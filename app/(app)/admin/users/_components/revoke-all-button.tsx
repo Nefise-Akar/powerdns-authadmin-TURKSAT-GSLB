@@ -24,6 +24,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useDialog } from "@/components/ui/dialog";
 import { mutate } from "@/lib/client/api-fetch";
+import { buttonClass } from "@/components/ui/button";
 
 export function RevokeAllSessionsButton() {
   const router = useRouter();
@@ -35,7 +36,7 @@ export function RevokeAllSessionsButton() {
       title: "Revoke EVERY session in the system?",
       description:
         "Use this when you need everyone to re-authenticate (suspected credential leak, compromised infrastructure, post-incident reset). All signed-in users will be kicked out and need to sign in again with their password / SSO. Accounts themselves are NOT disabled.",
-      confirmLabel: "Continue",
+      confirmLabel: "Revoke all sessions",
       variant: "danger",
     });
     if (!okConfirm) return;
@@ -48,7 +49,7 @@ export function RevokeAllSessionsButton() {
       description:
         "This is a deliberately friction-y step. Type the word REVOKE exactly to confirm.",
       placeholder: "REVOKE",
-      confirmLabel: "Confirm",
+      confirmLabel: "Revoke all sessions",
     });
     if (typed !== "REVOKE") {
       if (typed !== null) {
@@ -102,13 +103,14 @@ export function RevokeAllSessionsButton() {
 
   return (
     <button
+      aria-busy={busy}
       type="button"
       onClick={handleClick}
       disabled={busy}
       title="Force every signed-in user to re-authenticate. Use for incident response."
-      className="rounded-md border border-[color:var(--color-error)] px-3 py-2 text-sm font-medium text-[color:var(--color-error)] hover:bg-[color:var(--color-error)]/10 disabled:opacity-50"
+      className={buttonClass({ variant: "destructive" })}
     >
-      {busy ? "Revoking…" : "Revoke all sessions"}
+      Revoke all sessions
     </button>
   );
 }

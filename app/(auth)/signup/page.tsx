@@ -28,8 +28,8 @@ export default async function SignupPage() {
   return (
     <>
       <header className="mb-6">
-        <h1 className="text-2xl font-semibold tracking-tight">Create an account</h1>
-        <p className="mt-1 text-sm text-[color:var(--color-fg-muted)]">
+        <h1 className="text-h1">Create an account</h1>
+        <p className="text-muted-foreground mt-1 text-sm">
           Sign up with your email and a password. We&apos;ll send a verification link - you must
           verify before you can sign in.
         </p>
@@ -37,7 +37,7 @@ export default async function SignupPage() {
 
       <SignupForm turnstileSiteKey={env.TURNSTILE_SITE_KEY ?? undefined} />
 
-      <p className="mt-6 text-xs text-[color:var(--color-fg-muted)]">
+      <p className="text-muted-foreground mt-6 text-xs">
         Already have an account?{" "}
         <Link href="/login" className="underline">
           Sign in

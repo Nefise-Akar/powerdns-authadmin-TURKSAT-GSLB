@@ -22,6 +22,8 @@ import { useDialog } from "@/components/ui/dialog";
 import { mutate } from "@/lib/client/api-fetch";
 import { Switch } from "@/components/ui/switch";
 import { type ZoneHorizon } from "@/lib/dns/zone-horizon";
+import { buttonClass } from "@/components/ui/button";
+import { textareaClass } from "@/components/ui/field";
 
 interface Props {
   zoneIdEncoded: string;
@@ -150,10 +152,10 @@ export function ZoneSettingsPanel({ zoneIdEncoded, serverSlug, initial, canEdit 
   }
 
   return (
-    <section className="rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg)] p-5">
+    <section className="border-border bg-card rounded-md border p-5">
       <header className="mb-4">
         <h2 className="text-base font-semibold">Zone settings</h2>
-        <p className="mt-1 text-xs text-[color:var(--color-fg-muted)]">
+        <p className="text-muted-foreground mt-1 text-xs">
           Zone-object fields PDNS exposes outside the metadata-API allowlist. Routed through{" "}
           <code className="font-mono">PUT /zones/{`{id}`}</code>.
         </p>
@@ -175,7 +177,7 @@ export function ZoneSettingsPanel({ zoneIdEncoded, serverSlug, initial, canEdit 
               rows={Math.max(2, mastersText.split(/\r?\n/).length + 1)}
               disabled={!canEdit}
               placeholder="192.0.2.1 or 2001:db8::1:5300"
-              className="block w-full rounded border border-[color:var(--color-border)] bg-[color:var(--color-bg)] p-2 font-mono text-xs disabled:opacity-60"
+              className={`w-full font-mono ${textareaClass}`}
             />
           </Field>
         ) : null}
@@ -234,17 +236,16 @@ export function ZoneSettingsPanel({ zoneIdEncoded, serverSlug, initial, canEdit 
       {canEdit ? (
         <div className="mt-4 flex items-center gap-3">
           <button
+            aria-busy={saving}
             type="button"
             onClick={handleSave}
             disabled={saving || !dirty}
-            className="rounded bg-[color:var(--color-accent)] px-3 py-1.5 text-xs font-medium text-[color:var(--color-accent-fg)] hover:opacity-95 disabled:opacity-50"
+            className={buttonClass({ variant: "primary", size: "sm" })}
           >
-            {saving ? "Saving…" : "Save settings"}
+            Save settings
           </button>
           {!dirty ? (
-            <span className="text-[0.6875rem] text-[color:var(--color-fg-muted)]">
-              No unsaved changes
-            </span>
+            <span className="text-muted-foreground text-caption">No unsaved changes</span>
           ) : null}
         </div>
       ) : null}
@@ -273,9 +274,7 @@ function Field({
     <div>
       <label className="mb-1 block text-xs font-medium">{label}</label>
       {children}
-      {help ? (
-        <p className="mt-1 text-[0.6875rem] text-[color:var(--color-fg-muted)]">{help}</p>
-      ) : null}
+      {help ? <p className="text-muted-foreground text-caption mt-1">{help}</p> : null}
     </div>
   );
 }
@@ -309,7 +308,7 @@ function KindSelect({ value, onChange, disabled }: KindSelectProps) {
         disabled={disabled}
         aria-haspopup="listbox"
         aria-expanded={open}
-        className="flex w-full items-center justify-between rounded border border-[color:var(--color-border)] bg-[color:var(--color-bg)] px-2 py-1.5 text-left text-xs hover:border-[color:var(--color-fg-muted)] disabled:opacity-60"
+        className="border-input bg-card text-body focus-visible:border-ring focus-visible:shadow-focus-ring flex h-8 w-full items-center justify-between rounded-md border px-3 text-left focus-visible:outline-hidden disabled:opacity-45"
       >
         <span>{current.label}</span>
         <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden className="ml-2 opacity-60">
@@ -326,7 +325,7 @@ function KindSelect({ value, onChange, disabled }: KindSelectProps) {
       {open ? (
         <ul
           role="listbox"
-          className="absolute right-0 left-0 z-10 mt-1 overflow-hidden rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg)] py-1 text-xs shadow-lg"
+          className="border-border bg-card absolute right-0 left-0 z-10 mt-1 overflow-hidden rounded-md border py-1 text-xs"
         >
           {ZONE_KINDS.map((k) => (
             <li
@@ -339,15 +338,11 @@ function KindSelect({ value, onChange, disabled }: KindSelectProps) {
                 setOpen(false);
               }}
               className={`cursor-pointer px-2 py-1.5 ${
-                k.value === value
-                  ? "bg-[color:var(--color-bg-subtle)] font-medium"
-                  : "hover:bg-[color:var(--color-bg-subtle)]"
+                k.value === value ? "bg-background font-medium" : "hover:bg-background"
               }`}
             >
               <div>{k.label}</div>
-              <div className="text-[0.625rem] text-[color:var(--color-fg-muted)]">
-                {k.description}
-              </div>
+              <div className="text-muted-foreground text-caption">{k.description}</div>
             </li>
           ))}
         </ul>
@@ -385,9 +380,9 @@ function EnumSelect({ value, options, onChange, disabled, placeholder }: EnumSel
         disabled={disabled}
         aria-haspopup="listbox"
         aria-expanded={open}
-        className="flex w-full items-center justify-between rounded border border-[color:var(--color-border)] bg-[color:var(--color-bg)] px-2 py-1.5 text-left font-mono text-xs hover:border-[color:var(--color-fg-muted)] disabled:opacity-60"
+        className="border-input bg-card text-body focus-visible:border-ring focus-visible:shadow-focus-ring flex h-8 w-full items-center justify-between rounded-md border px-3 text-left font-mono focus-visible:outline-hidden disabled:opacity-45"
       >
-        <span className={value ? "" : "text-[color:var(--color-fg-muted)]"}>
+        <span className={value ? "" : "text-muted-foreground"}>
           {value !== "" ? value : (placeholder ?? "Select…")}
         </span>
         <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden className="ml-2 opacity-60">
@@ -404,7 +399,7 @@ function EnumSelect({ value, options, onChange, disabled, placeholder }: EnumSel
       {open ? (
         <ul
           role="listbox"
-          className="absolute right-0 left-0 z-10 mt-1 max-h-60 overflow-auto rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg)] py-1 text-xs shadow-lg"
+          className="border-border bg-card absolute right-0 left-0 z-10 mt-1 max-h-60 overflow-auto rounded-md border py-1 text-xs"
         >
           <li
             role="option"
@@ -414,10 +409,8 @@ function EnumSelect({ value, options, onChange, disabled, placeholder }: EnumSel
               onChange("");
               setOpen(false);
             }}
-            className={`cursor-pointer px-2 py-1.5 text-[color:var(--color-fg-muted)] italic ${
-              value === ""
-                ? "bg-[color:var(--color-bg-subtle)]"
-                : "hover:bg-[color:var(--color-bg-subtle)]"
+            className={`text-muted-foreground cursor-pointer px-2 py-1.5 italic ${
+              value === "" ? "bg-background" : "hover:bg-background"
             }`}
           >
             (unset - server default)
@@ -433,9 +426,7 @@ function EnumSelect({ value, options, onChange, disabled, placeholder }: EnumSel
                 setOpen(false);
               }}
               className={`cursor-pointer px-2 py-1.5 font-mono ${
-                o === value
-                  ? "bg-[color:var(--color-bg-subtle)] font-medium"
-                  : "hover:bg-[color:var(--color-bg-subtle)]"
+                o === value ? "bg-background font-medium" : "hover:bg-background"
               }`}
             >
               {o}

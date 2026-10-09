@@ -13,7 +13,7 @@ import { isSettingsReadOnly } from "@/lib/auth/settings-lock";
 import { ForbiddenError } from "@/lib/errors";
 import { BackupRestoreWizard } from "./_components/backup-restore-wizard";
 
-export const metadata: Metadata = { title: "Backup & Restore" };
+export const metadata: Metadata = { title: "Backup & restore" };
 
 export default async function BackupPage() {
   const { globalPermissions } = await requireUserForPage();

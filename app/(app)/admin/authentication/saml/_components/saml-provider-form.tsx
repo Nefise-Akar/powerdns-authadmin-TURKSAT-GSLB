@@ -13,6 +13,8 @@ import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { apiFetch } from "@/lib/client/api-fetch";
 import { SelectMenu } from "@/components/ui/select-menu";
+import { buttonClass } from "@/components/ui/button";
+import { inputClass as baseInputClass, textareaClass } from "@/components/ui/field";
 
 interface FormInitial {
   id: string;
@@ -309,7 +311,7 @@ export function SamlProviderForm(props: Props) {
         </Field>
       ) : null}
 
-      <fieldset className="space-y-3 rounded-md border border-[color:var(--color-border)] p-3">
+      <fieldset className="border-border space-y-3 rounded-md border p-3">
         <legend className="px-1 text-sm font-medium">Identity provider</legend>
         <Field
           id="idpEntityId"
@@ -374,14 +376,14 @@ export function SamlProviderForm(props: Props) {
             onChange={(e) => setIdpSigningCert(e.target.value)}
             disabled={!canEdit}
             placeholder="-----BEGIN CERTIFICATE-----&#10;...&#10;-----END CERTIFICATE-----"
-            className={`${inputClass} font-mono text-xs`}
+            className={`mt-1.5 ${textareaClass} font-mono text-xs`}
           />
         </Field>
       </fieldset>
 
-      <fieldset className="space-y-3 rounded-md border border-[color:var(--color-border)] p-3">
+      <fieldset className="border-border space-y-3 rounded-md border p-3">
         <legend className="px-1 text-sm font-medium">Service provider (this app)</legend>
-        <p className="text-xs text-[color:var(--color-fg-muted)]">
+        <p className="text-muted-foreground text-xs">
           Generate with{" "}
           <code className="font-mono">
             openssl req -x509 -newkey rsa:2048 -keyout sp.key -out sp.crt -nodes -days 1825 -subj
@@ -408,7 +410,7 @@ export function SamlProviderForm(props: Props) {
             onChange={(e) => setSpSigningKey(e.target.value)}
             disabled={!canEdit}
             placeholder="-----BEGIN PRIVATE KEY-----&#10;...&#10;-----END PRIVATE KEY-----"
-            className={`${inputClass} font-mono text-xs`}
+            className={`mt-1.5 ${textareaClass} font-mono text-xs`}
           />
         </Field>
 
@@ -425,7 +427,7 @@ export function SamlProviderForm(props: Props) {
             onChange={(e) => setSpSigningCert(e.target.value)}
             disabled={!canEdit}
             placeholder="-----BEGIN CERTIFICATE-----&#10;...&#10;-----END CERTIFICATE-----"
-            className={`${inputClass} font-mono text-xs`}
+            className={`mt-1.5 ${textareaClass} font-mono text-xs`}
           />
         </Field>
 
@@ -439,7 +441,7 @@ export function SamlProviderForm(props: Props) {
           />
           <span>
             Configure assertion encryption keypair
-            <span className="block text-xs text-[color:var(--color-fg-muted)]">
+            <span className="text-muted-foreground block text-xs">
               Optional - operators that want the IdP to encrypt assertions to this SP supply an
               encryption keypair below.
             </span>
@@ -463,7 +465,7 @@ export function SamlProviderForm(props: Props) {
                 value={spEncryptionKey}
                 onChange={(e) => setSpEncryptionKey(e.target.value)}
                 disabled={!canEdit}
-                className={`${inputClass} font-mono text-xs`}
+                className={`mt-1.5 ${textareaClass} font-mono text-xs`}
               />
             </Field>
             <Field
@@ -477,14 +479,14 @@ export function SamlProviderForm(props: Props) {
                 value={spEncryptionCert}
                 onChange={(e) => setSpEncryptionCert(e.target.value)}
                 disabled={!canEdit}
-                className={`${inputClass} font-mono text-xs`}
+                className={`mt-1.5 ${textareaClass} font-mono text-xs`}
               />
             </Field>
           </div>
         ) : null}
       </fieldset>
 
-      <fieldset className="space-y-3 rounded-md border border-[color:var(--color-border)] p-3">
+      <fieldset className="border-border space-y-3 rounded-md border p-3">
         <legend className="px-1 text-sm font-medium">Protocol options</legend>
         <Field id="signatureAlgorithm" label="Signature algorithm">
           <SelectMenu
@@ -526,7 +528,7 @@ export function SamlProviderForm(props: Props) {
           />
           <span>
             Require signed Response (in addition to signed Assertion)
-            <span className="block text-xs text-[color:var(--color-fg-muted)]">
+            <span className="text-muted-foreground block text-xs">
               On by default. Disable only for IdPs that sign just the inner Assertion.
             </span>
           </span>
@@ -542,14 +544,14 @@ export function SamlProviderForm(props: Props) {
           />
           <span>
             Require encrypted Assertion
-            <span className="block text-xs text-[color:var(--color-fg-muted)]">
+            <span className="text-muted-foreground block text-xs">
               Off by default. Requires the SP encryption keypair above to be configured.
             </span>
           </span>
         </label>
       </fieldset>
 
-      <fieldset className="space-y-3 rounded-md border border-[color:var(--color-border)] p-3">
+      <fieldset className="border-border space-y-3 rounded-md border p-3">
         <legend className="px-1 text-sm font-medium">Attribute mapping</legend>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <Field id="claimEmail" label="Email attribute" errors={fieldErrors["claimEmail"]}>
@@ -582,7 +584,7 @@ export function SamlProviderForm(props: Props) {
         </div>
       </fieldset>
 
-      <div className="space-y-2 rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg-subtle)] p-4">
+      <div className="border-border bg-background space-y-2 rounded-md border p-4">
         <label className="flex items-start gap-2 text-sm">
           <input
             type="checkbox"
@@ -593,7 +595,7 @@ export function SamlProviderForm(props: Props) {
           />
           <span>
             Override <code>OIDC_ALLOWED_EMAIL_DOMAINS</code> for this provider
-            <span className="block text-xs text-[color:var(--color-fg-muted)]">
+            <span className="text-muted-foreground block text-xs">
               Off: inherit the env allow-list. On: use the list below (REPLACES env - empty allows
               any email).
             </span>
@@ -613,27 +615,27 @@ export function SamlProviderForm(props: Props) {
               onChange={(e) => setDomainsText(e.target.value)}
               disabled={!canEdit}
               placeholder="example.com&#10;acme.corp"
-              className={`${inputClass} font-mono`}
+              className={`mt-1.5 ${textareaClass} font-mono`}
             />
           </Field>
         ) : null}
       </div>
 
-      <fieldset className="space-y-3 rounded-md border border-[color:var(--color-border)] p-3">
+      <fieldset className="border-border space-y-3 rounded-md border p-3">
         <legend className="px-1 text-sm font-medium">Group → role mappings</legend>
-        <p className="text-xs text-[color:var(--color-fg-muted)]">
+        <p className="text-muted-foreground text-xs">
           On each successful SAML sign-in, the user&apos;s <code>{claimGroups}</code> attribute is
           matched against these rules. Each match materialises a role assignment tagged with this
           provider; the next sign-in revokes it if the user is no longer in the group.
         </p>
         {groupMappings.length === 0 ? (
-          <p className="text-xs text-[color:var(--color-fg-muted)] italic">No mappings yet.</p>
+          <p className="text-muted-foreground text-xs italic">No mappings yet.</p>
         ) : (
           <ul className="space-y-2">
             {groupMappings.map((m, i) => (
               <li
                 key={i}
-                className="grid grid-cols-[1fr_1fr_1fr_1fr_auto] gap-2 rounded border border-[color:var(--color-border)] bg-[color:var(--color-bg-subtle)] p-2"
+                className="border-border bg-background grid grid-cols-[1fr_1fr_1fr_1fr_auto] gap-2 rounded border p-2"
               >
                 <label className="text-xs">
                   IdP group
@@ -730,7 +732,11 @@ export function SamlProviderForm(props: Props) {
                   onClick={() => removeGroupMapping(i)}
                   disabled={!canEdit}
                   title="Remove this mapping"
-                  className="self-end rounded border border-[color:var(--color-border)] px-2 py-1 text-xs text-[color:var(--color-error)] hover:bg-[color:var(--color-bg-muted)] disabled:opacity-50"
+                  className={buttonClass({
+                    variant: "destructive",
+                    size: "sm",
+                    className: "self-end",
+                  })}
                 >
                   Remove
                 </button>
@@ -739,16 +745,12 @@ export function SamlProviderForm(props: Props) {
           </ul>
         )}
         {canEdit ? (
-          <button
-            type="button"
-            onClick={addGroupMapping}
-            className="rounded border border-[color:var(--color-border)] px-3 py-1 text-xs hover:bg-[color:var(--color-bg-muted)]"
-          >
+          <button type="button" onClick={addGroupMapping} className={buttonClass({ size: "sm" })}>
             + Add mapping
           </button>
         ) : null}
         {fieldErrors["groupMappings"] ? (
-          <p className="text-xs text-[color:var(--color-error)]" role="alert">
+          <p className="text-destructive text-xs" role="alert">
             {fieldErrors["groupMappings"].join(" ")}
           </p>
         ) : null}
@@ -765,30 +767,26 @@ export function SamlProviderForm(props: Props) {
       </label>
 
       {error ? (
-        <p className="text-sm text-[color:var(--color-error)]" role="alert">
+        <p className="text-destructive text-sm" role="alert">
           {error}
         </p>
       ) : null}
 
       {canEdit ? (
         <div className="flex items-center gap-3">
-          <button
-            type="submit"
-            disabled={saving}
-            className="rounded-md bg-[color:var(--color-accent)] px-4 py-2 text-sm font-medium text-[color:var(--color-accent-fg)] hover:opacity-95 disabled:opacity-50"
-          >
+          <button type="submit" disabled={saving} className={buttonClass({ variant: "primary" })}>
             {saving ? "Saving…" : props.mode === "edit" ? "Save changes" : "Add provider"}
           </button>
           <button
             type="button"
             onClick={() => router.push("/admin/authentication")}
-            className="rounded-md border border-[color:var(--color-border)] px-4 py-2 text-sm hover:bg-[color:var(--color-bg-subtle)]"
+            className={buttonClass()}
           >
             Cancel
           </button>
         </div>
       ) : (
-        <p className="text-xs text-[color:var(--color-fg-muted)]">
+        <p className="text-muted-foreground text-xs">
           Read-only access. The oidc.manage permission is required to edit.
         </p>
       )}
@@ -796,8 +794,7 @@ export function SamlProviderForm(props: Props) {
   );
 }
 
-const inputClass =
-  "mt-1 block w-full rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--color-accent)] disabled:opacity-60";
+const inputClass = `mt-1.5 ${baseInputClass}`;
 
 function Field({
   id,
@@ -818,9 +815,9 @@ function Field({
         {label}
       </label>
       {children}
-      {hint ? <p className="mt-1 text-xs text-[color:var(--color-fg-muted)]">{hint}</p> : null}
+      {hint ? <p className="text-muted-foreground mt-1 text-xs">{hint}</p> : null}
       {errors && errors.length > 0 ? (
-        <p className="mt-1 text-xs text-[color:var(--color-error)]" role="alert">
+        <p className="text-destructive mt-1 text-xs" role="alert">
           {errors.join(" ")}
         </p>
       ) : null}

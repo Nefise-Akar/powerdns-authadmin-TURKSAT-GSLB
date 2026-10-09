@@ -11,6 +11,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { buttonClass } from "@/components/ui/button";
 import { useDialog } from "@/components/ui/dialog";
 import { mutate } from "@/lib/client/api-fetch";
 
@@ -23,9 +24,6 @@ interface RefreshAllButtonProps<T> {
   successToast: (data: T) => { kind: "success" | "error"; title: string; description: string };
   className?: string;
 }
-
-const DEFAULT_CLASS =
-  "rounded-md border border-[color:var(--color-border)] px-3 py-1.5 text-sm hover:bg-[color:var(--color-bg-subtle)] disabled:opacity-50";
 
 export function RefreshAllButton<T = unknown>({
   endpoint,
@@ -61,10 +59,11 @@ export function RefreshAllButton<T = unknown>({
       type="button"
       onClick={handleClick}
       disabled={busy}
+      aria-busy={busy}
       title={title}
-      className={className ?? DEFAULT_CLASS}
+      className={className ?? buttonClass()}
     >
-      {busy ? "Refreshing…" : "Refresh all"}
+      Refresh all
     </button>
   );
 }

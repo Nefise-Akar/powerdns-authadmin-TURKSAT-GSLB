@@ -30,8 +30,8 @@ export default async function RolesListPage() {
     <div className="space-y-6">
       <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Roles</h1>
-          <p className="mt-1 text-sm text-[color:var(--color-fg-muted)]">
+          <h1 className="text-h1">Roles</h1>
+          <p className="text-muted-foreground mt-1 text-sm">
             Seeded system roles plus any custom roles. System roles can&apos;t be edited or deleted
             (only the MFA-required toggle); custom roles support full CRUD.
           </p>

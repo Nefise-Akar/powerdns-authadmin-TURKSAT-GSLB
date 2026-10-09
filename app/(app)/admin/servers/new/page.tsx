@@ -32,8 +32,8 @@ export default async function NewPdnsServerPage({ searchParams }: PageProps) {
   return (
     <div className="mx-auto max-w-2xl space-y-6">
       <header>
-        <h1 className="text-2xl font-semibold tracking-tight">Add PowerDNS server</h1>
-        <p className="mt-1 text-sm text-[color:var(--color-fg-muted)]">
+        <h1 className="text-h1">Add PowerDNS server</h1>
+        <p className="text-muted-foreground mt-1 text-sm">
           Connect to a PowerDNS Authoritative HTTP API. The API key is encrypted at rest and never
           returned by the UI again.
         </p>

@@ -46,17 +46,15 @@ export default async function TeamDetailPage({ params }: PageProps) {
   return (
     <div className="mx-auto max-w-3xl space-y-8">
       <header>
-        <h1 className="text-2xl font-semibold tracking-tight">{team.name}</h1>
-        <p className="mt-1 text-sm text-[color:var(--color-fg-muted)]">
+        <h1 className="text-h1">{team.name}</h1>
+        <p className="text-muted-foreground mt-1 text-sm">
           <code className="font-mono">{team.slug}</code>
         </p>
         {team.description ? <p className="mt-3 text-sm">{team.description}</p> : null}
       </header>
 
-      <section className="rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg-subtle)] p-5">
-        <h2 className="mb-3 text-sm font-medium tracking-wide text-[color:var(--color-fg-muted)] uppercase">
-          Identity
-        </h2>
+      <section className="border-border bg-background rounded-md border p-5">
+        <h2 className="text-h3 text-foreground mb-2">Identity</h2>
         <dl className="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-1.5 text-sm">
           <Row label="Contact" value={team.contact ?? "-"} />
           <Row label="Mail" value={team.mail ?? "-"} />
@@ -109,7 +107,7 @@ export default async function TeamDetailPage({ params }: PageProps) {
 function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="contents">
-      <dt className="text-[color:var(--color-fg-muted)]">{label}</dt>
+      <dt className="text-muted-foreground">{label}</dt>
       <dd className="truncate">{value}</dd>
     </div>
   );

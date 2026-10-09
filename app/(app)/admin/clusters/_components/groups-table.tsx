@@ -34,7 +34,7 @@ export function GroupsTable({ rows }: { rows: GroupRow[] }) {
         cell: (ctx) => (
           <Link
             href={`/admin/clusters/${ctx.row.original.id}`}
-            className="font-medium hover:text-[color:var(--color-accent)] hover:underline"
+            className="hover:text-primary hover:text-primary-hover font-medium hover:underline"
           >
             {ctx.getValue<string>()}
           </Link>
@@ -49,7 +49,7 @@ export function GroupsTable({ rows }: { rows: GroupRow[] }) {
         accessorKey: "typeLabel",
         header: "Type",
         cell: (ctx) => (
-          <span className="rounded border border-[color:var(--color-border)] bg-[color:var(--color-bg)] px-1.5 py-0.5 text-[0.625rem] tracking-wide uppercase">
+          <span className="bg-tag text-mono-xs text-tag-foreground inline-flex h-5 items-center rounded-sm px-1.5 font-mono whitespace-nowrap">
             {ctx.getValue<string>()}
           </span>
         ),
@@ -61,11 +61,11 @@ export function GroupsTable({ rows }: { rows: GroupRow[] }) {
         cell: (ctx) => {
           const r = ctx.row.original;
           return r.isMultiPrimary ? (
-            <span className="rounded bg-[color:var(--color-accent)]/15 px-1.5 py-0.5 font-mono text-[0.625rem] tracking-wide text-[color:var(--color-accent)] uppercase">
+            <span className="bg-tag text-mono-xs text-tag-foreground inline-flex h-5 items-center rounded-sm px-1.5 font-mono whitespace-nowrap">
               {r.writeStrategy.replace("_", " ")}
             </span>
           ) : (
-            <span className="text-xs text-[color:var(--color-fg-muted)]">-</span>
+            <span className="text-muted-foreground text-xs">-</span>
           );
         },
       },
@@ -82,7 +82,7 @@ export function GroupsTable({ rows }: { rows: GroupRow[] }) {
     <DataTable
       columns={columns}
       data={rows}
-      searchPlaceholder="Search groups by name or slug…"
+      searchPlaceholder="Search groups"
       initialSort={[{ id: "name", desc: false }]}
       sortParam="sort"
       pageSizeParam="pageSize"

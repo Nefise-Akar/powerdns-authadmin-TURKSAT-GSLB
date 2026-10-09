@@ -16,6 +16,8 @@ import { apiFetch } from "@/lib/client/api-fetch";
 import type { PdnsWriteMode } from "@/lib/pdns/types";
 import { hostFromUrl } from "@/lib/net/host";
 import { SelectMenu } from "@/components/ui/select-menu";
+import { buttonClass } from "@/components/ui/button";
+import { inputClass as baseInputClass, textareaClass } from "@/components/ui/field";
 
 interface ServerFormInitial {
   id: string;
@@ -226,7 +228,7 @@ export function ServerForm(props: ServerFormProps) {
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           placeholder="dev box in eu-west"
-          className={`${inputClass} resize-y`}
+          className={`mt-1.5 ${textareaClass} resize-y`}
         />
       </Field>
 
@@ -343,14 +345,14 @@ export function ServerForm(props: ServerFormProps) {
           />
           Never write to this backend (read-only)
         </label>
-        <p className="pl-6 text-xs text-[color:var(--color-fg-muted)]">
+        <p className="text-muted-foreground pl-6 text-xs">
           For nodes you only read from - a public nameserver fed by database replication, or any
           backend whose database user has no write access. PowerDNS can&apos;t advertise this over
           its API, so it has to be set here. Zone and record edits will be routed to other peers in
           the group instead.
         </p>
         {fieldErrors["writeMode"]?.map((msg) => (
-          <p key={msg} className="pl-6 text-xs text-[color:var(--color-error)]" role="alert">
+          <p key={msg} className="text-destructive pl-6 text-xs" role="alert">
             {msg}
           </p>
         ))}
@@ -368,23 +370,19 @@ export function ServerForm(props: ServerFormProps) {
       ) : null}
 
       {error ? (
-        <p className="text-sm text-[color:var(--color-error)]" role="alert">
+        <p className="text-destructive text-sm" role="alert">
           {error}
         </p>
       ) : null}
 
       <div className="flex items-center gap-3">
-        <button
-          type="submit"
-          disabled={loading}
-          className="rounded-md bg-[color:var(--color-accent)] px-4 py-2 text-sm font-medium text-[color:var(--color-accent-fg)] hover:opacity-95 disabled:opacity-50"
-        >
+        <button type="submit" disabled={loading} className={buttonClass({ variant: "primary" })}>
           {loading ? "Saving…" : props.mode === "edit" ? "Save changes" : "Add server"}
         </button>
         <button
           type="button"
           onClick={() => router.push("/admin/servers")}
-          className="rounded-md border border-[color:var(--color-border)] px-4 py-2 text-sm hover:bg-[color:var(--color-bg-subtle)]"
+          className={buttonClass()}
         >
           Cancel
         </button>
@@ -393,8 +391,7 @@ export function ServerForm(props: ServerFormProps) {
   );
 }
 
-const inputClass =
-  "mt-1 block w-full rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--color-accent)]";
+const inputClass = `mt-1.5 ${baseInputClass}`;
 
 function Field({
   id,
@@ -415,9 +412,9 @@ function Field({
         {label}
       </label>
       {children}
-      {hint ? <p className="mt-1 text-xs text-[color:var(--color-fg-muted)]">{hint}</p> : null}
+      {hint ? <p className="text-muted-foreground mt-1 text-xs">{hint}</p> : null}
       {errors && errors.length > 0 ? (
-        <p className="mt-1 text-xs text-[color:var(--color-error)]" role="alert">
+        <p className="text-destructive mt-1 text-xs" role="alert">
           {errors.join(" ")}
         </p>
       ) : null}
@@ -459,40 +456,32 @@ function AddressList({
                 onChange={(e) => update(i, e.target.value)}
                 placeholder="192.0.2.10  ·  ns1.example.com  ·  [2001:db8::1]:53"
                 aria-invalid={invalid}
-                className={`block w-full rounded-md border bg-[color:var(--color-bg)] px-3 py-2 font-mono text-sm focus:ring-2 focus:ring-[color:var(--color-accent)] focus:outline-none ${
-                  invalid
-                    ? "border-[color:var(--color-error)]"
-                    : "border-[color:var(--color-border)]"
+                className={`bg-card focus:ring-ring block w-full rounded-md border px-3 py-2 font-mono text-sm focus:ring-2 focus:outline-none ${
+                  invalid ? "border-destructive" : "border-border"
                 }`}
               />
               <button
                 type="button"
                 onClick={() => remove(i)}
                 aria-label={`Remove ${addr || "address"}`}
-                className="shrink-0 rounded-md border border-[color:var(--color-border)] px-2.5 py-2 text-sm hover:bg-[color:var(--color-bg-subtle)]"
+                className={buttonClass({ className: "shrink-0" })}
               >
                 ✕
               </button>
             </div>
             {invalid ? (
-              <p className="mt-1 text-xs text-[color:var(--color-error)]">
-                Not a valid host or IP.
-              </p>
+              <p className="text-destructive mt-1 text-xs">Not a valid host or IP.</p>
             ) : null}
           </div>
         );
       })}
 
-      <button
-        type="button"
-        onClick={add}
-        className="rounded-md border border-[color:var(--color-border)] px-3 py-1.5 text-sm hover:bg-[color:var(--color-bg-subtle)]"
-      >
+      <button type="button" onClick={add} className={buttonClass()}>
         + Add address
       </button>
 
       {value.length === 0 ? (
-        <p className="text-xs text-[color:var(--color-fg-muted)]">
+        <p className="text-muted-foreground text-xs">
           Defaults to the API host
           {derivedDefault ? (
             <>

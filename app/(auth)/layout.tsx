@@ -17,7 +17,7 @@ export default async function AuthLayout({ children }: Readonly<{ children: Reac
 
   return (
     <DialogProvider>
-      <main className="relative flex min-h-dvh flex-col items-center justify-center bg-[color:var(--color-bg)] px-4 py-8">
+      <main className="bg-card relative flex min-h-dvh flex-col items-center justify-center px-4 py-8">
         <div className="absolute top-4 right-4">
           <ThemeToggle />
         </div>
@@ -31,7 +31,7 @@ export default async function AuthLayout({ children }: Readonly<{ children: Reac
         </div>
         <div className="w-full max-w-lg">{children}</div>
         {supportContact ? (
-          <footer className="mt-8 text-xs text-[color:var(--color-fg-muted)]">
+          <footer className="text-muted-foreground mt-8 text-xs">
             Need help? {renderSupportContact(supportContact)}
           </footer>
         ) : null}

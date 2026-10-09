@@ -14,7 +14,9 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { type ColumnDef } from "@tanstack/react-table";
 import { Lock, Unlock } from "lucide-react";
+import { CountBadge } from "@/components/ui/badge";
 import { DataTable } from "@/components/ui/data-table";
+import { tabClass, tabStripClass } from "@/components/ui/tabs";
 import { SyncIndicator } from "@/components/ui/sync-indicator";
 import { freshnessOf, freshnessOfDay } from "@/lib/freshness";
 import { isReverseZone } from "@/lib/dns/zone-kind";
@@ -44,16 +46,13 @@ function isValidHorizonFilter(s: unknown): s is HorizonFilter {
  */
 function DnssecCell({ on }: { on: boolean }) {
   return on ? (
-    <span
-      className="inline-flex items-center gap-1 text-xs text-[color:var(--color-success)]"
-      title="DNSSEC signed"
-    >
+    <span className="text-success inline-flex items-center gap-1 text-xs" title="DNSSEC signed">
       <Lock aria-hidden className="h-3.5 w-3.5" />
       <span className="sr-only">DNSSEC on</span>
     </span>
   ) : (
     <span
-      className="inline-flex items-center gap-1 text-xs text-[color:var(--color-fg-subtle)]"
+      className="text-muted-foreground inline-flex items-center gap-1 text-xs"
       title="DNSSEC off"
     >
       <Unlock aria-hidden className="h-3.5 w-3.5" />
@@ -161,7 +160,7 @@ export function ZonesTable({ zones, showLastEdit, showSync }: ZonesTableProps) {
             <Link
               href={zoneHref(row)}
               prefetch={false}
-              className="font-medium text-[color:var(--color-accent)] hover:underline"
+              className="text-primary hover:text-primary-hover font-medium hover:underline"
             >
               {displayZoneName(ctx.getValue<string>())}
             </Link>
@@ -179,14 +178,14 @@ export function ZonesTable({ zones, showLastEdit, showSync }: ZonesTableProps) {
             <span className="text-xs">
               {row.backend.name}
               {isCluster ? (
-                <span className="ml-2 rounded bg-[color:var(--color-accent)]/15 px-1 py-0.5 font-mono text-[0.625rem] tracking-wide text-[color:var(--color-accent)] uppercase">
+                <span className="bg-tag text-mono-xs text-tag-foreground ml-2 inline-flex h-5 items-center rounded-sm px-1.5 font-mono whitespace-nowrap">
                   cluster
                 </span>
               ) : null}
               <ZoneHorizonBadge horizon={row.horizon} className="ml-2" />
               {row.readOnly ? (
                 <span
-                  className="ml-2 rounded bg-[color:var(--color-bg-muted)] px-1 py-0.5 font-mono text-[0.625rem] tracking-wide text-[color:var(--color-fg-muted)] uppercase"
+                  className="bg-tag text-mono-xs text-tag-foreground ml-2 inline-flex h-5 items-center rounded-sm px-1.5 font-mono whitespace-nowrap"
                   title="Read-only mirror - unpinned secondary"
                 >
                   read-only
@@ -243,14 +242,14 @@ export function ZonesTable({ zones, showLastEdit, showSync }: ZonesTableProps) {
         cell: (ctx) => {
           const row = ctx.row.original;
           const iso = row.lastEditIso;
-          if (!iso) return <span className="text-xs text-[color:var(--color-fg-muted)]">-</span>;
+          if (!iso) return <span className="text-muted-foreground text-xs">-</span>;
           const fromSerial = row.lastEditSource === "serial";
           const label = fromSerial ? freshnessOfDay(iso).label : freshnessOf(iso).label;
           const titleText = fromSerial
             ? `${iso} - inferred from SOA serial (no audit log entry for this or a later day)`
             : iso;
           return (
-            <span className="text-xs text-[color:var(--color-fg-muted)]" title={titleText}>
+            <span className="text-muted-foreground text-xs" title={titleText}>
               {label}
             </span>
           );
@@ -334,7 +333,7 @@ export function ZonesTable({ zones, showLastEdit, showSync }: ZonesTableProps) {
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="border-border flex flex-wrap items-stretch gap-x-8 border-b">
         <ScopeTabs scope={scope} counts={counts} onChange={setScope} />
         {counts.internal > 0 ? (
           <HorizonTabs horizon={horizon} counts={counts} onChange={setHorizon} />
@@ -343,7 +342,7 @@ export function ZonesTable({ zones, showLastEdit, showSync }: ZonesTableProps) {
       <DataTable
         columns={columns}
         data={filtered}
-        searchPlaceholder="Search zones by name or backend…"
+        searchPlaceholder="Search zones"
         // Default order: desynced first (Sync desc), then name asc.
         // When every row is in-sync the Sync rank ties and Name asc
         // becomes the visible order - i.e. "show me anything that
@@ -435,11 +434,7 @@ function SegmentedTabs<T extends string>({
   onChange: (next: T) => void;
 }) {
   return (
-    <div
-      role="tablist"
-      aria-label={ariaLabel}
-      className="inline-flex rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg)] p-0.5 text-sm"
-    >
+    <div role="tablist" aria-label={ariaLabel} className={tabStripClass}>
       {tabs.map((t) => {
         const isActive = t.id === active;
         return (
@@ -449,22 +444,10 @@ function SegmentedTabs<T extends string>({
             type="button"
             aria-selected={isActive}
             onClick={() => onChange(t.id)}
-            className={
-              isActive
-                ? "rounded bg-[color:var(--color-accent)] px-3 py-1 font-medium text-[color:var(--color-accent-fg)]"
-                : "rounded px-3 py-1 text-[color:var(--color-fg-muted)] hover:text-[color:var(--color-fg)]"
-            }
+            className={tabClass(isActive)}
           >
             {t.label}
-            <span
-              className={
-                isActive
-                  ? "ml-1.5 text-[color:var(--color-accent-fg)]/80"
-                  : "ml-1.5 text-[color:var(--color-fg-subtle)]"
-              }
-            >
-              ({t.count})
-            </span>
+            <CountBadge count={t.count} active={isActive} />
           </button>
         );
       })}
@@ -497,7 +480,7 @@ function SyncCell({ row }: { row: ZoneRow }) {
   // Standalone primary (no secondaries, not in a cluster) → no peers
   // to compare → render "-". Same convention the dashboard uses.
   if (row.syncStates.length === 0) {
-    return <span className="text-xs text-[color:var(--color-fg-muted)]">-</span>;
+    return <span className="text-muted-foreground text-xs">-</span>;
   }
   const worst = row.syncWorst;
   const isSynced = worst !== null && isSettledSyncState(worst);
@@ -507,11 +490,7 @@ function SyncCell({ row }: { row: ZoneRow }) {
       ? "warn"
       : "error";
   const textClass =
-    tone === "success"
-      ? "text-[color:var(--color-success)]"
-      : tone === "warn"
-        ? "text-[color:var(--color-warn)]"
-        : "text-[color:var(--color-error)]";
+    tone === "success" ? "text-success" : tone === "warn" ? "text-warning" : "text-destructive";
   const label = isSynced ? "synced" : "desynced";
   // Include the row's own backend in the count - `syncStates` enumerates the
   // OTHER peers (secondaries, or non-anchor cluster peers), so +1 surfaces
@@ -523,11 +502,11 @@ function SyncCell({ row }: { row: ZoneRow }) {
   return (
     <span title={detail}>
       <span
-        className={`pda-sync-chip-pad inline-flex items-center gap-1.5 rounded-full border border-[color:var(--color-border)] bg-[color:var(--color-bg)] text-[0.625rem] font-medium tracking-wide uppercase ${textClass}`}
+        className={`border-border bg-card text-caption inline-flex h-6 items-center gap-1.5 rounded-sm border pr-2 pl-1.5 ${textClass}`}
       >
         <SyncIndicator state={isSynced ? "synced" : "desynced"} size={14} tone={tone} />
         {label}
-        <span className="text-[color:var(--color-fg-muted)] tabular-nums">{total}</span>
+        <span className="text-muted-foreground tabular-nums">{total}</span>
       </span>
     </span>
   );

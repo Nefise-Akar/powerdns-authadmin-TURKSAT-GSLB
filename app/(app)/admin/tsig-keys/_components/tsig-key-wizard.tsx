@@ -28,6 +28,8 @@ import { apiFetch, mutate } from "@/lib/client/api-fetch";
 import { useDialog } from "@/components/ui/dialog";
 import { SelectMenu, type SelectOption } from "@/components/ui/select-menu";
 import { Checkbox } from "@/components/ui/checkbox";
+import { buttonClass } from "@/components/ui/button";
+import { inputClass } from "@/components/ui/field";
 
 export interface InstallSecondary {
   slug: string;
@@ -74,9 +76,9 @@ const OUTCOME_LABEL: Record<InstallResult["outcome"], string> = {
 };
 
 function outcomeClass(o: InstallResult["outcome"]): string {
-  if (o === "created" || o === "unchanged") return "text-[color:var(--color-success)]";
-  if (o === "unsupported") return "text-[color:var(--color-fg-muted)]";
-  return "text-[color:var(--color-error)]";
+  if (o === "created" || o === "unchanged") return "text-success";
+  if (o === "unsupported") return "text-muted-foreground";
+  return "text-destructive";
 }
 
 type Step = "generate" | "install" | "zones";
@@ -325,16 +327,16 @@ export function TsigKeyWizard({
           role="dialog"
           aria-modal="true"
           aria-label="Add TSIG key"
-          className={`relative w-full ${modalWidth} rounded-lg border border-[color:var(--color-border)] bg-[color:var(--color-bg)] p-6 shadow-xl`}
+          className={`relative w-full ${modalWidth} border-border bg-card rounded-md border p-6`}
         >
           <div className="flex items-baseline justify-between">
             <h2 className="text-lg font-semibold">{heading}</h2>
-            <span className="text-xs text-[color:var(--color-fg-muted)]">
+            <span className="text-muted-foreground text-xs">
               Step {existing ? stepNo - 1 : stepNo} of {existing ? totalSteps - 1 : totalSteps}
             </span>
           </div>
           {key ? (
-            <p className="mt-1 text-xs text-[color:var(--color-fg-muted)]">
+            <p className="text-muted-foreground mt-1 text-xs">
               Key <span className="font-mono">{key.name}</span> on{" "}
               <span className="font-mono">{serverSlug}</span>
             </p>
@@ -357,7 +359,7 @@ export function TsigKeyWizard({
                       if (e.key === "Enter" && !creating) void generate();
                     }}
                     placeholder="primary-to-secondary"
-                    className="mt-1 block w-full rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg)] px-3 py-2 font-mono text-sm"
+                    className={`mt-1 w-full font-mono ${inputClass}`}
                   />
                 </div>
                 <div>
@@ -371,7 +373,7 @@ export function TsigKeyWizard({
                     />
                   </div>
                 </div>
-                <p className="text-xs text-[color:var(--color-fg-muted)]">
+                <p className="text-muted-foreground text-xs">
                   PDNS generates the HMAC secret server-side. With the automatic install you never
                   see it; choose manual to get a copy-paste script that includes it.
                 </p>
@@ -397,19 +399,20 @@ export function TsigKeyWizard({
 
                 {method === "auto" ? (
                   <div className="space-y-2">
-                    <p className="text-xs text-[color:var(--color-fg-muted)]">
+                    <p className="text-muted-foreground text-xs">
                       {secondaries.length > 0
                         ? `${managed} of ${secondaries.length} secondaries support API install. The same secret is pushed to each; conflicts are reported, never overwritten.`
                         : "No app-managed secondaries - switch to manual and run the script on each box."}
                     </p>
                     {managed > 0 ? (
                       <button
+                        aria-busy={installing}
                         type="button"
                         onClick={installAuto}
                         disabled={installing}
-                        className="rounded-md bg-[color:var(--color-accent)] px-3 py-1.5 text-sm font-medium text-[color:var(--color-accent-fg)] hover:opacity-95 disabled:opacity-50"
+                        className={buttonClass({ variant: "primary" })}
                       >
-                        {installing ? "Installing…" : `Install via API (${managed})`}
+                        {`Install via API (${managed})`}
                       </button>
                     ) : null}
                     {results ? (
@@ -428,7 +431,7 @@ export function TsigKeyWizard({
                 ) : (
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs text-[color:var(--color-fg-muted)]">
+                      <span className="text-muted-foreground text-xs">
                         Run on each secondary (contains the secret - handle carefully):
                       </span>
                       {script ? (
@@ -442,9 +445,9 @@ export function TsigKeyWizard({
                       ) : null}
                     </div>
                     {loadingScript ? (
-                      <p className="text-xs text-[color:var(--color-fg-muted)]">Building script…</p>
+                      <p className="text-muted-foreground text-xs">Building script…</p>
                     ) : script ? (
-                      <pre className="max-h-64 overflow-auto rounded-md bg-[color:var(--color-bg-subtle)] p-3 font-mono text-[0.7rem] break-all whitespace-pre-wrap">
+                      <pre className="bg-tag text-mono-xs text-tag-foreground inline-flex h-5 max-h-64 items-center overflow-auto rounded-sm px-1.5 font-mono break-all whitespace-nowrap whitespace-pre-wrap">
                         {script}
                       </pre>
                     ) : null}
@@ -456,28 +459,22 @@ export function TsigKeyWizard({
             {step === "zones" ? (
               <div className="space-y-4">
                 <div className="grid gap-3 sm:grid-cols-3">
-                  <div className="rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg-subtle)] p-3">
-                    <div className="text-[0.625rem] font-medium tracking-wide text-[color:var(--color-fg-muted)] uppercase">
-                      Domains
-                    </div>
+                  <div className="border-border bg-background rounded-md border p-3">
+                    <div className="text-caption text-muted-foreground">Domains</div>
                     <div className="mt-1 text-lg font-semibold">{zones.length}</div>
                   </div>
-                  <div className="rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg-subtle)] p-3">
-                    <div className="text-[0.625rem] font-medium tracking-wide text-[color:var(--color-fg-muted)] uppercase">
-                      Selected
-                    </div>
+                  <div className="border-border bg-background rounded-md border p-3">
+                    <div className="text-caption text-muted-foreground">Selected</div>
                     <div className="mt-1 text-lg font-semibold">{selectedZones.size}</div>
                   </div>
-                  <div className="rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg-subtle)] p-3">
-                    <div className="text-[0.625rem] font-medium tracking-wide text-[color:var(--color-fg-muted)] uppercase">
-                      Key
-                    </div>
+                  <div className="border-border bg-background rounded-md border p-3">
+                    <div className="text-caption text-muted-foreground">Key</div>
                     <div className="mt-1 truncate font-mono text-sm" title={key?.name}>
                       {key?.name}
                     </div>
                   </div>
                 </div>
-                <div className="rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg-subtle)] px-3 py-2 text-xs text-[color:var(--color-fg-muted)]">
+                <div className="border-border bg-background text-muted-foreground rounded-md border px-3 py-2 text-xs">
                   {hasSelectionChanges ? (
                     <>
                       {addedZones.length} add{addedZones.length === 1 ? "" : "s"},{" "}
@@ -488,7 +485,7 @@ export function TsigKeyWizard({
                   )}
                 </div>
                 <div className="space-y-2">
-                  <p className="text-xs text-[color:var(--color-fg-muted)]">
+                  <p className="text-muted-foreground text-xs">
                     Sets <code>master_tsig_key_ids</code> on the primary and{" "}
                     <code>slave_tsig_key_ids</code> on the secondaries that host each zone.
                   </p>
@@ -500,17 +497,16 @@ export function TsigKeyWizard({
                   />
                 </div>
                 <button
+                  aria-busy={activating}
                   type="button"
                   onClick={applyZones}
                   disabled={activating || !hasSelectionChanges}
-                  className={`inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium ${
-                    hasSelectionChanges
-                      ? "bg-[color:var(--color-accent)] text-[color:var(--color-accent-fg)] hover:opacity-95 disabled:opacity-50"
-                      : "border border-[color:var(--color-border)] bg-[color:var(--color-bg)] text-[color:var(--color-fg-muted)]"
-                  }`}
+                  className={buttonClass({
+                    variant: hasSelectionChanges ? "primary" : "secondary",
+                  })}
                 >
                   <ShieldCheck className="h-4 w-4" aria-hidden />
-                  {activating ? "Applying…" : `Apply changes (${changeCount})`}
+                  {`Apply changes (${changeCount})`}
                 </button>
               </div>
             ) : null}
@@ -522,7 +518,7 @@ export function TsigKeyWizard({
               <>
                 <FooterGhost onClick={onClose}>Cancel</FooterGhost>
                 <FooterPrimary onClick={() => void generate()} disabled={creating}>
-                  {creating ? "Generating…" : "Generate & continue"}
+                  Generate & continue
                 </FooterPrimary>
               </>
             ) : null}
@@ -608,7 +604,7 @@ function ZoneMultiSelect({
         onClick={() => setOpen((o) => !o)}
         aria-haspopup="listbox"
         aria-expanded={open}
-        className="flex min-h-12 w-full items-center justify-between gap-3 rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg)] px-3 py-2 text-left text-sm hover:border-[color:var(--color-fg-muted)]"
+        className="border-input bg-card text-body focus-visible:border-ring focus-visible:shadow-focus-ring flex min-h-12 w-full items-center justify-between gap-3 rounded-md border px-3 py-2 text-left focus-visible:outline-hidden"
       >
         <span className="min-w-0">
           <span className="block font-medium">
@@ -616,11 +612,9 @@ function ZoneMultiSelect({
               ? "Choose domains"
               : `${selected.size} domain${selected.size === 1 ? "" : "s"} selected`}
           </span>
-          <span className="block text-xs text-[color:var(--color-fg-muted)]">
-            {zones.length} available
-          </span>
+          <span className="text-muted-foreground block text-xs">{zones.length} available</span>
         </span>
-        <ChevronDown className="h-4 w-4 shrink-0 text-[color:var(--color-fg-muted)]" aria-hidden />
+        <ChevronDown className="text-muted-foreground h-4 w-4 shrink-0" aria-hidden />
       </button>
 
       {selectedPreview.length > 0 ? (
@@ -629,13 +623,13 @@ function ZoneMultiSelect({
             <span
               key={zone}
               title={zone}
-              className="max-w-full truncate rounded bg-[color:var(--color-accent)]/10 px-2 py-1 font-mono text-[0.7rem] text-[color:var(--color-accent)] sm:max-w-64"
+              className="bg-tag text-mono-xs text-tag-foreground inline-flex h-5 max-w-full items-center truncate rounded-sm px-1.5 font-mono whitespace-nowrap sm:max-w-64"
             >
               {zone}
             </span>
           ))}
           {selectedPreview.length > 8 ? (
-            <span className="rounded bg-[color:var(--color-bg-subtle)] px-2 py-1 text-[0.7rem] text-[color:var(--color-fg-muted)]">
+            <span className="bg-tag text-mono-xs text-tag-foreground inline-flex h-5 items-center rounded-sm px-1.5 font-mono whitespace-nowrap">
               +{selectedPreview.length - 8}
             </span>
           ) : null}
@@ -643,20 +637,20 @@ function ZoneMultiSelect({
       ) : null}
 
       {open ? (
-        <div className="absolute z-[210] mt-2 w-full rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg)] shadow-xl">
-          <div className="border-b border-[color:var(--color-border)] p-3">
+        <div className="border-border bg-card absolute z-[210] mt-2 w-full rounded-md border">
+          <div className="border-border border-b p-3">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
               <input
                 type="search"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Filter domains"
-                className="min-w-0 flex-1 rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg)] px-3 py-2 font-mono text-sm focus:ring-2 focus:ring-[color:var(--color-accent)] focus:outline-none"
+                className={`min-w-0 flex-1 font-mono ${inputClass}`}
               />
               <button
                 type="button"
                 onClick={() => onChange(allSelected ? new Set() : new Set(zones))}
-                className="rounded-md border border-[color:var(--color-border)] px-3 py-2 text-xs font-medium hover:bg-[color:var(--color-bg-subtle)]"
+                className={buttonClass({ size: "sm" })}
               >
                 {allSelected ? "Clear all" : `Select all (${zones.length})`}
               </button>
@@ -664,7 +658,7 @@ function ZoneMultiSelect({
                 <button
                   type="button"
                   onClick={() => onChange(new Set())}
-                  className="rounded-md border border-[color:var(--color-border)] px-3 py-2 text-xs hover:bg-[color:var(--color-bg-subtle)]"
+                  className={buttonClass({ size: "sm" })}
                 >
                   Clear
                 </button>
@@ -673,7 +667,7 @@ function ZoneMultiSelect({
           </div>
           <div role="listbox" className="max-h-80 overflow-auto p-2">
             {filteredZones.length === 0 ? (
-              <p className="px-2 py-6 text-center text-sm text-[color:var(--color-fg-muted)]">
+              <p className="text-muted-foreground px-2 py-6 text-center text-sm">
                 No domains match.
               </p>
             ) : (
@@ -682,7 +676,7 @@ function ZoneMultiSelect({
                   key={zone}
                   checked={selected.has(zone)}
                   onChange={() => toggleZone(zone)}
-                  className="flex w-full min-w-0 items-start rounded px-2 py-2 hover:bg-[color:var(--color-bg-subtle)]"
+                  className="hover:bg-background flex w-full min-w-0 items-start rounded px-2 py-2"
                   label={
                     <span className="flex min-w-0 flex-1 items-start gap-2">
                       <span
@@ -692,7 +686,7 @@ function ZoneMultiSelect({
                         {zone}
                       </span>
                       {configured.has(zone) ? (
-                        <span className="shrink-0 rounded bg-[color:var(--color-accent)]/10 px-1.5 py-0.5 text-[0.625rem] font-medium text-[color:var(--color-accent)]">
+                        <span className="bg-tag text-mono-xs text-tag-foreground inline-flex h-5 shrink-0 items-center rounded-sm px-1.5 font-mono whitespace-nowrap">
                           configured
                         </span>
                       ) : null}
@@ -722,7 +716,7 @@ function FooterPrimary({
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className="rounded-md bg-[color:var(--color-accent)] px-4 py-2 text-sm font-medium text-[color:var(--color-accent-fg)] hover:opacity-95 disabled:opacity-50"
+      className={buttonClass({ variant: "primary" })}
     >
       {children}
     </button>
@@ -731,11 +725,7 @@ function FooterPrimary({
 
 function FooterGhost({ onClick, children }: { onClick: () => void; children: React.ReactNode }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg)] px-4 py-2 text-sm hover:bg-[color:var(--color-bg-subtle)]"
-    >
+    <button type="button" onClick={onClick} className={buttonClass()}>
       {children}
     </button>
   );

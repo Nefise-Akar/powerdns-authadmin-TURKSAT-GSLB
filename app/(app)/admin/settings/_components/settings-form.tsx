@@ -10,6 +10,8 @@
 import { useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { apiFetch } from "@/lib/client/api-fetch";
+import { buttonClass } from "@/components/ui/button";
+import { inputClass as baseInputClass, textareaClass } from "@/components/ui/field";
 
 interface SettingsFormProps {
   initial: {
@@ -209,7 +211,7 @@ export function SettingsForm({ initial, canWrite, lockedByPolicy }: SettingsForm
         />
         <div className="mt-2 flex flex-wrap items-center gap-2">
           <label
-            className={`inline-flex cursor-pointer items-center gap-2 rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg-subtle)] px-3 py-1.5 text-xs font-medium hover:bg-[color:var(--color-bg-muted)] ${canWrite ? "" : "pointer-events-none opacity-60"}`}
+            className={`border-border bg-background hover:bg-muted inline-flex cursor-pointer items-center gap-2 rounded-md border px-3 py-1.5 text-xs font-medium ${canWrite ? "" : "pointer-events-none opacity-60"}`}
           >
             <input
               ref={fileInputRef}
@@ -226,14 +228,14 @@ export function SettingsForm({ initial, canWrite, lockedByPolicy }: SettingsForm
               type="button"
               onClick={clearLogo}
               disabled={!canWrite}
-              className="rounded-md border border-[color:var(--color-border)] px-3 py-1.5 text-xs hover:bg-[color:var(--color-bg-subtle)] disabled:opacity-60"
+              className={buttonClass({ size: "sm" })}
             >
               Clear
             </button>
           ) : null}
         </div>
         {uploadError ? (
-          <p className="mt-1 text-xs text-[color:var(--color-error)]" role="alert">
+          <p className="text-destructive mt-1 text-xs" role="alert">
             {uploadError}
           </p>
         ) : null}
@@ -245,9 +247,7 @@ export function SettingsForm({ initial, canWrite, lockedByPolicy }: SettingsForm
           tokens as the actual chromes - dark sidebar in the (app) shell,
           neutral subtle panel in the (auth) shell.
         */}
-        <p className="mt-4 text-xs font-medium tracking-wide text-[color:var(--color-fg-subtle)] uppercase">
-          Preview
-        </p>
+        <p className="text-caption text-muted-foreground mt-4">Preview</p>
         <div className="mt-2 grid gap-3 sm:grid-cols-2">
           <PreviewSlot label="Sidebar header (224 × 40)" widthPx={224} heightPx={40}>
             {brandLogoUrl ? (
@@ -265,9 +265,7 @@ export function SettingsForm({ initial, canWrite, lockedByPolicy }: SettingsForm
                 }}
               />
             ) : (
-              <span className="text-xs text-[color:var(--color-fg-subtle)]">
-                (default wordmark)
-              </span>
+              <span className="text-muted-foreground text-xs">(default wordmark)</span>
             )}
           </PreviewSlot>
           <PreviewSlot label="Sign-in banner (max 240 wide)" widthPx={240} heightPx={80}>
@@ -286,9 +284,7 @@ export function SettingsForm({ initial, canWrite, lockedByPolicy }: SettingsForm
                 }}
               />
             ) : (
-              <span className="text-xs text-[color:var(--color-fg-subtle)]">
-                (default wordmark)
-              </span>
+              <span className="text-muted-foreground text-xs">(default wordmark)</span>
             )}
           </PreviewSlot>
         </div>
@@ -323,14 +319,12 @@ export function SettingsForm({ initial, canWrite, lockedByPolicy }: SettingsForm
           value={loginIntro}
           onChange={(e) => setLoginIntro(e.target.value)}
           disabled={!canWrite}
-          className={`${inputClass} resize-y`}
+          className={`mt-1.5 ${textareaClass} resize-y`}
         />
       </Field>
 
-      <fieldset className="space-y-4 rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg-subtle)] p-4">
-        <legend className="px-1 text-xs font-medium tracking-wide text-[color:var(--color-fg-muted)] uppercase">
-          Account lockout policy
-        </legend>
+      <fieldset className="border-border bg-background space-y-4 rounded-md border p-4">
+        <legend className="text-caption text-muted-foreground px-1">Account lockout policy</legend>
         <Field
           id="login_lockout_threshold"
           label="Failed-login threshold"
@@ -369,10 +363,8 @@ export function SettingsForm({ initial, canWrite, lockedByPolicy }: SettingsForm
         </Field>
       </fieldset>
 
-      <fieldset className="space-y-4 rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg-subtle)] p-4">
-        <legend className="px-1 text-xs font-medium tracking-wide text-[color:var(--color-fg-muted)] uppercase">
-          Records
-        </legend>
+      <fieldset className="border-border bg-background space-y-4 rounded-md border p-4">
+        <legend className="text-caption text-muted-foreground px-1">Records</legend>
         <Field
           id="default_record_ttl"
           label="Default TTL for new records (seconds)"
@@ -392,21 +384,19 @@ export function SettingsForm({ initial, canWrite, lockedByPolicy }: SettingsForm
         </Field>
       </fieldset>
 
-      <fieldset className="space-y-3 rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg-subtle)] p-4">
-        <legend className="px-1 text-xs font-medium tracking-wide text-[color:var(--color-fg-muted)] uppercase">
-          Authentication
-        </legend>
+      <fieldset className="border-border bg-background space-y-3 rounded-md border p-4">
+        <legend className="text-caption text-muted-foreground px-1">Authentication</legend>
         <label className="flex items-start gap-3 text-sm">
           <input
             type="checkbox"
             checked={allowPasswordReset}
             onChange={(e) => setAllowPasswordReset(e.target.checked)}
             disabled={!canWrite}
-            className="mt-0.5 h-4 w-4 rounded border-[color:var(--color-border)]"
+            className="border-border mt-0.5 h-4 w-4 rounded"
           />
           <span>
             <span className="font-medium">Allow self-service password reset</span>
-            <span className="mt-0.5 block text-xs text-[color:var(--color-fg-muted)]">
+            <span className="text-muted-foreground mt-0.5 block text-xs">
               Shows the “Forgot password?” link on the login page and enables the reset-email flow.
               Local accounts only - SSO users reset through their identity provider. Requires SMTP
               to actually deliver the email.
@@ -416,26 +406,27 @@ export function SettingsForm({ initial, canWrite, lockedByPolicy }: SettingsForm
       </fieldset>
 
       {error ? (
-        <p className="text-sm text-[color:var(--color-error)]" role="alert">
+        <p className="text-destructive text-sm" role="alert">
           {error}
         </p>
       ) : null}
-      {ok ? <p className="text-sm text-[color:var(--color-success)]">Settings saved.</p> : null}
+      {ok ? <p className="text-success text-sm">Settings saved.</p> : null}
 
       {canWrite ? (
         <button
+          aria-busy={saving}
           type="submit"
           disabled={saving}
-          className="rounded-md bg-[color:var(--color-accent)] px-4 py-2 text-sm font-medium text-[color:var(--color-accent-fg)] hover:opacity-95 disabled:opacity-50"
+          className={buttonClass({ variant: "primary" })}
         >
-          {saving ? "Saving…" : "Save changes"}
+          Save changes
         </button>
       ) : lockedByPolicy ? (
-        <p className="rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg-subtle)] px-3 py-2.5 text-xs text-[color:var(--color-fg-muted)]">
+        <p className="border-border bg-background text-muted-foreground rounded-md border px-3 py-2.5 text-xs">
           Settings are read-only on this deployment (SETTINGS_RO) and can&apos;t be changed.
         </p>
       ) : (
-        <p className="text-xs text-[color:var(--color-fg-muted)]">
+        <p className="text-muted-foreground text-xs">
           You have read-only access. The settings.write permission is required to edit.
         </p>
       )}
@@ -443,8 +434,7 @@ export function SettingsForm({ initial, canWrite, lockedByPolicy }: SettingsForm
   );
 }
 
-const inputClass =
-  "mt-1 block w-full rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--color-accent)] disabled:opacity-60";
+const inputClass = `mt-1.5 ${baseInputClass}`;
 
 function Field({
   id,
@@ -465,9 +455,9 @@ function Field({
         {label}
       </label>
       {children}
-      {hint ? <p className="mt-1 text-xs text-[color:var(--color-fg-muted)]">{hint}</p> : null}
+      {hint ? <p className="text-muted-foreground mt-1 text-xs">{hint}</p> : null}
       {errors && errors.length > 0 ? (
-        <p className="mt-1 text-xs text-[color:var(--color-error)]" role="alert">
+        <p className="text-destructive mt-1 text-xs" role="alert">
           {errors.join(" ")}
         </p>
       ) : null}
@@ -495,12 +485,12 @@ function PreviewSlot({
   return (
     <div>
       <div
-        className="flex items-center justify-center overflow-hidden rounded-md border border-dashed border-[color:var(--color-border)] bg-[color:var(--color-bg-subtle)]"
+        className="border-border bg-background flex items-center justify-center overflow-hidden rounded-md border border-dashed"
         style={{ width: widthPx, height: heightPx }}
       >
         {children}
       </div>
-      <p className="mt-1 text-[0.7rem] text-[color:var(--color-fg-subtle)]">{label}</p>
+      <p className="text-muted-foreground text-caption mt-1">{label}</p>
     </div>
   );
 }

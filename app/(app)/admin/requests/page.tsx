@@ -127,10 +127,10 @@ export default async function PdnsRequestsPage({ searchParams }: PageProps) {
     <div className="space-y-4">
       <header>
         <div className="flex items-baseline gap-3">
-          <h1 className="text-2xl font-semibold tracking-tight">PowerDNS requests</h1>
+          <h1 className="text-h1">PowerDNS requests</h1>
           <LiveFeedSubscriber eventTypes={["pdns.request.appended"]} />
         </div>
-        <p className="mt-1 text-sm text-[color:var(--color-fg-muted)]">
+        <p className="text-muted-foreground mt-1 text-sm">
           Every HTTP call this server issued to a PowerDNS backend, including reads (
           <code className="font-mono">zones.list</code>,{" "}
           <code className="font-mono">zones.get</code>) that don&apos;t write audit rows. Sensitive

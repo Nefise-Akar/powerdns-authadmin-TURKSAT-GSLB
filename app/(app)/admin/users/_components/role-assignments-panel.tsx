@@ -13,6 +13,7 @@ import { useDialog } from "@/components/ui/dialog";
 import { LocalTime } from "@/components/ui/local-time";
 import { SelectMenu } from "@/components/ui/select-menu";
 import { apiFetch, mutate } from "@/lib/client/api-fetch";
+import { buttonClass } from "@/components/ui/button";
 
 interface Assignment {
   assignmentId: string;
@@ -129,56 +130,57 @@ export function RoleAssignmentsPanel(props: PanelProps) {
   }
 
   return (
-    <section className="space-y-4 rounded-md border border-[color:var(--color-border)] p-5">
+    <section className="border-border space-y-4 rounded-md border p-5">
       <header>
-        <h2 className="text-sm font-medium tracking-wide text-[color:var(--color-fg-muted)] uppercase">
-          Role assignments ({props.assignments.length})
-        </h2>
-        <p className="mt-1 text-xs text-[color:var(--color-fg-muted)]">
+        <h2 className="text-h3 text-foreground">Role assignments ({props.assignments.length})</h2>
+        <p className="text-muted-foreground mt-1 text-xs">
           Each assignment grants a role&apos;s permissions within a scope.
         </p>
       </header>
 
       {props.assignments.length === 0 ? (
-        <p className="text-sm text-[color:var(--color-fg-muted)]">No role assignments yet.</p>
+        <p className="text-muted-foreground text-sm">No role assignments yet.</p>
       ) : (
-        <div className="overflow-hidden rounded-lg border border-[color:var(--color-border)]">
+        <div className="overflow-hidden">
           <table className="w-full text-sm">
-            <thead className="bg-[color:var(--color-bg-muted)] text-left text-xs font-medium tracking-wide text-[color:var(--color-fg-muted)] uppercase">
+            <thead className="border-border bg-background text-label text-muted-foreground border-y text-left">
               <tr>
-                <th className="px-4 py-2.5">Role</th>
-                <th className="px-4 py-2.5">Scope</th>
-                <th className="px-4 py-2.5">Assigned</th>
-                <th className="px-4 py-2.5"></th>
+                <th className="h-9 px-2 font-medium first:pl-3">Role</th>
+                <th className="h-9 px-2 font-medium first:pl-3">Scope</th>
+                <th className="h-9 px-2 font-medium first:pl-3">Assigned</th>
+                <th className="h-9 px-2 font-medium first:pl-3"></th>
               </tr>
             </thead>
             <tbody>
               {props.assignments.map((a) => (
                 <tr
                   key={a.assignmentId}
-                  className="border-t border-[color:var(--color-border)] transition-colors even:bg-[color:var(--color-bg-subtle)] hover:bg-[color-mix(in_oklch,var(--color-accent)_14%,transparent)]"
+                  className="border-border even:bg-background hover:bg-background border-t transition-colors"
                 >
-                  <td className="px-4 py-3 align-top">
+                  <td className="px-2 py-2 align-top first:pl-3">
                     <span className="font-medium">{a.roleName}</span>
                     {a.isSystem ? (
-                      <span className="ml-2 rounded bg-[color:var(--color-bg-muted)] px-1.5 py-0.5 text-[0.65rem] tracking-wide uppercase">
+                      <span className="bg-tag text-mono-xs text-tag-foreground ml-2 inline-flex h-5 items-center rounded-sm px-1.5 font-mono whitespace-nowrap">
                         system
                       </span>
                     ) : null}
                   </td>
-                  <td className="px-4 py-3 align-top font-mono text-xs">{a.scopeLabel}</td>
-                  <td className="px-4 py-3 align-top text-xs">
+                  <td className="px-2 py-2 align-top font-mono text-xs first:pl-3">
+                    {a.scopeLabel}
+                  </td>
+                  <td className="px-2 py-2 align-top text-xs first:pl-3">
                     <LocalTime ts={a.createdAt} />
                   </td>
-                  <td className="px-4 py-3 text-right align-top">
+                  <td className="px-2 py-2 text-right align-top first:pl-3">
                     {props.canManage ? (
                       <button
+                        aria-busy={removing === a.assignmentId}
                         type="button"
                         onClick={() => handleRemove(a.assignmentId)}
                         disabled={removing === a.assignmentId}
-                        className="text-xs text-[color:var(--color-error)] hover:underline disabled:opacity-50"
+                        className="text-destructive text-xs hover:underline disabled:opacity-45"
                       >
-                        {removing === a.assignmentId ? "Removing…" : "Remove"}
+                        Remove
                       </button>
                     ) : null}
                   </td>
@@ -190,10 +192,8 @@ export function RoleAssignmentsPanel(props: PanelProps) {
       )}
 
       {props.canManage ? (
-        <div className="space-y-3 rounded-md border border-dashed border-[color:var(--color-border)] bg-[color:var(--color-bg-subtle)] p-4">
-          <p className="text-xs font-medium tracking-wide text-[color:var(--color-fg-muted)] uppercase">
-            Add assignment
-          </p>
+        <div className="border-border bg-background space-y-3 rounded-md border border-dashed p-4">
+          <p className="text-caption text-muted-foreground">Add assignment</p>
           <div className="grid gap-3 sm:grid-cols-3">
             <SelectMenu
               value={roleId}
@@ -234,15 +234,16 @@ export function RoleAssignmentsPanel(props: PanelProps) {
 
           <div className="flex items-center gap-3">
             <button
+              aria-busy={busy}
               type="button"
               onClick={handleAssign}
               disabled={busy}
-              className="rounded-md bg-[color:var(--color-accent)] px-4 py-2 text-sm font-medium text-[color:var(--color-accent-fg)] hover:opacity-95 disabled:opacity-50"
+              className={buttonClass({ variant: "primary" })}
             >
-              {busy ? "Assigning…" : "Assign"}
+              Assign
             </button>
             {error ? (
-              <p className="text-xs text-[color:var(--color-error)]" role="alert">
+              <p className="text-destructive text-xs" role="alert">
                 {error}
               </p>
             ) : null}

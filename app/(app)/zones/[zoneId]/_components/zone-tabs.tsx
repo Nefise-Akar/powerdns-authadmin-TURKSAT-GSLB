@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { tabClass } from "@/components/ui/tabs";
 
 export type ZoneTabKey =
   | "records"
@@ -77,8 +78,8 @@ export function ZoneTabs({
     // history" - the widest label) never lives off-screen. From sm+ they
     // collapse back to a single horizontally-scrollable row, matching the
     // dense desktop layout.
-    <div className="border-b border-[color:var(--color-border)] sm:overflow-x-auto">
-      <nav className="-mb-px flex flex-wrap gap-x-6 gap-y-2 text-sm sm:w-max sm:flex-nowrap sm:gap-y-0 sm:whitespace-nowrap">
+    <div className="border-border border-b sm:overflow-x-auto">
+      <nav className="flex flex-wrap gap-x-5 sm:w-max sm:flex-nowrap [&>a]:h-10">
         <TabLink href={detailHref} active={active === "records"}>
           Records
         </TabLink>
@@ -137,15 +138,7 @@ function TabLink({
   children: React.ReactNode;
 }) {
   return (
-    <Link
-      href={href}
-      aria-current={active ? "page" : undefined}
-      className={
-        active
-          ? "border-b-2 border-[color:var(--color-accent)] px-1 pb-3 font-medium text-[color:var(--color-fg)]"
-          : "border-b-2 border-transparent px-1 pb-3 text-[color:var(--color-fg-muted)] hover:text-[color:var(--color-fg)]"
-      }
-    >
+    <Link href={href} aria-current={active ? "page" : undefined} className={tabClass(active)}>
       {children}
     </Link>
   );

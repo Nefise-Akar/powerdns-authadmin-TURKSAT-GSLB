@@ -47,22 +47,22 @@ export default async function RoleDetailPage({ params }: PageProps) {
       <div>
         <Link
           href="/admin/roles"
-          className="text-sm text-[color:var(--color-accent)] hover:underline"
+          className="text-primary hover:text-primary-hover text-sm hover:underline"
         >
           ← Back to roles
         </Link>
       </div>
 
       <header>
-        <h1 className="text-2xl font-semibold tracking-tight">{role.name}</h1>
-        <p className="mt-1 text-sm text-[color:var(--color-fg-muted)]">
+        <h1 className="text-h1">{role.name}</h1>
+        <p className="text-muted-foreground mt-1 text-sm">
           <code className="font-mono">{role.slug}</code>
           {role.isSystem ? (
-            <span className="ml-2 rounded bg-[color:var(--color-bg-muted)] px-1.5 py-0.5 text-[0.65rem] tracking-wide uppercase">
+            <span className="bg-tag text-mono-xs text-tag-foreground ml-2 inline-flex h-5 items-center rounded-sm px-1.5 font-mono whitespace-nowrap">
               system
             </span>
           ) : (
-            <span className="ml-2 rounded bg-[color:var(--color-accent)]/15 px-1.5 py-0.5 text-[0.65rem] tracking-wide text-[color:var(--color-accent)] uppercase">
+            <span className="bg-tag text-mono-xs text-tag-foreground ml-2 inline-flex h-5 items-center rounded-sm px-1.5 font-mono whitespace-nowrap">
               custom
             </span>
           )}
@@ -76,9 +76,7 @@ export default async function RoleDetailPage({ params }: PageProps) {
         // Custom role + edit permission → render the full editable form.
         // Slug is fixed (immutable contract for OIDC group mappings).
         <section className="space-y-3">
-          <h2 className="text-sm font-medium tracking-wide text-[color:var(--color-fg-muted)] uppercase">
-            Edit role
-          </h2>
+          <h2 className="text-h3 text-foreground">Edit role</h2>
           <RoleForm
             mode="edit"
             roleId={role.id}
@@ -95,13 +93,11 @@ export default async function RoleDetailPage({ params }: PageProps) {
         // read-only rendering plus the narrow MFA toggle when allowed.
         <>
           <section className="space-y-3">
-            <h2 className="text-sm font-medium tracking-wide text-[color:var(--color-fg-muted)] uppercase">
-              MFA policy
-            </h2>
+            <h2 className="text-h3 text-foreground">MFA policy</h2>
             {canEdit ? (
               <RequireMfaToggle roleId={role.id} initialValue={role.requiresMfa} />
             ) : (
-              <p className="text-sm text-[color:var(--color-fg-muted)]">
+              <p className="text-muted-foreground text-sm">
                 {role.requiresMfa
                   ? "Users with this role must have TOTP enrolled."
                   : "MFA is not required for this role."}
@@ -110,18 +106,11 @@ export default async function RoleDetailPage({ params }: PageProps) {
           </section>
 
           <section className="space-y-4">
-            <h2 className="text-sm font-medium tracking-wide text-[color:var(--color-fg-muted)] uppercase">
-              Permissions ({role.permissions.length})
-            </h2>
+            <h2 className="text-h3 text-foreground">Permissions ({role.permissions.length})</h2>
             <div className="grid gap-4 sm:grid-cols-2">
               {Object.entries(grouped).map(([resource, actions]) => (
-                <div
-                  key={resource}
-                  className="rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg-subtle)] p-4"
-                >
-                  <h3 className="text-xs font-medium tracking-wide text-[color:var(--color-fg-muted)] uppercase">
-                    {resource}
-                  </h3>
+                <div key={resource} className="border-border bg-background rounded-md border p-4">
+                  <h3 className="text-caption text-muted-foreground">{resource}</h3>
                   <ul className="mt-2 space-y-0.5 font-mono text-xs">
                     {actions.map((action) => (
                       <li key={action}>{action}</li>
@@ -135,12 +124,10 @@ export default async function RoleDetailPage({ params }: PageProps) {
       )}
 
       {isCustom && canDelete ? (
-        <section className="border-t border-[color:var(--color-border)] pt-6">
-          <h2 className="text-sm font-medium tracking-wide text-[color:var(--color-error)] uppercase">
-            Danger zone
-          </h2>
-          <div className="mt-3 flex items-start justify-between gap-4 rounded-md border border-[color:var(--color-error)]/40 bg-[color:var(--color-error)]/5 p-4">
-            <p className="flex-1 text-sm text-[color:var(--color-fg-muted)]">
+        <section className="border-border border-t pt-6">
+          <h2 className="text-h3 text-foreground">Danger zone</h2>
+          <div className="border-destructive bg-destructive-muted mt-3 flex items-start justify-between gap-4 rounded-md border p-4">
+            <p className="text-muted-foreground flex-1 text-sm">
               Delete this role. The action is refused while any user still holds it - revoke the
               assignments first. OIDC group mappings that reference this slug will become unresolved
               on the next sign-in.

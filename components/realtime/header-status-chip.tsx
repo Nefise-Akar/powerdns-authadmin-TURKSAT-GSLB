@@ -3,11 +3,13 @@
 /**
  * components/realtime/header-status-chip.tsx
  *
- * The SSE connection chip that lives in the top header (left, just past the
- * hamburger). One chip for the whole app - its *label* varies per page:
+ * The SSE connection status, shown at the right of the app's status bar (the
+ * name predates its move out of the top header). One status for the whole
+ * app - its *label* varies per page:
  *
- *   • Dashboard (default)         → "Live"
- *   • Zones, Zone detail, Servers → "Synced" / "Desynced" (replication aware)
+ *   • Dashboard (default)         → "Connected"
+ *   • Zones, Zone detail, Servers → "Connected · synced" / "· desynced"
+ *                                   (replication aware)
  *
  * Pages set the label by mounting a tiny <HeaderStatusMode/> client component
  * (no UI, just pushes the desired mode into context). When the page unmounts
@@ -102,12 +104,12 @@ export function HeaderStatusChip() {
   const isConnected = status === "live";
   const connLabel =
     status === "paused"
-      ? "paused"
+      ? "Paused"
       : status === "offline"
-        ? "offline"
+        ? "Offline"
         : status === "connecting"
-          ? "connecting"
-          : "connected";
+          ? "Connecting"
+          : "Connected";
   const showSync = isConnected && mode.kind === "sync";
   const syncLabel = showSync && mode.kind === "sync" ? (mode.inSync ? "synced" : "desynced") : null;
 
@@ -117,12 +119,12 @@ export function HeaderStatusChip() {
   // a backend is mid-replication.
   const dotClass =
     status === "paused"
-      ? "bg-[color:var(--color-fg-subtle)]"
+      ? "bg-muted-foreground"
       : status === "offline"
-        ? "bg-[color:var(--color-error)]"
+        ? "bg-destructive"
         : status === "connecting"
-          ? "bg-[color:var(--color-warn)]"
-          : "animate-pulse bg-[color:var(--color-success)]";
+          ? "bg-warning"
+          : "bg-success";
 
   const title =
     status === "paused"
@@ -142,13 +144,13 @@ export function HeaderStatusChip() {
       type="button"
       onClick={() => setEnabled(!enabled)}
       title={title}
-      className="inline-flex items-center gap-1.5 rounded-full border border-[color:var(--color-border)] bg-[color:var(--color-bg)] px-2 py-1 text-[0.625rem] font-medium tracking-wide text-[color:var(--color-fg-muted)] uppercase hover:bg-[color:var(--color-bg-subtle)]"
+      className="text-caption text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:shadow-focus-ring inline-flex h-6 items-center gap-1.5 rounded-sm px-1 tabular-nums focus-visible:outline-hidden"
     >
-      <span className={`inline-block h-2 w-2 rounded-full ${dotClass}`} aria-hidden />
+      <span className={`inline-block size-1.5 rounded-full ${dotClass}`} aria-hidden />
       {connLabel}
       {syncLabel && mode.kind === "sync" ? (
         <>
-          <span className="text-[color:var(--color-fg-subtle)]">·</span>
+          <span aria-hidden>·</span>
           <SyncIndicator state={mode.inSync ? "synced" : "desynced"} size={14} />
           <span>{syncLabel}</span>
         </>

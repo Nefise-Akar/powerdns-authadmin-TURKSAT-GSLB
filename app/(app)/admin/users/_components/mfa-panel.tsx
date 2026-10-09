@@ -17,6 +17,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useDialog } from "@/components/ui/dialog";
 import { mutate } from "@/lib/client/api-fetch";
+import { buttonClass } from "@/components/ui/button";
 
 interface Props {
   userId: string;
@@ -67,34 +68,33 @@ export function MfaPanel({ userId, canManage, totpEnabled, isSelf }: Props) {
   }
 
   return (
-    <section className="rounded-md border border-[color:var(--color-border)] p-5">
-      <h2 className="mb-3 text-sm font-medium tracking-wide text-[color:var(--color-fg-muted)] uppercase">
-        Multi-factor authentication
-      </h2>
+    <section className="border-border rounded-md border p-5">
+      <h2 className="text-h3 text-foreground mb-2">Multi-factor authentication</h2>
       <div className="flex items-center justify-between gap-3 text-sm">
         <div>
           <div className="font-medium">
             TOTP:{" "}
             {totpEnabled ? (
-              <span className="text-[color:var(--color-success)]">enrolled</span>
+              <span className="text-success">enrolled</span>
             ) : (
-              <span className="text-[color:var(--color-fg-muted)]">not enrolled</span>
+              <span className="text-muted-foreground">not enrolled</span>
             )}
           </div>
           {!totpEnabled ? (
-            <p className="mt-0.5 text-xs text-[color:var(--color-fg-muted)]">
+            <p className="text-muted-foreground mt-0.5 text-xs">
               The user can enroll themselves from /profile.
             </p>
           ) : null}
         </div>
         {canManage && totpEnabled ? (
           <button
+            aria-busy={busy}
             type="button"
             onClick={handleReset}
             disabled={busy}
-            className="shrink-0 rounded border border-[color:var(--color-error)] px-3 py-1 text-xs text-[color:var(--color-error)] hover:bg-[color:var(--color-error)]/10 disabled:opacity-50"
+            className={buttonClass({ variant: "destructive", size: "sm", className: "shrink-0" })}
           >
-            {busy ? "Resetting…" : "Reset MFA"}
+            Reset MFA
           </button>
         ) : null}
       </div>

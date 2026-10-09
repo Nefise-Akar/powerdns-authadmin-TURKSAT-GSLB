@@ -4,8 +4,11 @@
  * components/ui/switch.tsx
  *
  * Themed on/off toggle (`role="switch"`) - the project's standard boolean
- * control, replacing the three hand-rolled copies of the same 11×6 pill. Pair it
- * with a separate text label/state span at the call site.
+ * control. Pair it with a separate text label/state span at the call site.
+ *
+ * The design system has no switch, so this one is assembled from its rules:
+ * checkbox colors (input border off, primary fill on), square-ish corners
+ * (no pill shapes), no elevation shadow on the thumb.
  */
 
 interface SwitchProps {
@@ -26,13 +29,13 @@ export function Switch({ checked, onChange, disabled, ariaLabel, className }: Sw
       aria-label={ariaLabel}
       disabled={disabled}
       onClick={() => onChange(!checked)}
-      className={`inline-flex h-6 w-11 items-center rounded-full transition-colors disabled:opacity-50 ${
-        checked ? "bg-[color:var(--color-accent)]" : "bg-[color:var(--color-bg-muted)]"
+      className={`focus-visible:shadow-focus-ring inline-flex h-5 w-9 shrink-0 items-center rounded-md border transition-colors focus-visible:outline-hidden disabled:cursor-default disabled:opacity-45 ${
+        checked ? "border-primary bg-primary" : "border-input bg-muted"
       } ${className ?? ""}`}
     >
       <span
-        className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${
-          checked ? "translate-x-5" : "translate-x-0.5"
+        className={`inline-block size-3.5 rounded-sm transition-transform ${
+          checked ? "bg-primary-foreground translate-x-4.5" : "bg-card translate-x-0.5"
         }`}
       />
     </button>

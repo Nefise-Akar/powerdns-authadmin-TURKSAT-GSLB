@@ -35,6 +35,8 @@ import { safeIconUrl } from "@/lib/security/icon-url";
 import { LoginForm } from "./login-form";
 import { LdapLoginForm } from "./ldap-login-form";
 import { PasskeyButton } from "./passkey-button";
+import { buttonClass } from "@/components/ui/button";
+import { Alert } from "@/components/ui/alert";
 
 export const metadata: Metadata = { title: "Sign in" };
 
@@ -230,14 +232,22 @@ export default async function LoginPage({
   return (
     <>
       {appUrlCheck?.mismatch ? (
-        <div
-          role="alert"
-          className="mb-4 rounded-md border border-[color:var(--color-error)] bg-[color:var(--color-error)]/10 p-3 text-sm"
+        <Alert
+          variant="destructive"
+          className="mb-4"
+          title="APP_URL mismatch, sign-in will fail"
+          action={
+            <a
+              href="https://github.com/PowerDNS-AuthAdmin/powerdns-authadmin/blob/main/docs/02-INSTALLATION.md#2-set-app_url"
+              target="_blank"
+              rel="noreferrer noopener"
+            >
+              Installation guide: set APP_URL
+              <span className="sr-only"> (opens in a new tab)</span>
+            </a>
+          }
         >
-          <strong className="text-[color:var(--color-error)]">
-            APP_URL mismatch - sign-in will fail.
-          </strong>
-          <p className="mt-1 text-[color:var(--color-fg)]">
+          <p>
             You opened this page at <code className="font-mono">{appUrlCheck.actualOrigin}</code>{" "}
             but the app is configured with{" "}
             <code className="font-mono">APP_URL={appUrlCheck.expectedOrigin}</code>. Session and
@@ -245,30 +255,21 @@ export default async function LoginPage({
             <code className="font-mono">{appUrlCheck.expectedOrigin}</code>, so your browser will
             silently reject them.
           </p>
-          <p className="mt-2 text-[color:var(--color-fg-muted)]">
-            Fix: set <code className="font-mono">APP_URL</code> to the exact scheme + host + port
-            you typed in the address bar and restart the app. See{" "}
-            <a
-              href="https://github.com/PowerDNS-AuthAdmin/powerdns-authadmin/blob/main/docs/02-INSTALLATION.md#2-set-app_url"
-              className="underline"
-              target="_blank"
-              rel="noreferrer noopener"
-            >
-              Installation → Set APP_URL
-            </a>
-            .
+          <p className="mt-1">
+            Set <code className="font-mono">APP_URL</code> to the exact scheme + host + port you
+            typed in the address bar and restart the app.
           </p>
-        </div>
+        </Alert>
       ) : null}
 
       {loginIntro ? (
-        <div className="mb-4 rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg-subtle)] p-3 text-sm whitespace-pre-line">
+        <div className="border-border bg-background mb-4 rounded-md border p-3 text-sm whitespace-pre-line">
           {loginIntro}
         </div>
       ) : null}
 
       {signedOut ? (
-        <div className="mb-4 rounded-md border border-[color:var(--color-success)] bg-[color:var(--color-success)]/10 p-3 text-sm">
+        <div className="border-success bg-background mb-4 rounded-md border p-3 text-sm">
           You&apos;ve been signed out.
         </div>
       ) : null}
@@ -276,16 +277,16 @@ export default async function LoginPage({
       {flash ? <FlashBanner kind={flash} /> : null}
 
       {error ? (
-        <div className="mb-4 rounded-md border border-[color:var(--color-error)] bg-[color:var(--color-error)]/10 p-3 text-sm text-[color:var(--color-error)]">
+        <Alert variant="destructive" className="mb-4">
           {humanizeError(error)}
-        </div>
+        </Alert>
       ) : null}
 
       {showLocalForm ? (
         <div className="space-y-2">
           <LoginForm turnstileSiteKey={env.TURNSTILE_SITE_KEY ?? undefined} next={safeNext} />
           {allowPasswordReset ? (
-            <p className="text-xs text-[color:var(--color-fg-muted)]">
+            <p className="text-muted-foreground text-xs">
               <Link href="/reset-password" className="underline">
                 Forgot password?
               </Link>
@@ -305,10 +306,10 @@ export default async function LoginPage({
 
       {showProviderList ? (
         <div className="mt-6 space-y-3">
-          <div className="flex items-center gap-3 text-xs text-[color:var(--color-fg-subtle)]">
-            <span className="h-px flex-1 bg-[color:var(--color-border)]" />
+          <div className="text-muted-foreground flex items-center gap-3 text-xs">
+            <span className="bg-border h-px flex-1" />
             <span>or sign in with</span>
-            <span className="h-px flex-1 bg-[color:var(--color-border)]" />
+            <span className="bg-border h-px flex-1" />
           </div>
 
           <div className="space-y-2">
@@ -316,11 +317,7 @@ export default async function LoginPage({
               p.kind === "passkey" ? (
                 <PasskeyButton key={p.key} next={safeNext} />
               ) : (
-                <a
-                  key={p.key}
-                  href={p.href}
-                  className="flex w-full items-center justify-center gap-2 rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg-subtle)] px-4 py-2 text-sm font-medium hover:bg-[color:var(--color-bg-muted)]"
-                >
+                <a key={p.key} href={p.href} className={buttonClass({ className: "flex w-full" })}>
                   {p.iconUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
@@ -331,7 +328,7 @@ export default async function LoginPage({
                   ) : null}
                   <span>{p.label}</span>
                   {p.tag ? (
-                    <span className="rounded bg-[color:var(--color-bg-muted)] px-1.5 py-0.5 text-[0.625rem] font-medium tracking-wide text-[color:var(--color-fg-muted)] uppercase">
+                    <span className="bg-tag text-mono-xs text-tag-foreground inline-flex h-5 items-center rounded-sm px-1.5 font-mono whitespace-nowrap">
                       {p.tag}
                     </span>
                   ) : null}
@@ -343,7 +340,7 @@ export default async function LoginPage({
       ) : null}
 
       {showLocalForm && env.SIGNUP_ENABLED ? (
-        <p className="mt-4 text-xs text-[color:var(--color-fg-muted)]">
+        <p className="text-muted-foreground mt-4 text-xs">
           Don&apos;t have an account?{" "}
           <Link href="/signup" className="underline">
             Create an account
@@ -363,8 +360,8 @@ function FlashBanner({ kind }: { kind: string }) {
       role="status"
       className={
         isSuccess
-          ? "mb-4 rounded-md border border-[color:var(--color-success)] bg-[color:var(--color-success)]/10 p-3 text-sm"
-          : "mb-4 rounded-md border border-[color:var(--color-accent)] bg-[color:var(--color-accent)]/10 p-3 text-sm"
+          ? "border-success bg-background mb-4 rounded-md border p-3 text-sm"
+          : "border-primary bg-accent mb-4 rounded-md border p-3 text-sm"
       }
     >
       {message.text}

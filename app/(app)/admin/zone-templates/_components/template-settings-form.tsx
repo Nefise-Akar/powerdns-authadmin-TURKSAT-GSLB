@@ -14,6 +14,7 @@ import { useDialog } from "@/components/ui/dialog";
 import { mutate } from "@/lib/client/api-fetch";
 import { Switch } from "@/components/ui/switch";
 import { NumberInput } from "@/components/ui/number-input";
+import { buttonClass } from "@/components/ui/button";
 
 interface InitialState {
   id: string;
@@ -191,9 +192,7 @@ export function TemplateSettingsForm({ initial, canEdit, primaries }: Props) {
       </div>
 
       <div>
-        <h3 className="mb-3 text-sm font-medium tracking-wide text-[color:var(--color-fg-muted)] uppercase">
-          SOA timers
-        </h3>
+        <h3 className="text-h3 text-foreground mb-2">SOA timers</h3>
         <div className="grid gap-3 sm:grid-cols-5">
           <Field label="TTL">
             <NumberInput
@@ -201,7 +200,7 @@ export function TemplateSettingsForm({ initial, canEdit, primaries }: Props) {
               onChange={setSoaTtl}
               min={0}
               disabled={!canEdit}
-              className="block w-full rounded border border-[color:var(--color-border)] bg-[color:var(--color-bg)] px-2 py-1 font-mono text-xs"
+              className="border-border bg-card block w-full rounded border px-2 py-1 font-mono text-xs"
             />
           </Field>
           <Field label="Refresh">
@@ -210,7 +209,7 @@ export function TemplateSettingsForm({ initial, canEdit, primaries }: Props) {
               onChange={setSoaRefresh}
               min={0}
               disabled={!canEdit}
-              className="block w-full rounded border border-[color:var(--color-border)] bg-[color:var(--color-bg)] px-2 py-1 font-mono text-xs"
+              className="border-border bg-card block w-full rounded border px-2 py-1 font-mono text-xs"
             />
           </Field>
           <Field label="Retry">
@@ -219,7 +218,7 @@ export function TemplateSettingsForm({ initial, canEdit, primaries }: Props) {
               onChange={setSoaRetry}
               min={0}
               disabled={!canEdit}
-              className="block w-full rounded border border-[color:var(--color-border)] bg-[color:var(--color-bg)] px-2 py-1 font-mono text-xs"
+              className="border-border bg-card block w-full rounded border px-2 py-1 font-mono text-xs"
             />
           </Field>
           <Field label="Expire">
@@ -228,7 +227,7 @@ export function TemplateSettingsForm({ initial, canEdit, primaries }: Props) {
               onChange={setSoaExpire}
               min={0}
               disabled={!canEdit}
-              className="block w-full rounded border border-[color:var(--color-border)] bg-[color:var(--color-bg)] px-2 py-1 font-mono text-xs"
+              className="border-border bg-card block w-full rounded border px-2 py-1 font-mono text-xs"
             />
           </Field>
           <Field label="Minimum">
@@ -237,13 +236,13 @@ export function TemplateSettingsForm({ initial, canEdit, primaries }: Props) {
               onChange={setSoaMinimum}
               min={0}
               disabled={!canEdit}
-              className="block w-full rounded border border-[color:var(--color-border)] bg-[color:var(--color-bg)] px-2 py-1 font-mono text-xs"
+              className="border-border bg-card block w-full rounded border px-2 py-1 font-mono text-xs"
             />
           </Field>
         </div>
       </div>
 
-      <div className="space-y-2 rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg-subtle)] p-3">
+      <div className="border-border bg-background space-y-2 rounded-md border p-3">
         <label className="flex items-start gap-2 text-sm">
           <input
             type="checkbox"
@@ -254,7 +253,7 @@ export function TemplateSettingsForm({ initial, canEdit, primaries }: Props) {
           />
           <span>
             Use this template by default for these PDNS servers
-            <span className="ml-2 block text-[0.6875rem] text-[color:var(--color-fg-muted)]">
+            <span className="text-muted-foreground text-caption ml-2 block">
               When ticked, the create-zone form auto-selects this template the moment the operator
               picks one of the chosen primaries.
             </span>
@@ -263,7 +262,7 @@ export function TemplateSettingsForm({ initial, canEdit, primaries }: Props) {
 
         {defaultForOn ? (
           primaries.length === 0 ? (
-            <p className="rounded border border-dashed border-[color:var(--color-border)] bg-[color:var(--color-bg)] p-2 text-[0.6875rem] text-[color:var(--color-fg-muted)]">
+            <p className="bg-tag text-mono-xs text-tag-foreground inline-flex h-5 items-center rounded-sm px-1.5 font-mono whitespace-nowrap">
               No active PDNS primaries configured.
             </p>
           ) : (
@@ -273,11 +272,9 @@ export function TemplateSettingsForm({ initial, canEdit, primaries }: Props) {
                 return (
                   <label
                     key={p.id}
-                    className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs ${
-                      checked
-                        ? "border-[color:var(--color-accent)] bg-[color-mix(in_oklch,var(--color-accent)_12%,transparent)]"
-                        : "border-[color:var(--color-border)] bg-[color:var(--color-bg)]"
-                    } ${canEdit ? "cursor-pointer" : "cursor-not-allowed opacity-60"}`}
+                    className={`text-body-sm inline-flex h-6 items-center gap-2 rounded-sm border px-2 ${
+                      checked ? "border-primary bg-accent" : "border-border bg-card"
+                    } ${canEdit ? "cursor-pointer" : "cursor-default opacity-45"}`}
                   >
                     <input
                       type="checkbox"
@@ -297,17 +294,16 @@ export function TemplateSettingsForm({ initial, canEdit, primaries }: Props) {
       {canEdit ? (
         <div className="flex items-center gap-3">
           <button
+            aria-busy={saving}
             type="button"
             onClick={handleSave}
             disabled={saving || !dirty}
-            className="rounded bg-[color:var(--color-accent)] px-3 py-1.5 text-xs font-medium text-[color:var(--color-accent-fg)] hover:opacity-95 disabled:opacity-50"
+            className={buttonClass({ variant: "primary", size: "sm" })}
           >
-            {saving ? "Saving…" : "Save settings"}
+            Save settings
           </button>
           {!dirty ? (
-            <span className="text-[0.6875rem] text-[color:var(--color-fg-muted)]">
-              No unsaved changes
-            </span>
+            <span className="text-muted-foreground text-caption">No unsaved changes</span>
           ) : null}
         </div>
       ) : null}
@@ -334,9 +330,7 @@ function Field({
     <div>
       <label className="mb-1 block text-xs font-medium">{label}</label>
       {children}
-      {help ? (
-        <p className="mt-1 text-[0.6875rem] text-[color:var(--color-fg-muted)]">{help}</p>
-      ) : null}
+      {help ? <p className="text-muted-foreground text-caption mt-1">{help}</p> : null}
     </div>
   );
 }
@@ -365,13 +359,13 @@ function KindSelect({ value, onChange, disabled }: KindSelectProps) {
         type="button"
         onClick={() => setOpen((o) => !o)}
         disabled={disabled}
-        className="flex w-full items-center justify-between rounded border border-[color:var(--color-border)] bg-[color:var(--color-bg)] px-2 py-1.5 text-left text-xs hover:border-[color:var(--color-fg-muted)] disabled:opacity-60"
+        className="border-input bg-card text-body focus-visible:border-ring focus-visible:shadow-focus-ring flex h-8 w-full items-center justify-between rounded-md border px-3 text-left focus-visible:outline-hidden disabled:opacity-45"
       >
         <span>{current.label}</span>
         <span className="ml-2 opacity-60">▾</span>
       </button>
       {open ? (
-        <ul className="absolute right-0 left-0 z-10 mt-1 overflow-hidden rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg)] py-1 text-xs shadow-lg">
+        <ul className="border-border bg-card absolute right-0 left-0 z-10 mt-1 overflow-hidden rounded-md border py-1 text-xs">
           {ZONE_KINDS.map((k) => (
             <li
               key={k.value}
@@ -381,15 +375,11 @@ function KindSelect({ value, onChange, disabled }: KindSelectProps) {
                 setOpen(false);
               }}
               className={`cursor-pointer px-2 py-1.5 ${
-                k.value === value
-                  ? "bg-[color:var(--color-bg-subtle)] font-medium"
-                  : "hover:bg-[color:var(--color-bg-subtle)]"
+                k.value === value ? "bg-background font-medium" : "hover:bg-background"
               }`}
             >
               <div>{k.label}</div>
-              <div className="text-[0.625rem] text-[color:var(--color-fg-muted)]">
-                {k.description}
-              </div>
+              <div className="text-muted-foreground text-caption">{k.description}</div>
             </li>
           ))}
         </ul>
@@ -423,25 +413,23 @@ function EnumSelect({ value, options, onChange, disabled, placeholder }: EnumSel
         type="button"
         onClick={() => setOpen((o) => !o)}
         disabled={disabled}
-        className="flex w-full items-center justify-between rounded border border-[color:var(--color-border)] bg-[color:var(--color-bg)] px-2 py-1.5 text-left font-mono text-xs hover:border-[color:var(--color-fg-muted)] disabled:opacity-60"
+        className="border-input bg-card text-body focus-visible:border-ring focus-visible:shadow-focus-ring flex h-8 w-full items-center justify-between rounded-md border px-3 text-left font-mono focus-visible:outline-hidden disabled:opacity-45"
       >
-        <span className={value ? "" : "text-[color:var(--color-fg-muted)]"}>
+        <span className={value ? "" : "text-muted-foreground"}>
           {value !== "" ? value : (placeholder ?? "Select…")}
         </span>
         <span className="ml-2 opacity-60">▾</span>
       </button>
       {open ? (
-        <ul className="absolute right-0 left-0 z-10 mt-1 max-h-60 overflow-auto rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg)] py-1 text-xs shadow-lg">
+        <ul className="border-border bg-card absolute right-0 left-0 z-10 mt-1 max-h-60 overflow-auto rounded-md border py-1 text-xs">
           <li
             onMouseDown={(e) => {
               e.preventDefault();
               onChange("");
               setOpen(false);
             }}
-            className={`cursor-pointer px-2 py-1.5 text-[color:var(--color-fg-muted)] italic ${
-              value === ""
-                ? "bg-[color:var(--color-bg-subtle)]"
-                : "hover:bg-[color:var(--color-bg-subtle)]"
+            className={`text-muted-foreground cursor-pointer px-2 py-1.5 italic ${
+              value === "" ? "bg-background" : "hover:bg-background"
             }`}
           >
             (unset - server default)
@@ -455,9 +443,7 @@ function EnumSelect({ value, options, onChange, disabled, placeholder }: EnumSel
                 setOpen(false);
               }}
               className={`cursor-pointer px-2 py-1.5 font-mono ${
-                o === value
-                  ? "bg-[color:var(--color-bg-subtle)] font-medium"
-                  : "hover:bg-[color:var(--color-bg-subtle)]"
+                o === value ? "bg-background font-medium" : "hover:bg-background"
               }`}
             >
               {o}

@@ -6,6 +6,7 @@ import { useDialog } from "@/components/ui/dialog";
 import { mutate } from "@/lib/client/api-fetch";
 import { KIND_SPECS, getKindSpec, isKindApiWritable } from "./kind-specs";
 import { MetadataValuesInput } from "./metadata-values-input";
+import { buttonClass } from "@/components/ui/button";
 
 interface Props {
   zoneIdEncoded: string;
@@ -75,7 +76,7 @@ export function AddMetadataKind({ zoneIdEncoded, serverSlug, existingKinds }: Pr
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="rounded bg-[color:var(--color-accent)] px-3 py-1.5 text-xs font-medium text-[color:var(--color-accent-fg)] hover:opacity-95"
+        className={buttonClass({ variant: "primary", size: "sm" })}
       >
         + Add metadata kind
       </button>
@@ -83,13 +84,13 @@ export function AddMetadataKind({ zoneIdEncoded, serverSlug, existingKinds }: Pr
   }
 
   return (
-    <div className="space-y-3 rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg)] p-4">
+    <div className="border-border bg-card space-y-3 rounded-md border p-4">
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-medium">Add metadata kind</h3>
         <button
           type="button"
           onClick={reset}
-          className="text-xs text-[color:var(--color-fg-muted)] hover:text-[color:var(--color-fg)]"
+          className="text-muted-foreground hover:text-foreground text-xs"
         >
           Cancel
         </button>
@@ -106,9 +107,7 @@ export function AddMetadataKind({ zoneIdEncoded, serverSlug, existingKinds }: Pr
             options={available}
           />
           {spec ? (
-            <p className="mt-1 text-[0.6875rem] text-[color:var(--color-fg-muted)]">
-              {spec.description}
-            </p>
+            <p className="text-muted-foreground text-caption mt-1">{spec.description}</p>
           ) : null}
         </div>
         <div>
@@ -116,20 +115,19 @@ export function AddMetadataKind({ zoneIdEncoded, serverSlug, existingKinds }: Pr
           {kind ? (
             <MetadataValuesInput kind={kind} values={values} onChange={setValues} />
           ) : (
-            <p className="text-[0.6875rem] text-[color:var(--color-fg-muted)]">
-              Pick a kind first.
-            </p>
+            <p className="text-muted-foreground text-caption">Pick a kind first.</p>
           )}
         </div>
       </div>
       <div className="flex items-center gap-3">
         <button
+          aria-busy={saving}
           type="button"
           onClick={handleSave}
           disabled={!kind || saving}
-          className="rounded bg-[color:var(--color-accent)] px-3 py-1 text-xs font-medium text-[color:var(--color-accent-fg)] hover:opacity-95 disabled:opacity-50"
+          className={buttonClass({ variant: "primary", size: "sm" })}
         >
-          {saving ? "Adding…" : "Add"}
+          Add
         </button>
       </div>
     </div>
@@ -210,18 +208,16 @@ function KindCombobox({ value, onChange, options }: KindComboboxProps) {
         }}
         aria-haspopup="listbox"
         aria-expanded={open}
-        className="flex w-full items-center justify-between rounded border border-[color:var(--color-border)] bg-[color:var(--color-bg)] px-2 py-1.5 text-left font-mono text-xs hover:border-[color:var(--color-fg-muted)]"
+        className="border-input bg-card text-body focus-visible:border-ring focus-visible:shadow-focus-ring flex h-8 w-full items-center justify-between rounded-md border px-3 text-left font-mono focus-visible:outline-hidden disabled:opacity-45"
       >
-        <span className={value ? "" : "text-[color:var(--color-fg-muted)]"}>
-          {value ?? "Select a kind…"}
-        </span>
+        <span className={value ? "" : "text-muted-foreground"}>{value ?? "Select a kind…"}</span>
         <svg
           width="10"
           height="10"
           viewBox="0 0 10 10"
           fill="none"
           aria-hidden
-          className="ml-2 text-[color:var(--color-fg-muted)]"
+          className="text-muted-foreground ml-2"
         >
           <path
             d="M2 4l3 3 3-3"
@@ -233,7 +229,7 @@ function KindCombobox({ value, onChange, options }: KindComboboxProps) {
         </svg>
       </button>
       {open ? (
-        <div className="absolute right-0 left-0 z-10 mt-1 overflow-hidden rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg)] shadow-lg">
+        <div className="border-border bg-card absolute right-0 left-0 z-10 mt-1 overflow-hidden rounded-md border">
           <input
             ref={inputRef}
             type="text"
@@ -241,7 +237,7 @@ function KindCombobox({ value, onChange, options }: KindComboboxProps) {
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={onKey}
             placeholder="Filter kinds…"
-            className="block w-full border-b border-[color:var(--color-border)] bg-[color:var(--color-bg)] px-2 py-1.5 text-xs outline-none"
+            className="border-border bg-card block w-full border-b px-2 py-1.5 text-xs outline-none"
             aria-controls={listId}
             aria-autocomplete="list"
           />
@@ -252,7 +248,7 @@ function KindCombobox({ value, onChange, options }: KindComboboxProps) {
             onMouseLeave={() => setHighlight(-1)}
           >
             {filtered.length === 0 ? (
-              <li className="px-2 py-2 text-[color:var(--color-fg-muted)]">No kinds match.</li>
+              <li className="text-muted-foreground px-2 py-2">No kinds match.</li>
             ) : (
               filtered.map((o, i) => (
                 <li
@@ -265,15 +261,11 @@ function KindCombobox({ value, onChange, options }: KindComboboxProps) {
                     pick(o.kind);
                   }}
                   className={`cursor-pointer px-2 py-1.5 ${
-                    i === highlight
-                      ? "bg-[color:var(--color-bg-subtle)]"
-                      : "hover:bg-[color:var(--color-bg-subtle)]"
+                    i === highlight ? "bg-background" : "hover:bg-background"
                   }`}
                 >
                   <div className="font-mono">{o.kind}</div>
-                  <div className="text-[0.625rem] text-[color:var(--color-fg-muted)]">
-                    {o.description}
-                  </div>
+                  <div className="text-muted-foreground text-caption">{o.description}</div>
                 </li>
               ))
             )}

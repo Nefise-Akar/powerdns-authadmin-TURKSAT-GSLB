@@ -22,6 +22,8 @@ import { useState, type FormEvent } from "react";
 import { apiFetch } from "@/lib/client/api-fetch";
 import { SUPPORTED_TYPES, getRRTypeValidator } from "@/lib/validators/rr-types";
 import { SelectMenu } from "@/components/ui/select-menu";
+import { buttonClass } from "@/components/ui/button";
+import { inputClass, textareaClass } from "@/components/ui/field";
 
 interface TemplateRecord {
   name: string;
@@ -292,7 +294,7 @@ export function ZoneTemplateForm(props: Props) {
             onChange={(e) => setDescription(e.target.value)}
             disabled={!canEdit}
             rows={2}
-            className={`${inputClass} resize-y`}
+            className={`${textareaClass} resize-y`}
             placeholder="When operators should pick this template…"
           />
         </Field>
@@ -304,7 +306,7 @@ export function ZoneTemplateForm(props: Props) {
       >
         <div className="space-y-2">
           {nameservers.length === 0 ? (
-            <p className="text-xs text-[color:var(--color-fg-muted)]">
+            <p className="text-muted-foreground text-xs">
               No name servers yet. Operators must supply them at zone-create time if you leave this
               empty.
             </p>
@@ -322,7 +324,7 @@ export function ZoneTemplateForm(props: Props) {
                 <button
                   type="button"
                   onClick={() => removeNs(i)}
-                  className="text-xs text-[color:var(--color-error)] hover:underline"
+                  className="text-destructive text-xs hover:underline"
                 >
                   Remove
                 </button>
@@ -330,11 +332,7 @@ export function ZoneTemplateForm(props: Props) {
             </div>
           ))}
           {canEdit ? (
-            <button
-              type="button"
-              onClick={addNs}
-              className="rounded-md border border-[color:var(--color-border)] px-3 py-1.5 text-xs hover:bg-[color:var(--color-bg-subtle)]"
-            >
+            <button type="button" onClick={addNs} className={buttonClass({ size: "sm" })}>
               Add name server
             </button>
           ) : null}
@@ -411,7 +409,7 @@ export function ZoneTemplateForm(props: Props) {
         </label>
         {defaultForOn ? (
           primaries.length === 0 ? (
-            <p className="mt-2 rounded border border-dashed border-[color:var(--color-border)] bg-[color:var(--color-bg-subtle)] p-2 text-[0.6875rem] text-[color:var(--color-fg-muted)]">
+            <p className="bg-tag text-mono-xs text-tag-foreground mt-2 inline-flex h-5 items-center rounded-sm px-1.5 font-mono whitespace-nowrap">
               No active PDNS primaries configured.
             </p>
           ) : (
@@ -421,10 +419,8 @@ export function ZoneTemplateForm(props: Props) {
                 return (
                   <label
                     key={p.id}
-                    className={`inline-flex cursor-pointer items-center gap-2 rounded-full border px-3 py-1 text-xs ${
-                      checked
-                        ? "border-[color:var(--color-accent)] bg-[color-mix(in_oklch,var(--color-accent)_12%,transparent)]"
-                        : "border-[color:var(--color-border)] bg-[color:var(--color-bg)]"
+                    className={`text-body-sm inline-flex h-6 cursor-pointer items-center gap-2 rounded-sm border px-2 ${
+                      checked ? "border-primary bg-accent" : "border-border bg-card"
                     }`}
                   >
                     <input
@@ -460,7 +456,7 @@ export function ZoneTemplateForm(props: Props) {
       >
         <div className="space-y-3">
           {records.length === 0 ? (
-            <p className="text-xs text-[color:var(--color-fg-muted)]">
+            <p className="text-muted-foreground text-xs">
               No prelude records - the zone will start with just SOA + NS.
             </p>
           ) : null}
@@ -468,10 +464,7 @@ export function ZoneTemplateForm(props: Props) {
             const validator = getRRTypeValidator(r.type);
             const issues = r.content.trim() === "" ? [] : validator.validate(r.content).issues;
             return (
-              <div
-                key={i}
-                className="space-y-2 rounded-md border border-[color:var(--color-border)] p-3"
-              >
+              <div key={i} className="border-border space-y-2 rounded-md border p-3">
                 <div className="grid gap-2 sm:grid-cols-[1fr_120px_120px_auto]">
                   <input
                     value={r.name}
@@ -500,7 +493,7 @@ export function ZoneTemplateForm(props: Props) {
                     <button
                       type="button"
                       onClick={() => removeRecord(i)}
-                      className="text-xs text-[color:var(--color-error)] hover:underline"
+                      className="text-destructive text-xs hover:underline"
                     >
                       Remove
                     </button>
@@ -518,13 +511,10 @@ export function ZoneTemplateForm(props: Props) {
                     {issues.map((issue, idx) => (
                       <li
                         key={idx}
-                        className={
-                          issue.level === "error"
-                            ? "text-[color:var(--color-error)]"
-                            : "text-[color:var(--color-warn)]"
-                        }
+                        className={issue.level === "error" ? "text-destructive" : "text-warning"}
                       >
-                        <span className="font-medium uppercase">{issue.level}</span> {issue.message}
+                        <span className="text-caption text-muted-foreground">{issue.level}</span>{" "}
+                        {issue.message}
                       </li>
                     ))}
                   </ul>
@@ -533,11 +523,7 @@ export function ZoneTemplateForm(props: Props) {
             );
           })}
           {canEdit ? (
-            <button
-              type="button"
-              onClick={addRecord}
-              className="rounded-md border border-[color:var(--color-border)] px-3 py-1.5 text-xs hover:bg-[color:var(--color-bg-subtle)]"
-            >
+            <button type="button" onClick={addRecord} className={buttonClass({ size: "sm" })}>
               Add record
             </button>
           ) : null}
@@ -545,39 +531,32 @@ export function ZoneTemplateForm(props: Props) {
       </Section>
 
       {error ? (
-        <p className="text-sm text-[color:var(--color-error)]" role="alert">
+        <p className="text-destructive text-sm" role="alert">
           {error}
         </p>
       ) : null}
 
       {canEdit ? (
         <div className="flex items-center gap-3">
-          <button
-            type="submit"
-            disabled={saving}
-            className="rounded-md bg-[color:var(--color-accent)] px-4 py-2 text-sm font-medium text-[color:var(--color-accent-fg)] hover:opacity-95 disabled:opacity-50"
-          >
+          <button type="submit" disabled={saving} className={buttonClass({ variant: "primary" })}>
             {saving ? "Saving…" : props.mode === "edit" ? "Save changes" : "Add template"}
           </button>
           <button
             type="button"
             onClick={() => router.push("/admin/zone-templates")}
-            className="rounded-md border border-[color:var(--color-border)] px-4 py-2 text-sm hover:bg-[color:var(--color-bg-subtle)]"
+            className={buttonClass()}
           >
             Cancel
           </button>
         </div>
       ) : (
-        <p className="text-xs text-[color:var(--color-fg-muted)]">
+        <p className="text-muted-foreground text-xs">
           Read-only - the template.manage permission is required to edit.
         </p>
       )}
     </form>
   );
 }
-
-const inputClass =
-  "block w-full rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--color-accent)] disabled:opacity-60";
 
 function Section({
   title,
@@ -589,14 +568,10 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <section className="space-y-3 rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg)] p-5">
+    <section className="border-border bg-card space-y-3 rounded-md border p-5">
       <header>
-        <h2 className="text-sm font-medium tracking-wide text-[color:var(--color-fg-muted)] uppercase">
-          {title}
-        </h2>
-        {subtitle ? (
-          <p className="mt-1 text-xs text-[color:var(--color-fg-muted)]">{subtitle}</p>
-        ) : null}
+        <h2 className="text-h3 text-foreground">{title}</h2>
+        {subtitle ? <p className="text-muted-foreground mt-1 text-xs">{subtitle}</p> : null}
       </header>
       {children}
     </section>
@@ -618,9 +593,9 @@ function Field({
     <div className="mt-3 first:mt-0">
       <label className="block text-sm font-medium">{label}</label>
       {children}
-      {hint ? <p className="mt-1 text-xs text-[color:var(--color-fg-muted)]">{hint}</p> : null}
+      {hint ? <p className="text-muted-foreground mt-1 text-xs">{hint}</p> : null}
       {errors && errors.length > 0 ? (
-        <p className="mt-1 text-xs text-[color:var(--color-error)]" role="alert">
+        <p className="text-destructive mt-1 text-xs" role="alert">
           {errors.join(" ")}
         </p>
       ) : null}

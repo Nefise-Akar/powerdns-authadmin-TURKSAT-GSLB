@@ -33,10 +33,14 @@ import {
   type ReactElement,
   type ReactNode,
 } from "react";
+import { CountBadge } from "@/components/ui/badge";
+import { tabClass, tabListClass } from "@/components/ui/tabs";
 
 export interface SectionTabSpec {
   id: string;
   label: string;
+  /** Item count, shown as a badge after the label ("Sessions 13"). */
+  count?: number;
 }
 
 interface ContainerProps {
@@ -69,10 +73,7 @@ export function SectionTabs({ tabs, defaultTab, children }: ContainerProps) {
 
   return (
     <>
-      <nav
-        aria-label="Sections"
-        className="-mx-2 flex flex-wrap gap-1 border-b border-[color:var(--color-border)] pb-3 text-sm"
-      >
+      <nav aria-label="Sections" className={tabListClass}>
         {tabs.map((tab) => {
           const isActive = tab.id === activeId;
           return (
@@ -80,13 +81,10 @@ export function SectionTabs({ tabs, defaultTab, children }: ContainerProps) {
               key={tab.id}
               href={`#${tab.id}`}
               aria-current={isActive ? "page" : undefined}
-              className={
-                isActive
-                  ? "rounded-md bg-[color:var(--color-bg-subtle)] px-2 py-1 font-medium text-[color:var(--color-fg)]"
-                  : "rounded-md px-2 py-1 text-[color:var(--color-fg-muted)] hover:bg-[color:var(--color-bg-subtle)] hover:text-[color:var(--color-fg)]"
-              }
+              className={tabClass(isActive)}
             >
               {tab.label}
+              {tab.count !== undefined ? <CountBadge count={tab.count} active={isActive} /> : null}
             </a>
           );
         })}

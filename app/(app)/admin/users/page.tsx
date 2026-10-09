@@ -69,8 +69,8 @@ export default async function UsersListPage({
     <div className="space-y-6">
       <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Users</h1>
-          <p className="mt-1 text-sm text-[color:var(--color-fg-muted)]">
+          <h1 className="text-h1">Users</h1>
+          <p className="text-muted-foreground mt-1 text-sm">
             {users.length} account{users.length === 1 ? "" : "s"}
             {filter ? ` matching "${FILTER_LABELS[filter]}"` : " - newest first"}.
           </p>
@@ -140,7 +140,7 @@ function matchesFilter(u: User, filter: UserFilter): boolean {
  */
 function FilterChips({ active, totalAll }: { active: UserFilter | null; totalAll: number }) {
   const chips: Array<{ key: UserFilter | null; label: string; suffix?: string }> = [
-    { key: null, label: "All", suffix: `(${totalAll})` },
+    { key: null, label: "All", suffix: String(totalAll) },
     { key: "locked", label: FILTER_LABELS.locked },
     { key: "no-mfa", label: FILTER_LABELS["no-mfa"] },
     { key: "unverified", label: FILTER_LABELS.unverified },
@@ -155,14 +155,17 @@ function FilterChips({ active, totalAll }: { active: UserFilter | null; totalAll
           <Link
             key={c.key ?? "all"}
             href={href}
-            className={
+            aria-current={isActive ? "page" : undefined}
+            className={`text-body-sm focus-visible:shadow-focus-ring inline-flex h-7 items-center gap-1.5 rounded-sm px-2.5 focus-visible:outline-hidden ${
               isActive
-                ? "rounded-full bg-[color:var(--color-accent)] px-3 py-1 text-xs font-medium text-[color:var(--color-accent-fg)]"
-                : "rounded-full border border-[color:var(--color-border)] bg-[color:var(--color-bg-subtle)] px-3 py-1 text-xs hover:bg-[color:var(--color-bg-muted)]"
-            }
+                ? "bg-accent text-accent-foreground font-semibold"
+                : "border-input bg-card text-foreground hover:bg-muted border"
+            }`}
           >
             {c.label}
-            {c.suffix ? <span className="ml-1 opacity-70">{c.suffix}</span> : null}
+            {c.suffix ? (
+              <span className="text-muted-foreground tabular-nums">{c.suffix}</span>
+            ) : null}
           </Link>
         );
       })}

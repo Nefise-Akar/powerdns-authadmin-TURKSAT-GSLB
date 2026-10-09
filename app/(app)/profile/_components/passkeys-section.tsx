@@ -19,6 +19,8 @@ import { useState, type FormEvent } from "react";
 import { startRegistration } from "@simplewebauthn/browser";
 import { useDialog } from "@/components/ui/dialog";
 import { apiFetch, mutate } from "@/lib/client/api-fetch";
+import { buttonClass } from "@/components/ui/button";
+import { inputClass } from "@/components/ui/field";
 
 interface CredentialView {
   id: string;
@@ -132,12 +134,10 @@ export function PasskeysSection({ initial, ssoOnly }: Props) {
   }
 
   return (
-    <section className="space-y-3 rounded-md border border-[color:var(--color-border)] p-5">
+    <section className="border-border space-y-3 rounded-md border p-5">
       <header>
-        <h2 className="text-sm font-medium tracking-wide text-[color:var(--color-fg-muted)] uppercase">
-          Passkeys & security keys
-        </h2>
-        <p className="mt-1 text-xs text-[color:var(--color-fg-muted)]">
+        <h2 className="text-h3 text-foreground">Passkeys & security keys</h2>
+        <p className="text-muted-foreground mt-1 text-xs">
           Enrol a passkey (Touch ID, Windows Hello, Android screen lock) or a hardware security key
           (YubiKey, Solo, Titan). They count as a second factor and can also sign you in without a
           password - pick "Sign in with passkey" on the login page.
@@ -145,9 +145,9 @@ export function PasskeysSection({ initial, ssoOnly }: Props) {
       </header>
 
       {creds.length === 0 ? (
-        <p className="text-sm text-[color:var(--color-fg-muted)]">No passkeys enrolled yet.</p>
+        <p className="text-muted-foreground text-sm">No passkeys enrolled yet.</p>
       ) : (
-        <ul className="divide-y divide-[color:var(--color-border)] rounded border border-[color:var(--color-border)]">
+        <ul className="divide-border border-border divide-y rounded border">
           {creds.map((c) => (
             <li
               key={c.id}
@@ -155,7 +155,7 @@ export function PasskeysSection({ initial, ssoOnly }: Props) {
             >
               <div className="min-w-0">
                 <div className="font-medium">{c.nickname}</div>
-                <div className="text-xs text-[color:var(--color-fg-muted)]">
+                <div className="text-muted-foreground text-xs">
                   {c.transports.length > 0 ? c.transports.join(", ") : "unknown transport"}
                   {" · enrolled "}
                   {new Date(c.createdAt).toLocaleDateString()}
@@ -168,7 +168,11 @@ export function PasskeysSection({ initial, ssoOnly }: Props) {
                 type="button"
                 onClick={() => handleRemove(c)}
                 disabled={busy}
-                className="shrink-0 rounded border border-[color:var(--color-error)] px-3 py-1 text-xs text-[color:var(--color-error)] hover:bg-[color:var(--color-error)]/10 disabled:opacity-50"
+                className={buttonClass({
+                  variant: "destructive",
+                  size: "sm",
+                  className: "shrink-0",
+                })}
               >
                 Remove
               </button>
@@ -178,10 +182,7 @@ export function PasskeysSection({ initial, ssoOnly }: Props) {
       )}
 
       {enrolling ? (
-        <form
-          onSubmit={handleStartEnroll}
-          className="space-y-2 rounded bg-[color:var(--color-bg-subtle)] p-3"
-        >
+        <form onSubmit={handleStartEnroll} className="bg-background space-y-2 rounded p-3">
           <label className="block text-xs font-medium" htmlFor="passkey-nickname">
             Name this passkey
           </label>
@@ -193,7 +194,7 @@ export function PasskeysSection({ initial, ssoOnly }: Props) {
             disabled={busy}
             maxLength={64}
             placeholder="MacBook Touch ID"
-            className="w-full rounded border border-[color:var(--color-border)] bg-[color:var(--color-bg)] px-2 py-1.5 text-sm"
+            className={`w-full ${inputClass}`}
             autoFocus
           />
           <div className="flex justify-end gap-2">
@@ -201,16 +202,17 @@ export function PasskeysSection({ initial, ssoOnly }: Props) {
               type="button"
               onClick={() => setEnrolling(null)}
               disabled={busy}
-              className="rounded border border-[color:var(--color-border)] px-3 py-1 text-xs hover:bg-[color:var(--color-bg-muted)] disabled:opacity-50"
+              className={buttonClass({ size: "sm" })}
             >
               Cancel
             </button>
             <button
+              aria-busy={busy}
               type="submit"
               disabled={busy || enrolling.nickname.trim().length === 0}
-              className="rounded bg-[color:var(--color-accent)] px-3 py-1 text-xs font-medium text-[color:var(--color-accent-fg)] hover:opacity-95 disabled:opacity-50"
+              className={buttonClass({ variant: "primary", size: "sm" })}
             >
-              {busy ? "Waiting for device…" : "Enrol"}
+              Enrol
             </button>
           </div>
         </form>
@@ -219,7 +221,7 @@ export function PasskeysSection({ initial, ssoOnly }: Props) {
           type="button"
           onClick={() => setEnrolling({ nickname: "" })}
           disabled={busy}
-          className="rounded bg-[color:var(--color-accent)] px-3 py-1.5 text-xs font-medium text-[color:var(--color-accent-fg)] hover:opacity-95 disabled:opacity-50"
+          className={buttonClass({ variant: "primary", size: "sm" })}
         >
           Add a passkey
         </button>

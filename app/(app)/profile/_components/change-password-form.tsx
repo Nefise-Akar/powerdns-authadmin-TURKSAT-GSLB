@@ -17,6 +17,8 @@ import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { apiFetch } from "@/lib/client/api-fetch";
 import { TurnstileWidget } from "@/components/ui/turnstile-widget";
+import { buttonClass } from "@/components/ui/button";
+import { inputClass } from "@/components/ui/field";
 
 interface ErrorBody {
   error?: string;
@@ -116,24 +118,25 @@ export function ChangePasswordForm({ turnstileSiteKey }: { turnstileSiteKey?: st
         resetKey={captchaResetKey}
       />
       {fieldErrors["captchaToken"]?.length ? (
-        <p className="text-xs text-[color:var(--color-error)]" role="alert">
+        <p className="text-destructive text-xs" role="alert">
           {fieldErrors["captchaToken"].join(" ")}
         </p>
       ) : null}
 
       {error ? (
-        <p className="text-sm text-[color:var(--color-error)]" role="alert">
+        <p className="text-destructive text-sm" role="alert">
           {error}
         </p>
       ) : null}
-      {ok ? <p className="text-sm text-[color:var(--color-success)]">Password updated.</p> : null}
+      {ok ? <p className="text-success text-sm">Password updated.</p> : null}
 
       <button
+        aria-busy={loading}
         type="submit"
         disabled={submitDisabled}
-        className="rounded-md bg-[color:var(--color-accent)] px-4 py-2 text-sm font-medium text-[color:var(--color-accent-fg)] hover:opacity-95 disabled:opacity-50"
+        className={buttonClass({ variant: "primary" })}
       >
-        {loading ? "Saving…" : "Change password"}
+        Change password
       </button>
     </form>
   );
@@ -168,10 +171,10 @@ function Field({
         required
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="mt-1 block w-full rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg)] px-3 py-2 text-sm focus:ring-2 focus:ring-[color:var(--color-accent)] focus:outline-none"
+        className={`mt-1 w-full ${inputClass}`}
       />
       {errors && errors.length > 0 ? (
-        <p className="mt-1 text-xs text-[color:var(--color-error)]" role="alert">
+        <p className="text-destructive mt-1 text-xs" role="alert">
           {errors.join(" ")}
         </p>
       ) : null}

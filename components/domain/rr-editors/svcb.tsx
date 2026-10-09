@@ -15,6 +15,7 @@
 import type { RREditor } from "./types";
 import { Field, uintInput, inputClass } from "./_form";
 import { SelectMenu } from "@/components/ui/select-menu";
+import { buttonClass } from "@/components/ui/button";
 
 type ParamShape = "comma-list" | "uint16" | "boolean" | "base64" | "string";
 
@@ -160,13 +161,13 @@ function svcbImpl(type: "SVCB" | "HTTPS"): RREditor<SvcbStruct> {
               <button
                 type="button"
                 onClick={addParam}
-                className="text-xs text-[color:var(--color-accent)] hover:underline"
+                className="text-primary hover:text-primary-hover text-xs hover:underline"
               >
                 + Add parameter
               </button>
             </div>
             {value.params.length === 0 ? (
-              <p className="text-xs text-[color:var(--color-fg-muted)]">
+              <p className="text-muted-foreground text-xs">
                 None. AliasMode (priority 0) typically has none; ServiceMode usually has `alpn=`.
               </p>
             ) : null}
@@ -205,9 +206,7 @@ function svcbImpl(type: "SVCB" | "HTTPS"): RREditor<SvcbStruct> {
                       ) : null}
                     </div>
                     {shape === "boolean" ? (
-                      <span className="self-center text-xs text-[color:var(--color-fg-muted)]">
-                        (no value)
-                      </span>
+                      <span className="text-muted-foreground self-center text-xs">(no value)</span>
                     ) : shape === "uint16" ? (
                       uintInput(Number(p.value || 0), 65535, (n) =>
                         setParam(i, { ...p, value: String(n) }),
@@ -224,7 +223,7 @@ function svcbImpl(type: "SVCB" | "HTTPS"): RREditor<SvcbStruct> {
                     <button
                       type="button"
                       onClick={() => removeParam(i)}
-                      className="self-start rounded-md border border-[color:var(--color-border)] px-2 py-1 text-xs hover:bg-[color:var(--color-bg-subtle)]"
+                      className={buttonClass({ size: "sm", className: "self-start" })}
                       aria-label={`Remove ${p.key}`}
                     >
                       ×

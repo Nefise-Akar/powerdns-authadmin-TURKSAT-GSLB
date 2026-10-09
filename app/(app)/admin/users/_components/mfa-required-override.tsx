@@ -12,6 +12,7 @@ import { useState } from "react";
 import { useDialog } from "@/components/ui/dialog";
 import { SelectMenu } from "@/components/ui/select-menu";
 import { mutate } from "@/lib/client/api-fetch";
+import { buttonClass } from "@/components/ui/button";
 
 type Choice = "inherit" | "require" | "exempt";
 
@@ -56,10 +57,10 @@ export function MfaRequiredOverride({
   }
 
   return (
-    <div className="flex items-end justify-between gap-4 rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg-subtle)] p-4">
+    <div className="border-border bg-background flex items-end justify-between gap-4 rounded-md border p-4">
       <label className="flex-1 text-sm">
         <span className="font-medium">Require MFA (per-user override)</span>
-        <span className="mt-0.5 mb-2 block text-xs text-[color:var(--color-fg-muted)]">
+        <span className="text-muted-foreground mt-0.5 mb-2 block text-xs">
           Supersedes this user&apos;s roles and the SSO exemption. “Inherit” falls back to the role
           policy.
         </span>
@@ -77,12 +78,13 @@ export function MfaRequiredOverride({
         />
       </label>
       <button
+        aria-busy={busy}
         type="button"
         onClick={handleSave}
         disabled={!dirty || busy}
-        className="shrink-0 rounded bg-[color:var(--color-accent)] px-3 py-1.5 text-xs font-medium text-[color:var(--color-accent-fg)] hover:opacity-95 disabled:opacity-50"
+        className={buttonClass({ variant: "primary", size: "sm", className: "shrink-0" })}
       >
-        {busy ? "Saving…" : "Save"}
+        Save
       </button>
     </div>
   );

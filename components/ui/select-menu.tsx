@@ -47,7 +47,7 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
 } from "react";
 import { createPortal } from "react-dom";
-import { Check, Search } from "lucide-react";
+import { Check, ChevronDown, Search } from "lucide-react";
 import {
   extendTypeaheadBuffer,
   filterOptionIndexes,
@@ -83,6 +83,8 @@ interface SelectMenuProps<T extends string> {
   searchable?: boolean | "auto";
   /** Placeholder for the filter box. */
   searchPlaceholder?: string;
+  /** md: 32px form control (default); sm: 28px, e.g. the per-page selector. */
+  size?: "md" | "sm";
 }
 
 interface Anchor {
@@ -110,12 +112,16 @@ export function SelectMenu<T extends string>({
   className,
   searchable = "auto",
   searchPlaceholder = "Type to filter…",
+  size = "md",
 }: SelectMenuProps<T>) {
   const [open, setOpen] = useState(false);
   const [anchor, setAnchor] = useState<Anchor | null>(null);
   const [query, setQuery] = useState("");
   /** Index into `options` (not into the filtered list) of the highlighted row. */
   const [activeIndex, setActiveIndex] = useState(-1);
+  // The keyboard highlight gets the selection treatment (accent + ring); a
+  // mouse highlight is only a hover, which never uses accent.
+  const [keyboardActive, setKeyboardActive] = useState(false);
   const btnRef = useRef<HTMLButtonElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
@@ -180,6 +186,7 @@ export function SelectMenu<T extends string>({
     if (disabled) return;
     reposition(); // compute the anchor BEFORE first paint - no flash
     setActiveIndex(currentIndex);
+    setKeyboardActive(false);
     setQuery("");
     setOpen(true);
   }
@@ -239,6 +246,7 @@ export function SelectMenu<T extends string>({
 
   /** Move the highlight within the *visible* rows, clamped. */
   function moveActive(delta: number) {
+    setKeyboardActive(true);
     const pos = visible.indexOf(activeIndex);
     const nextPos = moveIndex(pos, delta, visible.length);
     if (nextPos >= 0) setActiveIndex(visible[nextPos]!);
@@ -317,11 +325,13 @@ export function SelectMenu<T extends string>({
       case "Home":
         if (hasSearch && !e.ctrlKey) return; // let the caret move inside the filter box
         e.preventDefault();
+        setKeyboardActive(true);
         if (visible.length) setActiveIndex(visible[0]!);
         return;
       case "End":
         if (hasSearch && !e.ctrlKey) return;
         e.preventDefault();
+        setKeyboardActive(true);
         if (visible.length) setActiveIndex(visible[visible.length - 1]!);
         return;
       case "Enter":
@@ -353,7 +363,10 @@ export function SelectMenu<T extends string>({
         if (!hasSearch && isTypeaheadKey(e.key, mods)) {
           e.preventDefault();
           const idx = applyTypeahead(e.key);
-          if (idx !== -1) setActiveIndex(idx);
+          if (idx !== -1) {
+            setKeyboardActive(true);
+            setActiveIndex(idx);
+          }
         }
     }
   }
@@ -382,27 +395,19 @@ export function SelectMenu<T extends string>({
         aria-controls={open ? listId : undefined}
         aria-activedescendant={hasSearch ? undefined : activeDescendant}
         aria-label={ariaLabel}
-        className="flex w-full items-center justify-between rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg)] px-3 py-2 text-left text-sm hover:border-[color:var(--color-fg-muted)] focus:ring-2 focus:ring-[color:var(--color-accent)] focus:outline-none disabled:opacity-60"
+        className={`border-input bg-card text-foreground focus-visible:border-ring focus-visible:shadow-focus-ring flex w-full items-center justify-between rounded-md border text-left focus-visible:outline-hidden disabled:cursor-default disabled:opacity-45 ${
+          size === "sm" ? "text-body-sm h-7 px-2" : "text-body h-8 px-3"
+        }`}
       >
-        <span className={current ? "truncate" : "truncate text-[color:var(--color-fg-muted)]"}>
+        <span className={current ? "truncate" : "text-muted-foreground truncate"}>
           {current ? current.label : (placeholder ?? "Select…")}
         </span>
-        <svg
-          width="12"
-          height="12"
-          viewBox="0 0 10 10"
+        <ChevronDown
           aria-hidden
-          className={`ml-2 shrink-0 opacity-60 transition-transform ${open ? "rotate-180" : ""}`}
-        >
-          <path
-            d="M2 4l3 3 3-3"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            fill="none"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
+          size={14}
+          strokeWidth={2}
+          className={`text-muted-foreground ml-2 shrink-0 transition-transform ${open ? "rotate-180" : ""}`}
+        />
       </button>
       {open && anchor
         ? createPortal(
@@ -414,13 +419,15 @@ export function SelectMenu<T extends string>({
                 width: anchor.width,
                 maxHeight: anchor.maxHeight,
               }}
-              className="fixed z-[200] flex flex-col overflow-hidden rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg)] text-sm shadow-lg"
+              className="border-border bg-popover text-body text-popover-foreground fixed z-[200] flex flex-col overflow-hidden rounded-md border"
             >
               {hasSearch ? (
-                <div className="relative border-b border-[color:var(--color-border)] p-1.5">
+                <div className="border-border relative border-b p-1">
                   <Search
                     aria-hidden
-                    className="pointer-events-none absolute top-1/2 left-3.5 h-3.5 w-3.5 -translate-y-1/2 text-[color:var(--color-fg-muted)]"
+                    size={14}
+                    strokeWidth={2}
+                    className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 -translate-y-1/2"
                   />
                   <input
                     ref={searchRef}
@@ -449,7 +456,7 @@ export function SelectMenu<T extends string>({
                     aria-expanded
                     autoComplete="off"
                     spellCheck={false}
-                    className="block w-full rounded border border-transparent bg-[color:var(--color-bg-subtle)] py-1 pr-2 pl-7 text-sm focus:border-[color:var(--color-accent)] focus:outline-none"
+                    className="border-input bg-card text-body text-foreground placeholder:text-muted-foreground focus-visible:border-ring block h-7 w-full rounded-md border pr-2 pl-7 focus-visible:outline-hidden"
                   />
                 </div>
               ) : null}
@@ -461,7 +468,7 @@ export function SelectMenu<T extends string>({
                 className="min-h-0 flex-1 overflow-auto py-1"
               >
                 {visible.length === 0 ? (
-                  <li className="px-3 py-2 text-xs text-[color:var(--color-fg-muted)]">
+                  <li className="text-caption text-muted-foreground flex h-8 items-center px-3">
                     No matches for “{query}”
                   </li>
                 ) : null}
@@ -480,22 +487,31 @@ export function SelectMenu<T extends string>({
                         pick(idx);
                       }}
                       onMouseMove={() => {
-                        if (!active) setActiveIndex(idx);
+                        if (!active || keyboardActive) {
+                          setKeyboardActive(false);
+                          setActiveIndex(idx);
+                        }
                       }}
-                      className={`flex cursor-pointer items-start gap-2 px-3 py-2 ${
-                        active ? "bg-[color:var(--color-bg-subtle)]" : ""
-                      } ${selected ? "font-medium" : ""}`}
+                      className={`flex min-h-8 cursor-pointer items-start gap-2 px-3 py-1.5 ${
+                        selected || (active && keyboardActive)
+                          ? "bg-accent text-accent-foreground"
+                          : active
+                            ? "bg-background"
+                            : ""
+                      } ${active && keyboardActive ? "outline-ring outline-2 -outline-offset-2" : ""}`}
                     >
                       <Check
                         aria-hidden
-                        className={`mt-0.5 h-3.5 w-3.5 shrink-0 ${
-                          selected ? "text-[color:var(--color-accent)]" : "invisible"
-                        }`}
+                        size={14}
+                        strokeWidth={2}
+                        className={`mt-0.5 shrink-0 ${selected ? "" : "invisible"}`}
                       />
                       <span className="min-w-0">
                         <span className="block truncate">{o.label}</span>
                         {o.description ? (
-                          <span className="block text-xs text-[color:var(--color-fg-muted)]">
+                          <span
+                            className={`text-caption block ${selected || (active && keyboardActive) ? "" : "text-muted-foreground"}`}
+                          >
                             {o.description}
                           </span>
                         ) : null}

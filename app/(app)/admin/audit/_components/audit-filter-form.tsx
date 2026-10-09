@@ -17,6 +17,8 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { DateTimePicker } from "@/components/ui/datetime-picker";
 import { SelectMenu } from "@/components/ui/select-menu";
+import { buttonClass } from "@/components/ui/button";
+import { inputClass } from "@/components/ui/field";
 
 interface ActionGroup {
   ns: string;
@@ -104,7 +106,7 @@ export function AuditFilterForm({ initial, actionGroups, hasFilters }: Props) {
   return (
     <form
       onSubmit={apply}
-      className="grid gap-3 rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg-subtle)] p-3 text-xs sm:grid-cols-3"
+      className="border-border bg-background grid gap-3 rounded-md border p-3 text-xs sm:grid-cols-3"
     >
       <Field label="Action">
         <SelectMenu
@@ -137,21 +139,21 @@ export function AuditFilterForm({ initial, actionGroups, hasFilters }: Props) {
           value={resourceType}
           onChange={(e) => setResourceType(e.target.value)}
           placeholder="e.g. user, pdns_server"
-          className="block w-full rounded border border-[color:var(--color-border)] bg-[color:var(--color-bg)] px-2 py-1 text-xs"
+          className={`w-full ${inputClass}`}
         />
       </Field>
       <Field label="Actor id (UUID)">
         <input
           value={actorId}
           onChange={(e) => setActorId(e.target.value)}
-          className="block w-full rounded border border-[color:var(--color-border)] bg-[color:var(--color-bg)] px-2 py-1 font-mono text-xs"
+          className={`w-full font-mono ${inputClass}`}
         />
       </Field>
       <Field label="Resource id">
         <input
           value={resourceId}
           onChange={(e) => setResourceId(e.target.value)}
-          className="block w-full rounded border border-[color:var(--color-border)] bg-[color:var(--color-bg)] px-2 py-1 font-mono text-xs"
+          className={`w-full font-mono ${inputClass}`}
         />
       </Field>
       <Field label="Request id">
@@ -159,7 +161,7 @@ export function AuditFilterForm({ initial, actionGroups, hasFilters }: Props) {
           value={requestId}
           onChange={(e) => setRequestId(e.target.value)}
           placeholder="From a log line or error toast"
-          className="block w-full rounded border border-[color:var(--color-border)] bg-[color:var(--color-bg)] px-2 py-1 font-mono text-xs"
+          className={`w-full font-mono ${inputClass}`}
         />
       </Field>
       <Field label="Search (action / resource / before / after)" colSpan={3}>
@@ -167,7 +169,7 @@ export function AuditFilterForm({ initial, actionGroups, hasFilters }: Props) {
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="e.g. example.com, captcha-failed, 169.254"
-          className="block w-full rounded border border-[color:var(--color-border)] bg-[color:var(--color-bg)] px-2 py-1 font-mono text-xs"
+          className={`w-full font-mono ${inputClass}`}
         />
       </Field>
       <Field label="From">
@@ -175,7 +177,7 @@ export function AuditFilterForm({ initial, actionGroups, hasFilters }: Props) {
           value={from}
           onChange={setFrom}
           side="from"
-          className="block w-full rounded border border-[color:var(--color-border)] bg-[color:var(--color-bg)] px-2 py-1 text-xs"
+          className="border-border bg-card block w-full rounded border px-2 py-1 text-xs"
         />
       </Field>
       <Field label="To">
@@ -183,22 +185,15 @@ export function AuditFilterForm({ initial, actionGroups, hasFilters }: Props) {
           value={to}
           onChange={setTo}
           side="to"
-          className="block w-full rounded border border-[color:var(--color-border)] bg-[color:var(--color-bg)] px-2 py-1 text-xs"
+          className="border-border bg-card block w-full rounded border px-2 py-1 text-xs"
         />
       </Field>
       <div className="flex items-end gap-2 sm:col-span-3">
-        <button
-          type="submit"
-          className="rounded bg-[color:var(--color-accent)] px-3 py-1 text-xs font-medium text-[color:var(--color-accent-fg)] hover:opacity-95"
-        >
+        <button type="submit" className={buttonClass({ variant: "primary", size: "sm" })}>
           Apply
         </button>
         {hasFilters ? (
-          <button
-            type="button"
-            onClick={clear}
-            className="rounded border border-[color:var(--color-border)] px-3 py-1 text-xs hover:bg-[color:var(--color-bg-muted)]"
-          >
+          <button type="button" onClick={clear} className={buttonClass({ size: "sm" })}>
             Clear
           </button>
         ) : null}
@@ -219,9 +214,7 @@ function Field({
   const col = colSpan === 3 ? "sm:col-span-3" : colSpan === 2 ? "sm:col-span-2" : "";
   return (
     <label className={`space-y-1 ${col}`}>
-      <span className="block text-[0.625rem] tracking-wide text-[color:var(--color-fg-muted)] uppercase">
-        {label}
-      </span>
+      <span className="text-caption text-muted-foreground block">{label}</span>
       {children}
     </label>
   );

@@ -53,9 +53,9 @@ export function RolesTable({
         // length lives in the schema (`text` column) and the form's UX.
         cell: (ctx) => {
           const v = ctx.getValue<string | null>();
-          if (!v) return <span className="text-xs text-[color:var(--color-fg-muted)]">-</span>;
+          if (!v) return <span className="text-muted-foreground text-xs">-</span>;
           return (
-            <span className="block max-w-prose text-xs whitespace-normal text-[color:var(--color-fg-muted)]">
+            <span className="text-muted-foreground block max-w-prose text-xs whitespace-normal">
               {v}
             </span>
           );
@@ -78,11 +78,11 @@ export function RolesTable({
         header: "MFA required",
         cell: (ctx) =>
           ctx.getValue<boolean>() ? (
-            <span className="rounded bg-[color:var(--color-warn)]/15 px-1.5 py-0.5 font-mono text-[0.625rem] text-[color:var(--color-warn)]">
+            <span className="bg-tag text-mono-xs text-tag-foreground inline-flex h-5 items-center rounded-sm px-1.5 font-mono whitespace-nowrap">
               required
             </span>
           ) : (
-            <span className="text-xs text-[color:var(--color-fg-muted)]">-</span>
+            <span className="text-muted-foreground text-xs">-</span>
           ),
       },
     ];
@@ -94,9 +94,9 @@ export function RolesTable({
         sortUndefined: "last",
         cell: (ctx) => {
           const iso = ctx.getValue<string | null>();
-          if (!iso) return <span className="text-xs text-[color:var(--color-fg-muted)]">-</span>;
+          if (!iso) return <span className="text-muted-foreground text-xs">-</span>;
           return (
-            <span className="text-xs text-[color:var(--color-fg-muted)]" title={iso}>
+            <span className="text-muted-foreground text-xs" title={iso}>
               {freshnessOf(iso).label}
             </span>
           );
@@ -111,7 +111,7 @@ export function RolesTable({
       cell: (ctx) => (
         <Link
           href={`/admin/roles/${ctx.row.original.id}`}
-          className="text-[color:var(--color-accent)] hover:underline"
+          className="text-primary hover:text-primary-hover hover:underline"
         >
           View
         </Link>
@@ -125,7 +125,7 @@ export function RolesTable({
     <DataTable
       columns={columns}
       data={rows}
-      searchPlaceholder="Search roles by name or slug…"
+      searchPlaceholder="Search roles"
       initialSort={[{ id: "name", desc: false }]}
       sortParam="sort"
       pageSizeParam="pageSize"

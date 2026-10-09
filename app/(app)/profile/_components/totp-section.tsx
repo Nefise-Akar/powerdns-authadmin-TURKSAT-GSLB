@@ -12,6 +12,8 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useDialog } from "@/components/ui/dialog";
 import { apiFetch, mutate } from "@/lib/client/api-fetch";
+import { buttonClass } from "@/components/ui/button";
+import { Alert } from "@/components/ui/alert";
 
 interface Props {
   initialEnabled: boolean;
@@ -149,16 +151,12 @@ export function TotpSection({
   // doesn't need to) act on it here.
   if (ssoOnly) {
     return (
-      <section className="space-y-2 rounded-md border border-[color:var(--color-border)] p-5 opacity-80">
+      <section className="border-border space-y-2 rounded-md border p-5 opacity-80">
         <header>
-          <h2 className="text-sm font-medium tracking-wide text-[color:var(--color-fg-muted)] uppercase">
-            Two-factor authentication (TOTP)
-          </h2>
+          <h2 className="text-h3 text-foreground">Two-factor authentication (TOTP)</h2>
         </header>
-        <p className="text-sm text-[color:var(--color-fg-muted)]">
-          <span className="font-medium text-[color:var(--color-fg)]">
-            Managed by your identity provider.
-          </span>{" "}
+        <p className="text-muted-foreground text-sm">
+          <span className="text-foreground font-medium">Managed by your identity provider.</span>{" "}
           You sign in via SSO, so the IdP (Authentik / Keycloak / Okta / Google) handles two-factor
           authentication. Enroll TOTP, passkeys, or hardware keys in your IdP&apos;s
           account-security settings instead.
@@ -168,23 +166,18 @@ export function TotpSection({
   }
 
   return (
-    <section className="space-y-3 rounded-md border border-[color:var(--color-border)] p-5">
+    <section className="border-border space-y-3 rounded-md border p-5">
       {showRequiredBanner ? (
-        <div className="mb-1 rounded border border-[color:var(--color-warn)] bg-[color:var(--color-warn)]/10 p-3 text-sm">
-          <strong>MFA enrollment required.</strong>{" "}
-          <span className="text-[color:var(--color-fg-muted)]">
-            {requiringRoleSlugs.length > 0
-              ? `Your role(s) ${requiringRoleSlugs.join(", ")} require two-factor authentication. `
-              : "Your role(s) require two-factor authentication. "}
-            Enroll below to continue using the app.
-          </span>
-        </div>
+        <Alert className="mb-1" title="MFA enrollment required">
+          {requiringRoleSlugs.length > 0
+            ? `Your role(s) ${requiringRoleSlugs.join(", ")} require two-factor authentication. `
+            : "Your role(s) require two-factor authentication. "}
+          Enroll below to continue using the app.
+        </Alert>
       ) : null}
       <header>
-        <h2 className="text-sm font-medium tracking-wide text-[color:var(--color-fg-muted)] uppercase">
-          Two-factor authentication (TOTP)
-        </h2>
-        <p className="mt-1 text-xs text-[color:var(--color-fg-muted)]">
+        <h2 className="text-h3 text-foreground">Two-factor authentication (TOTP)</h2>
+        <p className="text-muted-foreground mt-1 text-xs">
           When enabled, you'll enter a 6-digit code from your authenticator app after your password
           on sign-in.
         </p>
@@ -192,19 +185,19 @@ export function TotpSection({
 
       {initialEnabled ? (
         <div className="flex items-center justify-between gap-3 text-sm">
-          <span className="text-[color:var(--color-success)]">Enabled</span>
+          <span className="text-success">Enabled</span>
           <button
             type="button"
             onClick={handleDisable}
             disabled={busy}
-            className="rounded border border-[color:var(--color-error)] px-3 py-1 text-xs text-[color:var(--color-error)] hover:bg-[color:var(--color-error)]/10 disabled:opacity-50"
+            className={buttonClass({ variant: "destructive", size: "sm" })}
           >
             Disable
           </button>
         </div>
       ) : enrolling ? (
         <div className="space-y-3">
-          <div className="space-y-3 rounded bg-[color:var(--color-bg-subtle)] p-3">
+          <div className="bg-background space-y-3 rounded p-3">
             <p className="text-xs font-medium">Scan with your authenticator app</p>
             <div className="flex flex-col items-start gap-4 sm:flex-row">
               <div
@@ -217,15 +210,15 @@ export function TotpSection({
                 style={{ width: 200, height: 200 }}
               />
               <div className="min-w-0 flex-1 space-y-2">
-                <p className="text-[0.6875rem] text-[color:var(--color-fg-muted)]">
+                <p className="text-muted-foreground text-caption">
                   Open Google Authenticator / 1Password / Authy / Bitwarden and scan the QR. Or, if
                   scanning isn&apos;t possible, type the setup key into the app&apos;s &quot;enter
                   manually&quot; flow:
                 </p>
-                <code className="block rounded bg-[color:var(--color-bg)] p-2 font-mono text-[0.6875rem] tracking-wider break-all">
+                <code className="bg-tag text-mono-xs text-tag-foreground block inline-flex h-5 items-center rounded-sm px-1.5 font-mono break-all whitespace-nowrap">
                   {enrolling.secret}
                 </code>
-                <p className="text-[0.6875rem] text-[color:var(--color-fg-muted)]">
+                <p className="text-muted-foreground text-caption">
                   On a mobile browser you can also{" "}
                   <a href={enrolling.uri} className="underline">
                     tap here to open the authenticator app
@@ -247,7 +240,7 @@ export function TotpSection({
               maxLength={6}
               value={code}
               onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-              className="mt-1 w-32 rounded border border-[color:var(--color-border)] bg-[color:var(--color-bg)] px-2 py-1 text-center font-mono text-lg tracking-widest"
+              className="border-input bg-card text-h2 focus-visible:border-ring focus-visible:shadow-focus-ring mt-1.5 h-10 w-36 rounded-md border px-3 text-center font-mono tracking-widest focus-visible:outline-hidden"
               placeholder="123456"
               autoFocus
             />
@@ -257,28 +250,30 @@ export function TotpSection({
               type="button"
               onClick={() => setEnrolling(null)}
               disabled={busy}
-              className="rounded border border-[color:var(--color-border)] px-3 py-1 text-xs hover:bg-[color:var(--color-bg-muted)] disabled:opacity-50"
+              className={buttonClass({ size: "sm" })}
             >
               Cancel
             </button>
             <button
+              aria-busy={busy}
               type="button"
               onClick={handleConfirm}
               disabled={busy || code.length !== 6}
-              className="rounded bg-[color:var(--color-accent)] px-3 py-1 text-xs font-medium text-[color:var(--color-accent-fg)] hover:opacity-95 disabled:opacity-50"
+              className={buttonClass({ variant: "primary", size: "sm" })}
             >
-              {busy ? "Verifying…" : "Enable"}
+              Enable
             </button>
           </div>
         </div>
       ) : (
         <button
+          aria-busy={busy}
           type="button"
           onClick={handleStart}
           disabled={busy}
-          className="rounded bg-[color:var(--color-accent)] px-3 py-1.5 text-xs font-medium text-[color:var(--color-accent-fg)] hover:opacity-95 disabled:opacity-50"
+          className={buttonClass({ variant: "primary", size: "sm" })}
         >
-          {busy ? "Starting…" : "Enable TOTP"}
+          Enable TOTP
         </button>
       )}
     </section>

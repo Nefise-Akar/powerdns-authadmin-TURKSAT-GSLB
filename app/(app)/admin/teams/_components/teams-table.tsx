@@ -58,9 +58,9 @@ export function TeamsTable({
         sortUndefined: "last",
         cell: (ctx) => {
           const iso = ctx.getValue<string | null>();
-          if (!iso) return <span className="text-xs text-[color:var(--color-fg-muted)]">-</span>;
+          if (!iso) return <span className="text-muted-foreground text-xs">-</span>;
           return (
-            <span className="text-xs text-[color:var(--color-fg-muted)]" title={iso}>
+            <span className="text-muted-foreground text-xs" title={iso}>
               {freshnessOf(iso).label}
             </span>
           );
@@ -75,7 +75,7 @@ export function TeamsTable({
       cell: (ctx) => (
         <Link
           href={`/admin/teams/${ctx.row.original.id}`}
-          className="text-[color:var(--color-accent)] hover:underline"
+          className="text-primary hover:text-primary-hover hover:underline"
         >
           Manage
         </Link>
@@ -89,7 +89,7 @@ export function TeamsTable({
     <DataTable
       columns={columns}
       data={rows}
-      searchPlaceholder="Search teams by name or slug…"
+      searchPlaceholder="Search teams"
       initialSort={[{ id: "name", desc: false }]}
       sortParam="sort"
       pageSizeParam="pageSize"

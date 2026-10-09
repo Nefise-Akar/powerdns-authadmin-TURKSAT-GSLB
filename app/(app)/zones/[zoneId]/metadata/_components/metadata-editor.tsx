@@ -13,6 +13,8 @@ import { useDialog } from "@/components/ui/dialog";
 import { mutate } from "@/lib/client/api-fetch";
 import { isKindApiWritable } from "./kind-specs";
 import { MetadataValuesInput } from "./metadata-values-input";
+import { buttonClass } from "@/components/ui/button";
+import { Alert } from "@/components/ui/alert";
 
 interface Props {
   zoneIdEncoded: string;
@@ -33,17 +35,14 @@ export function MetadataEditor({ zoneIdEncoded, serverSlug, kind, initialValues 
 
   if (!writable) {
     return (
-      <div className="mt-3 rounded-md border border-[color:var(--color-warn)] bg-[color:var(--color-warn)]/10 p-3 text-xs">
-        <p className="font-medium">Read-only via API</p>
-        <p className="mt-1 text-[color:var(--color-fg-muted)]">
-          PowerDNS does not allow modifying <code className="font-mono">{kind}</code> through its
-          HTTP API. Use{" "}
-          <code className="font-mono">
-            pdnsutil set-meta {`<zone>`} {kind} {`<value>`}
-          </code>{" "}
-          on the PDNS host to change it.
-        </p>
-      </div>
+      <Alert className="mt-3" title="read-only via API">
+        PowerDNS does not allow modifying <code className="font-mono">{kind}</code> through its HTTP
+        API. Use{" "}
+        <code className="font-mono">
+          pdnsutil set-meta {`<zone>`} {kind} {`<value>`}
+        </code>{" "}
+        on the PDNS host to change it.
+      </Alert>
     );
   }
 
@@ -111,25 +110,25 @@ export function MetadataEditor({ zoneIdEncoded, serverSlug, kind, initialValues 
       <MetadataValuesInput kind={kind} values={values} onChange={setValues} />
       <div className="flex items-center gap-3">
         <button
+          aria-busy={saving}
           type="button"
           onClick={handleSave}
           disabled={saving || !dirty}
-          className="rounded bg-[color:var(--color-accent)] px-3 py-1 text-xs font-medium text-[color:var(--color-accent-fg)] hover:opacity-95 disabled:opacity-50"
+          className={buttonClass({ variant: "primary", size: "sm" })}
         >
-          {saving ? "Saving…" : "Save"}
+          Save
         </button>
         <button
+          aria-busy={deleting}
           type="button"
           onClick={handleDelete}
           disabled={deleting}
-          className="rounded border border-[color:var(--color-error)] px-3 py-1 text-xs text-[color:var(--color-error)] hover:bg-[color:var(--color-error)]/10 disabled:opacity-50"
+          className={buttonClass({ variant: "destructive", size: "sm" })}
         >
-          {deleting ? "Deleting…" : "Delete kind"}
+          Delete kind
         </button>
         {!dirty ? (
-          <span className="text-[0.625rem] text-[color:var(--color-fg-muted)]">
-            No unsaved changes
-          </span>
+          <span className="text-muted-foreground text-caption">No unsaved changes</span>
         ) : null}
       </div>
     </div>

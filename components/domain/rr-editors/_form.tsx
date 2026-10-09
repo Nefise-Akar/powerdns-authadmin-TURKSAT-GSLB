@@ -1,60 +1,16 @@
 /**
  * components/domain/rr-editors/_form.tsx
  *
- * Tiny shared form primitives used by every per-type editor. Mirrors the
- * `Field` + `inputClass` defined locally in `editable-record-table.tsx`
- * so the visual rhythm stays identical when the structured editors slot
- * into that dialog.
+ * Tiny shared form primitives used by every per-type editor. The field
+ * wrapper and control styles are the app-wide ones from components/ui/field.
  */
 
 "use client";
 
-import { cloneElement, isValidElement, useId, type ReactNode } from "react";
+import { inputClass } from "@/components/ui/field";
 import { NumberInput } from "@/components/ui/number-input";
 
-export const inputClass =
-  "mt-1 block w-full rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--color-accent)]";
-
-/**
- * Label + control + hint. When the child is a single element without an
- * `id`, the label is wired to it with `htmlFor` so clicking the label
- * focuses the control and screen readers announce it - the structured
- * editors render bare inputs, so this is where their labels get attached.
- */
-export function Field({
-  label,
-  hint,
-  children,
-}: {
-  label: string;
-  hint?: string;
-  children: ReactNode;
-}) {
-  const autoId = useId();
-  const hintId = `${autoId}-hint`;
-  let control = children;
-  let controlId: string | undefined;
-  if (isValidElement<{ id?: string; "aria-describedby"?: string }>(children)) {
-    controlId = children.props.id ?? autoId;
-    control = cloneElement(children, {
-      id: controlId,
-      ...(hint && !children.props["aria-describedby"] ? { "aria-describedby": hintId } : {}),
-    });
-  }
-  return (
-    <div>
-      <label htmlFor={controlId} className="block text-xs font-medium">
-        {label}
-      </label>
-      {control}
-      {hint ? (
-        <p id={hintId} className="mt-1 text-xs text-[color:var(--color-fg-muted)]">
-          {hint}
-        </p>
-      ) : null}
-    </div>
-  );
-}
+export { Field, inputClass, textareaClass } from "@/components/ui/field";
 
 /**
  * Clamp a string to a non-negative integer ≤ max. Returns `null` for empty
