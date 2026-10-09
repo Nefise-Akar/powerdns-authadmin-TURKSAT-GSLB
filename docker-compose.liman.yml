@@ -1,0 +1,14 @@
+# docker-compose.liman.yml - run the demo stack from THIS checkout's code.
+#
+# docker-compose.yml pulls the published ghcr image, which carries the
+# previous UI. Layer this file on top to build the app from the working tree
+# (the Liman redesign) instead:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.liman.yml up -d --build
+#
+# Everything else (PowerDNS, volumes, env, ports) comes from docker-compose.yml.
+services:
+  app:
+    image: powerdns-authadmin:local
+    build: .
+    pull_policy: build
