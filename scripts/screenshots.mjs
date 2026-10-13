@@ -138,8 +138,9 @@ const PAGES = [
     name: "zone-edit",
     path: ZONE_PATH,
     async prepare(page) {
-      // Click the first row's "Edit" button - opens the Edit-record dialog.
-      await page.getByRole("button", { name: "Edit" }).first().click();
+      // "Edit" opens the inline strip; the full Edit-record dialog sits behind
+      // the row's "Open full editor" icon button.
+      await page.getByRole("button", { name: "Open full editor" }).first().click();
       await page.getByRole("heading", { name: "Edit record" }).waitFor({ timeout: 5_000 });
       await page.waitForTimeout(200);
     },
@@ -148,7 +149,7 @@ const PAGES = [
     name: "zone-edit-diff",
     path: ZONE_PATH,
     async prepare(page) {
-      await page.getByRole("button", { name: "Edit" }).first().click();
+      await page.getByRole("button", { name: "Open full editor" }).first().click();
       await page.getByRole("heading", { name: "Edit record" }).waitFor({ timeout: 5_000 });
       // Append a digit to the Value field so the diff has something to show.
       // Inputs in DOM order are [Name, TTL, Value]; the Type selector is a
@@ -168,9 +169,9 @@ const PAGES = [
     name: "backend-health",
     path: "/dashboard",
     async prepare(page) {
-      // The bell's aria-label is "Backend health: N active issue(s)" - match
+      // The bell's aria-label is "Backend health, N active issue(s)" - match
       // by prefix so the exact count doesn't matter.
-      await page.getByRole("button", { name: /^Backend health:/ }).click();
+      await page.getByRole("button", { name: /^Backend health,/ }).click();
       await page.waitForTimeout(300);
     },
   },
