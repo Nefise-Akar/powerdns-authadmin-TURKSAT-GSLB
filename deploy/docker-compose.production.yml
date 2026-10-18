@@ -1,0 +1,48 @@
+# Production template: panel + Postgres. Copy next to a real .env (see
+# production.env.example) - never commit that .env.
+#
+# PowerDNS, Keycloak and PowerGSLB are NOT part of this file: use the
+# organisation's existing PowerDNS and Keycloak, and run PowerGSLB on its own
+# host(s). The panel reaches them over the network (configured in the UI).
+services:
+  app:
+    # The Liman build, pushed to the organisation's registry - not the upstream
+    # image, which has neither the Liman UI nor GSLB.
+    image: REGISTRY/powerdns-authadmin-liman:VERSION
+    restart: unless-stopped
+    ports: ["3000:3000"] # the reverse proxy forwards to this; do not expose it publicly
+    depends_on:
+      postgres: { condition: service_healthy }
+    environment:
+      NODE_ENV: production
+      APP_URL: ${APP_URL}
+      DATABASE_URL: postgres://pdns:${POSTGRES_PASSWORD}@postgres:5432/powerdns_authadmin
+      APP_SECRET_KEY: ${APP_SECRET_KEY}
+      APP_ENCRYPTION_KEY: ${APP_ENCRYPTION_KEY}
+      BOOTSTRAP_ADMIN_EMAIL: ${BOOTSTRAP_ADMIN_EMAIL}
+      BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD}
+      # Keep each only if that system sits on a private network.
+      APP_PDNS_ALLOW_PRIVATE_NETWORKS: "true"
+      APP_OIDC_ALLOW_PRIVATE_NETWORKS: "true"
+      APP_GSLB_ALLOW_PRIVATE_NETWORKS: "true"
+      # Only when the organisation's CA is private (root certificate, not a key).
+      NODE_EXTRA_CA_CERTS: /certs/organisation-ca.crt
+    volumes:
+      - ./certs/organisation-ca.crt:/certs/organisation-ca.crt:ro
+
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: pdns
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: powerdns_authadmin
+    volumes: ["pg-data:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pdns -d powerdns_authadmin"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  pg-data:
