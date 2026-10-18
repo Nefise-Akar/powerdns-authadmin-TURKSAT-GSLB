@@ -27,3 +27,8 @@ export * from "./zone-grants";
 export * from "./zone-horizons";
 export * from "./pdns-requests";
 export * from "./pdns-server-stats";
+export * from "./gslb-backends";
+export * from "./gslb-regions";
+export * from "./gslb-zones";
+export * from "./gslb-records";
+export * from "./gslb-record-presets";

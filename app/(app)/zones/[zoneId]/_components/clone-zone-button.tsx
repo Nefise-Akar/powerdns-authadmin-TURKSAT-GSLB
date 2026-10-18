@@ -65,8 +65,13 @@ export function CloneZoneButton({ sourceName, serverSlug }: Props) {
         });
         return;
       }
-      const data = result.data as { nextUrl: string };
-      toast({ kind: "success", description: `Cloned to ${target}.` });
+      const data = result.data as { nextUrl: string; gslbNote?: string };
+      toast({
+        kind: "success",
+        description: data.gslbNote
+          ? `Cloned to ${target}. ${data.gslbNote}`
+          : `Cloned to ${target}.`,
+      });
       router.push(data.nextUrl);
     } finally {
       setCloning(false);

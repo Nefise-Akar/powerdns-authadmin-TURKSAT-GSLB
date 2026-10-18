@@ -303,6 +303,10 @@ function BackupStep({ readOnly, onToast }: { readOnly: boolean; onToast: (text: 
             <Pill>settings</Pill> <Pill>zone_templates</Pill> <Pill>api_tokens</Pill>
           </li>
           <li>
+            <Pill>gslb_backends</Pill> <Pill>gslb_regions</Pill> <Pill>gslb_zones</Pill>{" "}
+            <Pill>gslb_records</Pill> <Pill>gslb_record_presets</Pill>
+          </li>
+          <li>
             Last 10,000 <Pill>audit_log</Pill> entries.
           </li>
         </ul>

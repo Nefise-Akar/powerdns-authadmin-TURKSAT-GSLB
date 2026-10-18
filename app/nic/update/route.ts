@@ -32,6 +32,8 @@ import { findUserByEmail } from "@/lib/db/repositories/users";
 import { loadUserAssignmentsForAbility } from "@/lib/db/repositories/roles";
 import { listGrantsForUser, mapServersToClusterPeers } from "@/lib/db/repositories/zone-grants";
 import { listActivePdnsServers } from "@/lib/db/repositories/pdns-servers";
+import { loadGslbOwnedRRsets } from "@/lib/db/repositories/gslb-records";
+import { horizonScopeFor } from "@/lib/db/repositories/zone-horizons";
 import { appendAudit } from "@/lib/audit/log";
 import { getClientIp, getRequestContext } from "@/lib/client-ip";
 import {
@@ -179,6 +181,20 @@ export async function GET(request: Request): Promise<Response> {
     }
 
     const rrType = isIpv6(sourceIp) ? "AAAA" : "A";
+
+    // ADR-0024: a GSLB-managed name (CNAME into the GSLB subzone) or the
+    // subzone's glue changes only through the GSLB switch - same rule as the
+    // RRset PATCH route. DynDNS clients only understand the fixed codes, so
+    // refuse with "dnserr" and log why.
+    const gslbOwned = await loadGslbOwnedRRsets(horizonScopeFor(server), zoneName);
+    const ownerName = `${hostname.toLowerCase()}.`;
+    if (
+      gslbOwned &&
+      (gslbOwned.names.has(ownerName) || gslbOwned.delegationKeys.has(`${ownerName}|${rrType}`))
+    ) {
+      logger.warn({ server: server.slug, zone: zoneName, hostname }, "dyndns.gslb-managed.refused");
+      return plain("dnserr");
+    }
     const patch = replaceRRset({
       name: `${hostname}.`,
       type: rrType,

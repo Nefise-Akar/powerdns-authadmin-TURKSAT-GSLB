@@ -50,6 +50,8 @@ import { parseSoaContent, type SoaFields } from "@/lib/validators/soa";
 import { Lock } from "lucide-react";
 import { RecordTable } from "@/components/domain/record-table";
 import { EditableRecordTable } from "./_components/editable-record-table";
+import { loadGslbTableContext } from "./_lib/gslb-context";
+import { GslbSetupNotice } from "./_components/gslb-setup-notice";
 import { SoaPanel } from "./_components/soa-panel";
 import { ZoneSettingsPanel } from "./_components/zone-settings-panel";
 import { ZoneDangerZone } from "./_components/zone-danger-zone";
@@ -388,6 +390,18 @@ export default async function ZoneDetailPage({ params, searchParams }: PageProps
                     ? "sync"
                     : "records";
 
+  // Per-record GSLB (ADR-0024). Loaded only for the records tab - it reads
+  // live member health from PowerGSLB (fast-fail; never breaks the page).
+  const gslbContext =
+    tab === "records" && canEdit
+      ? await loadGslbTableContext({
+          server: selected,
+          zoneName: canonical,
+          rrsets: nonSoaRrsets,
+          canToggle: canCreate && canUpdate && canDelete,
+        })
+      : null;
+
   // All four post-zone fetches run in parallel - audit query, last
   // edit lookup, and the live sync probe to every secondary. Now we
   // know primary's serial so the sync probe returns valid verdicts.
@@ -495,27 +509,38 @@ export default async function ZoneDetailPage({ params, searchParams }: PageProps
       <Suspense key={tab} fallback={<TabBodySkeleton tab={tab} />}>
         {tab === "records" ? (
           canEdit ? (
-            <EditableRecordTable
-              zoneName={zone.name}
-              rrsets={nonSoaRrsets.map((rr) => ({
-                name: rr.name,
-                type: rr.type,
-                ttl: rr.ttl,
-                records: rr.records.map((r) => ({
-                  content: r.content,
-                  ...(r.disabled !== undefined ? { disabled: r.disabled } : {}),
-                })),
-                comment: joinRRsetComments(rr.comments),
-              }))}
-              serverSlug={selected.slug}
-              zoneIdEncoded={encodeURIComponent(zone.id)}
-              canCreate={canCreate}
-              canUpdate={canUpdate}
-              canDelete={canDelete}
-              canUpdateApexNs={canUpdateApexNs}
-              luaRecordsEnabled={luaRecordsEnabled}
-              defaultTtl={defaultTtl}
-            />
+            <div className="space-y-4">
+              {gslbContext?.setupRemovable ? (
+                <GslbSetupNotice
+                  subzone={gslbContext.setupRemovable.subzone}
+                  zoneIdEncoded={encodeURIComponent(zone.id)}
+                  serverSlug={selected.slug}
+                  canRemove={gslbContext.canToggle}
+                />
+              ) : null}
+              <EditableRecordTable
+                zoneName={zone.name}
+                rrsets={nonSoaRrsets.map((rr) => ({
+                  name: rr.name,
+                  type: rr.type,
+                  ttl: rr.ttl,
+                  records: rr.records.map((r) => ({
+                    content: r.content,
+                    ...(r.disabled !== undefined ? { disabled: r.disabled } : {}),
+                  })),
+                  comment: joinRRsetComments(rr.comments),
+                }))}
+                serverSlug={selected.slug}
+                zoneIdEncoded={encodeURIComponent(zone.id)}
+                canCreate={canCreate}
+                canUpdate={canUpdate}
+                canDelete={canDelete}
+                canUpdateApexNs={canUpdateApexNs}
+                luaRecordsEnabled={luaRecordsEnabled}
+                defaultTtl={defaultTtl}
+                gslb={gslbContext}
+              />
+            </div>
           ) : (
             <RecordTable
               zoneName={zone.name}

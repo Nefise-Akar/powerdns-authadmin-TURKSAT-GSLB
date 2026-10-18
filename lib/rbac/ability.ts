@@ -52,6 +52,7 @@ export type SubjectType =
   | "Audit"
   | "Settings"
   | "Auth"
+  | "Gslb"
   | "System";
 
 /**

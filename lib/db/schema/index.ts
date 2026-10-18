@@ -49,6 +49,11 @@ import * as pgZoneGrants from "./zone-grants";
 import * as pgZoneHorizons from "./zone-horizons";
 import * as pgPdnsRequests from "./pdns-requests";
 import * as pgPdnsServerStats from "./pdns-server-stats";
+import * as pgGslbBackends from "./gslb-backends";
+import * as pgGslbRegions from "./gslb-regions";
+import * as pgGslbZones from "./gslb-zones";
+import * as pgGslbRecords from "./gslb-records";
+import * as pgGslbRecordPresets from "./gslb-record-presets";
 
 import * as sqliteUsers from "@/lib/db/schema-sqlite/users";
 import * as sqliteTeams from "@/lib/db/schema-sqlite/teams";
@@ -72,6 +77,11 @@ import * as sqliteZoneGrants from "@/lib/db/schema-sqlite/zone-grants";
 import * as sqliteZoneHorizons from "@/lib/db/schema-sqlite/zone-horizons";
 import * as sqlitePdnsRequests from "@/lib/db/schema-sqlite/pdns-requests";
 import * as sqlitePdnsServerStats from "@/lib/db/schema-sqlite/pdns-server-stats";
+import * as sqliteGslbBackends from "@/lib/db/schema-sqlite/gslb-backends";
+import * as sqliteGslbRegions from "@/lib/db/schema-sqlite/gslb-regions";
+import * as sqliteGslbZones from "@/lib/db/schema-sqlite/gslb-zones";
+import * as sqliteGslbRecords from "@/lib/db/schema-sqlite/gslb-records";
+import * as sqliteGslbRecordPresets from "@/lib/db/schema-sqlite/gslb-record-presets";
 
 const useSqlite = dialect === "sqlite";
 
@@ -212,3 +222,29 @@ export const pdnsServerStats = pick(
 );
 export type PdnsServerStatRow = pgPdnsServerStats.PdnsServerStatRow;
 export type NewPdnsServerStatRow = pgPdnsServerStats.NewPdnsServerStatRow;
+
+// --- gslb_backends (ADR-0024) ---
+export const gslbBackends = pick(pgGslbBackends.gslbBackends, sqliteGslbBackends.gslbBackends);
+export type GslbBackend = pgGslbBackends.GslbBackend;
+export type NewGslbBackend = pgGslbBackends.NewGslbBackend;
+export type GslbProbeCache = pgGslbBackends.GslbProbeCache;
+
+// --- gslb_regions (ADR-0024) ---
+export const gslbRegions = pick(pgGslbRegions.gslbRegions, sqliteGslbRegions.gslbRegions);
+export type GslbRegion = pgGslbRegions.GslbRegion;
+export type NewGslbRegion = pgGslbRegions.NewGslbRegion;
+
+// --- gslb_zones / gslb_records (ADR-0024) ---
+export const gslbZones = pick(pgGslbZones.gslbZones, sqliteGslbZones.gslbZones);
+export type GslbZone = pgGslbZones.GslbZone;
+export type NewGslbZone = pgGslbZones.NewGslbZone;
+export const gslbRecords = pick(pgGslbRecords.gslbRecords, sqliteGslbRecords.gslbRecords);
+export type GslbRecordRow = pgGslbRecords.GslbRecordRow;
+export type NewGslbRecordRow = pgGslbRecords.NewGslbRecordRow;
+
+// --- gslb_record_presets (ADR-0024) ---
+export const gslbRecordPresets = pick(
+  pgGslbRecordPresets.gslbRecordPresets,
+  sqliteGslbRecordPresets.gslbRecordPresets,
+);
+export type GslbRecordPresetRow = pgGslbRecordPresets.GslbRecordPresetRow;

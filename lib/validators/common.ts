@@ -33,3 +33,24 @@ export const ttlSchema = z
   .int()
   .min(0, "TTL must be ≥ 0.")
   .max(2_147_483_647, "TTL is too large.");
+
+/**
+ * Suggest a slug from a display name: Turkish letters and other diacritics
+ * folded to ASCII (`İstanbul Şube` → `istanbul-sube`), lower-cased, every
+ * run of other characters turned into one dash, trimmed to 64 characters.
+ * Forms use it to fill the slug until the operator edits it by hand; the
+ * result still goes through `slugSchema` on the server.
+ */
+export function slugify(name: string): string {
+  const folded = name
+    // Dotless ı and dotted İ don't decompose under NFD; map them first.
+    .replace(/[ıİ]/g, "i")
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase();
+  return folded
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 64)
+    .replace(/-+$/, "");
+}

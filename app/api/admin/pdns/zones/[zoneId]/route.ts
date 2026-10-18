@@ -26,7 +26,22 @@ import { PdnsError, PdnsNotFoundError } from "@/lib/pdns/errors";
 import { canActOnZone } from "@/lib/rbac/zone-permissions";
 import { redact } from "@/lib/errors/redact";
 import { logger } from "@/lib/logger";
-import { ForbiddenError, NotFoundError, UnauthorizedError, ValidationError } from "@/lib/errors";
+import {
+  ConflictError,
+  ForbiddenError,
+  NotFoundError,
+  UnauthorizedError,
+  ValidationError,
+} from "@/lib/errors";
+import {
+  deleteGslbZoneRow,
+  findGslbZone,
+  listGslbRecordsForZone,
+} from "@/lib/db/repositories/gslb-records";
+import { canonicalName } from "@/lib/gslb/record-plan";
+import { removeGslbDomain } from "@/lib/gslb/record-sync";
+import { getGslbClientForRow } from "@/lib/gslb/registry";
+import { findGslbBackendById } from "@/lib/db/repositories/gslb-backends";
 
 const deleteQuerySchema = z.object({
   serverSlug: z.string().optional(),
@@ -77,6 +92,20 @@ export async function DELETE(request: Request, context: RouteContext): Promise<R
       throw new ForbiddenError("Missing zone.delete for this zone.");
     }
 
+    // ADR-0024: a zone with GSLB-managed names can't be deleted from under
+    // them - the PowerGSLB rows and the app's restore snapshots would be
+    // stranded. A GSLB zone row without records only remembers the subzone;
+    // it is dropped after the delete below.
+    const gslbZone = await findGslbZone(horizonScopeFor(selected), canonicalName(zoneName));
+    if (gslbZone) {
+      const managed = await listGslbRecordsForZone(gslbZone.id);
+      if (managed.length > 0) {
+        throw new ConflictError(
+          `GSLB is on for ${managed.length} record${managed.length === 1 ? "" : "s"} in this zone. Switch GSLB off for ${managed.length === 1 ? "it" : "them"} first.`,
+        );
+      }
+    }
+
     // Snapshot for the audit before-state. Capture the zone meta and
     // a record count - full rrsets are too large for the audit row and
     // the operator has the download for forensics anyway.
@@ -94,6 +123,37 @@ export async function DELETE(request: Request, context: RouteContext): Promise<R
         return Response.json({ error: `PDNS rejected the request: ${message}` }, { status: 502 });
       }
       throw err;
+    }
+
+    if (gslbZone) {
+      // The zone (and with it the delegation) is gone; drop the PowerGSLB
+      // domain and the app's GSLB setup row too, so the backend can be
+      // deleted later. A PowerGSLB failure is logged, never fails the delete.
+      const backend = await findGslbBackendById(gslbZone.backendId);
+      try {
+        await removeGslbDomain({
+          backendId: gslbZone.backendId,
+          client: backend ? getGslbClientForRow(backend) : null,
+          subzone: gslbZone.subzone,
+          nameserverHost: null,
+          parent: null,
+          ownsNoRecords: () => Promise.resolve(true),
+          persist: async (removal) => {
+            await deleteGslbZoneRow(gslbZone.id);
+            if (removal.remoteLeftover) {
+              logger.warn(
+                { zone: zoneName, leftover: removal.remoteLeftover },
+                "gslb.zone.unbind.remote-leftover",
+              );
+            }
+          },
+        });
+      } catch (err) {
+        logger.warn(
+          { zone: zoneName, error: err instanceof Error ? err.message : "unknown" },
+          "gslb.zone.unbind.failed",
+        );
+      }
     }
 
     // Drop the horizon classification with the zone. Left behind, it would

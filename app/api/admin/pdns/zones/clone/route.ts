@@ -29,6 +29,11 @@ import { normalizeZoneId } from "@/lib/pdns/client";
 import { rewriteRRsetsForClone } from "@/lib/pdns/clone";
 import { getBackendGateway } from "@/lib/realtime/backend-gateway";
 import { createZoneAndNotify } from "@/lib/pdns/operations";
+import { findGslbBackendById } from "@/lib/db/repositories/gslb-backends";
+import { findGslbZone, listGslbRecordsForZone } from "@/lib/db/repositories/gslb-records";
+import { horizonScopeFor } from "@/lib/db/repositories/zone-horizons";
+import type { PdnsServer } from "@/lib/db/schema";
+import { delegationRRsetKeys, stripGslbForClone } from "@/lib/gslb/record-plan";
 import { PdnsConflictError } from "@/lib/pdns/errors";
 import { errorResponse } from "@/lib/http/error-response";
 import { ConflictError, NotFoundError, ValidationError } from "@/lib/errors";
@@ -85,7 +90,18 @@ export async function POST(request: Request): Promise<Response> {
       throw new ValidationError(`Cannot clone a zone of kind "${sourceZone.kind}".`);
     }
 
-    const rewrittenRRsets = rewriteRRsetsForClone(sourceZone.rrsets ?? [], source, target);
+    // ADR-0024: GSLB isn't copied. Managed names are cloned as plain records
+    // (from their current members) and the source's `gslb` delegation is
+    // dropped, so the clone never CNAMEs into a subzone nobody tracks for it.
+    const gslb = await loadGslbCloneState(selected, source);
+    const stripped = gslb
+      ? stripGslbForClone({ zoneName: source, rrsets: sourceZone.rrsets ?? [], ...gslb })
+      : { rrsets: sourceZone.rrsets ?? [], plainNames: 0 };
+    const rewrittenRRsets = rewriteRRsetsForClone(
+      stripped.rrsets.map((rr) => ({ ...rr, records: [...rr.records] })),
+      source,
+      target,
+    );
 
     let created;
     try {
@@ -117,6 +133,7 @@ export async function POST(request: Request): Promise<Response> {
         kind: created.kind,
         cloneSourceZone: source,
         rrsetCount: rewrittenRRsets.length,
+        ...(gslb ? { gslbNamesClonedAsPlain: stripped.plainNames } : {}),
       },
       request: getRequestContext(hdrs),
     });
@@ -135,12 +152,37 @@ export async function POST(request: Request): Promise<Response> {
         ok: true,
         zone: { name: target, kind: created.kind },
         nextUrl: `/zones/${encodeURIComponent(target)}?server=${encodeURIComponent(selected.slug)}`,
+        ...(gslb
+          ? {
+              gslbNote: `GSLB was not copied; ${stripped.plainNames} name${stripped.plainNames === 1 ? " was" : "s were"} cloned as plain records.`,
+            }
+          : {}),
       },
       { status: 201 },
     );
   } catch (err) {
     return errorResponse(err, "pdns.zone.clone.route.error");
   }
+}
+
+/** The source zone's GSLB state, or null when GSLB is not set up in it. */
+async function loadGslbCloneState(server: PdnsServer, zoneName: string) {
+  const zone = await findGslbZone(horizonScopeFor(server), zoneName);
+  if (!zone) return null;
+  const [records, backend] = await Promise.all([
+    listGslbRecordsForZone(zone.id),
+    findGslbBackendById(zone.backendId),
+  ]);
+  return {
+    records: records.map((r) => ({
+      name: r.name,
+      kind: r.kind,
+      members: r.members,
+      snapshot: r.originalRrsets,
+    })),
+    subzone: zone.subzone,
+    delegationKeys: delegationRRsetKeys(zone.subzone, backend?.nameserverHost ?? null),
+  };
 }
 
 function isCloneableKind(kind: string): kind is CloneableKind {

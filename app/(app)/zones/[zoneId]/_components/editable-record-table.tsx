@@ -59,6 +59,10 @@ import { Switch } from "@/components/ui/switch";
 import { buttonClass, iconButtonClass } from "@/components/ui/button";
 import { Field, inputClass, textareaClass } from "@/components/ui/field";
 import { Alert } from "@/components/ui/alert";
+import type { GslbTableContext } from "../_lib/gslb-context";
+import { GslbRecordDialog, type GslbDialogTarget } from "./gslb-record-dialog";
+import { GslbManagedValue, GslbSwitchCell } from "./gslb-record-cells";
+import { useGslbMutate } from "@/app/(app)/admin/gslb/_lib/use-gslb-fetch";
 
 interface RecordValue {
   content: string;
@@ -107,6 +111,11 @@ interface EditableRecordTableProps {
   luaRecordsEnabled: boolean;
   /** TTL a new record starts with, and where it came from (zone / global / built-in). */
   defaultTtl: ResolvedDefaultTtl;
+  /**
+   * Per-record GSLB (ADR-0024). Absent when no GSLB backend applies to this
+   * zone - the table then renders exactly as without GSLB.
+   */
+  gslb?: GslbTableContext | null;
 }
 
 interface EditorState {
@@ -171,6 +180,7 @@ const DEFAULT_TTL_ORIGIN: Record<DefaultTtlSource, string> = {
 export function EditableRecordTable(props: EditableRecordTableProps) {
   const router = useRouter();
   const { confirm, toast } = useDialog();
+  const gslbMutate = useGslbMutate();
 
   // SOA never appears in the records UI - it's owned by <SoaPanel>.
   const nonSoa = useMemo(() => props.rrsets.filter((rr) => rr.type !== "SOA"), [props.rrsets]);
@@ -206,9 +216,77 @@ export function EditableRecordTable(props: EditableRecordTableProps) {
    * same classifier the RRset route does, so the lock and the 403 can't
    * drift apart.
    */
-  const isLockedRow = (row: { name: string; type: string }): boolean =>
+  const isApexNsLocked = (row: { name: string; type: string }): boolean =>
     !props.canUpdateApexNs &&
     protectedRRsetPermission(row.name, row.type, props.zoneName) === "record.update.apex-ns";
+
+  /**
+   * GSLB owns a managed name's CNAME and the subzone delegation; they change
+   * only through the GSLB switch (the RRset route refuses them too).
+   */
+  const gslbLock = (row: { name: string; type: string }): "record" | "delegation" | null => {
+    const gslb = props.gslb;
+    if (!gslb) return null;
+    if (gslb.records[row.name]) return "record";
+    if (gslb.delegationKeys.includes(`${row.name}|${row.type}`)) return "delegation";
+    return null;
+  };
+
+  const isLockedRow = (row: { name: string; type: string }): boolean =>
+    isApexNsLocked(row) || gslbLock(row) !== null;
+
+  const [gslbTarget, setGslbTarget] = useState<GslbDialogTarget | null>(null);
+
+  function openGslb(name: string) {
+    const gslb = props.gslb;
+    if (!gslb) return;
+    const existing = gslb.records[name] ?? null;
+    const eligibility = gslb.eligibility[name];
+    const kind = existing?.kind ?? (eligibility?.eligible ? eligibility.kind : null);
+    if (!kind) return;
+    const currentContents = nonSoaRef.current
+      .filter((rr) => rr.name === name && ["A", "AAAA", "CNAME"].includes(rr.type))
+      .flatMap((rr) => rr.records.map((r) => r.content));
+    setInline(null);
+    setGslbTarget({
+      name,
+      displayName: displayName(name, props.zoneName) || "@",
+      kind,
+      currentContents,
+      existing,
+    });
+  }
+
+  async function disableGslb(name: string) {
+    const ok = await confirm({
+      title: `Switch off GSLB for ${displayName(name, props.zoneName) || "@"}?`,
+      description:
+        "The record goes back to plain A/AAAA (or CNAME) records with the members' current values, and its PowerGSLB rows are removed. Health-checked failover stops for this name.",
+      confirmLabel: "Switch off GSLB",
+      variant: "danger",
+    });
+    if (!ok) return;
+    const query = new URLSearchParams({ serverSlug: props.serverSlug, name });
+    const result = await gslbMutate<{ remoteCleaned?: boolean }>(
+      `/api/admin/pdns/zones/${props.zoneIdEncoded}/gslb?${query.toString()}`,
+      { method: "DELETE" },
+    );
+    if (!result.ok) {
+      toast({ kind: "error", title: "GSLB is still on", description: result.error });
+      return;
+    }
+    if (result.data?.remoteCleaned === false) {
+      toast({
+        kind: "error",
+        title: "GSLB switched off",
+        description:
+          "The record was restored, but removing its PowerGSLB rows failed. They are unused and will be cleared next time.",
+      });
+    } else {
+      toast({ kind: "success", description: "GSLB switched off." });
+    }
+    router.refresh();
+  }
 
   // If the row under inline edit vanished (saved, deleted elsewhere, zone
   // reloaded), drop the strip rather than keep a draft nothing anchors to.
@@ -262,6 +340,12 @@ export function EditableRecordTable(props: EditableRecordTableProps) {
         header: "Value",
         cell: (ctx) => {
           const row = ctx.row.original;
+          const managed = props.gslb?.records[row.name];
+          if (managed && row.type === "CNAME") {
+            return (
+              <GslbManagedValue record={managed} statusError={props.gslb?.statusError ?? null} />
+            );
+          }
           return (
             <span
               className={`block font-mono text-xs break-all ${row.disabled ? "text-muted-foreground line-through" : ""}`}
@@ -294,6 +378,34 @@ export function EditableRecordTable(props: EditableRecordTableProps) {
       },
     ];
 
+    const gslb = props.gslb;
+    if (gslb) {
+      base.push({
+        id: "gslb",
+        header: "GSLB",
+        enableSorting: false,
+        meta: { className: "w-[14%]" },
+        cell: (ctx) => {
+          const row = ctx.row.original;
+          if (gslbLock(row) === "delegation") {
+            return <span className="text-muted-foreground text-xs">Subzone delegation</span>;
+          }
+          if (!["A", "AAAA", "CNAME"].includes(row.type)) {
+            return <span className="text-muted-foreground text-xs">-</span>;
+          }
+          return (
+            <GslbSwitchCell
+              name={row.name}
+              context={gslb}
+              onEnable={() => openGslb(row.name)}
+              onEdit={() => openGslb(row.name)}
+              onDisable={() => void disableGslb(row.name)}
+            />
+          );
+        },
+      });
+    }
+
     if (showActions) {
       base.push({
         id: "actions",
@@ -302,6 +414,16 @@ export function EditableRecordTable(props: EditableRecordTableProps) {
         meta: { className: "w-[14%] text-right" },
         cell: (ctx) => {
           const row = ctx.row.original;
+          if (gslbLock(row) !== null) {
+            return (
+              <span
+                className="text-muted-foreground text-xs"
+                title="Change it with the GSLB switch or its Settings."
+              >
+                Managed by GSLB
+              </span>
+            );
+          }
           if (isLockedRow(row)) {
             return (
               <span
@@ -357,7 +479,14 @@ export function EditableRecordTable(props: EditableRecordTableProps) {
     // the live `nonSoaRef.current`, see below), so rebuilding the column defs
     // when they change would be churn without correctness benefit.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [props.canUpdate, props.canDelete, props.canUpdateApexNs, props.zoneName, showActions]);
+  }, [
+    props.canUpdate,
+    props.canDelete,
+    props.canUpdateApexNs,
+    props.zoneName,
+    props.gslb,
+    showActions,
+  ]);
 
   // ===== Editor handlers =====================================================
 
@@ -519,6 +648,9 @@ export function EditableRecordTable(props: EditableRecordTableProps) {
     // check the changes the edit actually produces rather than the form's
     // target alone. The RRset route rejects the same set - this just says
     // so before the operator has staged a diff.
+    if (changes.some((c) => gslbLock(c) !== null)) {
+      return "This name is managed by GSLB. Use the GSLB switch or its Settings instead.";
+    }
     if (changes.some((c) => isLockedRow(c))) {
       return "The apex NS records are this zone's delegation and need the record.update.apex-ns permission.";
     }
@@ -802,6 +934,16 @@ export function EditableRecordTable(props: EditableRecordTableProps) {
 
       {showActions ? (
         <ShortcutLegend canCreate={props.canCreate} canDelete={props.canDelete} />
+      ) : null}
+
+      {gslbTarget && props.gslb ? (
+        <GslbRecordDialog
+          target={gslbTarget}
+          context={props.gslb}
+          zoneIdEncoded={props.zoneIdEncoded}
+          serverSlug={props.serverSlug}
+          onClose={() => setGslbTarget(null)}
+        />
       ) : null}
 
       {/* Editor dialog ====================================================== */}

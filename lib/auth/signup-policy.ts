@@ -49,6 +49,8 @@ export const ADMIN_EQUIVALENT_PERMISSIONS: readonly Permission[] = [
   "server.create",
   "server.update",
   "server.delete",
+  // GSLB backend management - holds a full-admin PowerGSLB service account.
+  "gslb.manage",
   // Team lifecycle (creating/deleting teams + moving members between them).
   "team.create",
   "team.delete",

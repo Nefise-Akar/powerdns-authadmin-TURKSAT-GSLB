@@ -133,6 +133,14 @@ export const PERMISSIONS = [
   "auth.read",
   "auth.manage",
 
+  // === GSLB (ADR-0024) ===
+  // Manage PowerGSLB backend connections: base URL, service-account
+  // credentials, delegation nameserver. The service account is a full admin
+  // of PowerGSLB (it has no roles of its own), so this is Super Admin only by
+  // default. Toggling GSLB on a record is NOT gated here - it rides on the
+  // zone's `record.*` grants.
+  "gslb.manage",
+
   // === System / backup ===
   // App-DB export + restore. Reveals every configured admin object
   // (users, providers, settings, audit) and can wholesale replace them

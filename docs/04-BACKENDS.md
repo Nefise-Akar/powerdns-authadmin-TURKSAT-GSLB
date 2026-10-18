@@ -346,6 +346,125 @@ signing, so it doesn't need `zone.update`. All three writes are audited
 (`dnssec.enable`, `dnssec.disable`, `dnssec.rectify`), and mirror zones
 (Slave/Secondary/Consumer) are refused.
 
+## GSLB (PowerGSLB)
+
+[PowerGSLB](https://github.com/acudovs/powergslb) answers selected names with
+health-checked, site-aware addresses. The panel drives it through PowerGSLB's
+admin API (`POST <base>/admin/w2ui`) - operators never sign in to PowerGSLB,
+whose own UI has no roles or SSO. Design: [ADR-0024](./adr/0024-powergslb-integration.md).
+
+Connections are managed under **Admin → GSLB** and need the `gslb.manage`
+permission (Super Admin only by default).
+
+| Field                       | Notes                                                                                      |
+| --------------------------- | ------------------------------------------------------------------------------------------ |
+| **Base URL**                | Admin server root without a path, e.g. `https://powergslb`. `/admin/w2ui` is appended.     |
+| **Username** / **Password** | A PowerGSLB account. Password encrypted at rest with `APP_ENCRYPTION_KEY`, never returned. |
+| **Nameserver host**         | FQDN of the GSLB nameserver zones delegate their `gslb` subzone to.                        |
+| **Nameserver addresses**    | Glue IPs for that host, one per line.                                                      |
+
+- **Use a dedicated service account.** PowerGSLB has no roles, so this account
+  can change everything there; create it for the panel only and rotate it from
+  the edit page. The panel's audit log names the person behind each change.
+- **TLS.** PowerGSLB ships a self-signed certificate. Issue it one from your CA
+  and trust that CA with `NODE_EXTRA_CA_CERTS=/path/to/ca.pem`; there is no
+  "skip verification" switch.
+- **SSRF guard.** Base URLs go through the same guard as PDNS backends, with
+  their own flags: `APP_GSLB_ALLOW_PRIVATE_NETWORKS` and
+  `APP_GSLB_ALLOW_INSECURE_HTTP` (see [Configuration](./03-CONFIGURATION.md)).
+- **Test** signs in and counts domains, monitors, views and records; the list
+  shows the last result and its latency.
+
+### Regions
+
+Regions are your sites, defined per backend on its detail page. Nothing is
+seeded. Each region is pushed to PowerGSLB as a view named `authadmin:<slug>`
+whose rule is the region's tokens joined by spaces; the panel only ever touches
+views with that prefix and is the source of truth for them.
+
+| Token          | Example                         | Notes                                                                           |
+| -------------- | ------------------------------- | ------------------------------------------------------------------------------- |
+| CIDR           | `10.20.0.0/16`, `2001:db8::/48` | Host bits are cleared (`10.20.1.5/16` → `10.20.0.0/16`); bare IP = /32 or /128. |
+| `country:XX`   | `country:DE`                    | ISO 3166-1 alpha-2, any case, stored upper-case.                                |
+| `continent:XX` | `continent:EU`                  | `AF` `AN` `AS` `EU` `NA` `OC` `SA`.                                             |
+
+- **No match-all rules.** `0.0.0.0/0` and `::/0` are refused: PowerGSLB treats a
+  prefix-0 rule as the catch-all, which is its `Public` view's job.
+- **Rules must be unique** per backend - PowerGSLB enforces it on views.
+- **Order of writes.** Create saves the region, then the view (a refused view
+  undoes the region); edit and delete go to PowerGSLB first. A view still used
+  by GSLB records can't be deleted.
+- **Drift.** The page compares each region with its view (in sync, missing,
+  rules differ) and lists `authadmin:` views with no region. Nothing is fixed
+  automatically; **Resync** rewrites one view from its region.
+- **GeoIP attribution.** `country:` / `continent:` tokens resolve through
+  PowerGSLB's bundled DB-IP database (CC BY 4.0), which requires visible
+  attribution where you use it.
+
+### Switching GSLB on for a record
+
+In a zone's record table, the **GSLB** column (shown once a GSLB backend is
+enabled) has a switch per A, AAAA or CNAME name. Names that can't be balanced -
+the apex, names with other record types, wildcards - show the switch disabled
+with the reason. Switching needs `record.create`, `record.update` and
+`record.delete` on the zone; `gslb.manage` is not required.
+
+- **First record in a zone** creates PowerGSLB domain `gslb.<zone>` (SOA + NS)
+  and delegates it from the zone (`gslb NS <nameserver host>` plus glue when the
+  host is inside the subzone). The backend needs its nameserver host and
+  addresses set. A new subzone can take up to ~5 minutes to answer (PowerDNS
+  `zone-cache-refresh-interval` on the GSLB side).
+- **Switching on** writes the members to PowerGSLB - a member with a region gets
+  a row in that region's view and one in `Public`, which is what makes
+  cross-site failover work - then replaces the name's A/AAAA (or CNAME) with
+  `CNAME <name>.gslb.<zone>.`. If the CNAME write fails, the rows are removed
+  again.
+- **Regions are filled in for you.** Typing an IP selects the region whose CIDR
+  rules contain it (longest prefix wins), marked _auto_; pick another to
+  override. When the backend has regions and some servers have none, saving asks
+  first - those servers answer every client, so nobody gets a nearby one.
+- **Health checks** come from presets (HTTP, HTTPS, TCP, TLS, ICMP; HTTP
+  `/health` by default) and are created as `authadmin:` monitors. Mode, weights
+  and TTL are under _Advanced settings_: Failover (default, weight tiers) or
+  Distribute (weighted random); weight 10 and TTL 30 s by default.
+- **Switching off** restores A/AAAA records from the current members (or the
+  first member, for a CNAME), with the original TTLs and comments, but only if
+  the name still holds the panel's CNAME; otherwise it refuses.
+- **Remembered settings.** Switching off keeps the name's last settings.
+  Switching it on again pre-fills them ("Last used settings loaded", with _Reset
+  to defaults_). Nothing is applied until you confirm.
+- **Read-only while on.** The name's CNAME and the `gslb` delegation are
+  read-only in the record table and refused by the record API, DynDNS updates
+  and zone deletion (a zone can't be deleted while GSLB is on for any of its
+  records).
+- **Zones list.** With a GSLB backend enabled, the zones list has a **GSLB**
+  column: `3 records · all up`, `1 record · 2 servers down` or
+  `status unavailable`. Health is read once per backend and cached for ~20 s.
+- **Session expiry.** If your session ends while working in the GSLB screens,
+  they say so and take you to sign-in, returning to the same page.
+
+### Removing GSLB
+
+Everything GSLB adds can be removed from the UI, in this order:
+
+1. **Records** - switch GSLB off on each record (records tab of the zone).
+2. **Zone setup** - once a zone has no GSLB records, its records tab shows
+   _GSLB is set up for this zone_ with **Remove GSLB setup**. It deletes the
+   `gslb` NS and its glue (glue that another delegation in the zone still uses
+   is kept), the `gslb.<zone>` domain in PowerGSLB, and the zone's GSLB row -
+   which also unlocks those RRsets. If PowerGSLB is unreachable the zone side is
+   still removed and the leftover domain is reported. Deleting the zone itself
+   does the same clean-up.
+3. **Regions** - delete them on the backend page.
+4. **Backend** - deletable once nothing uses it; otherwise the error names the
+   regions and zones that still do, and where to remove each.
+
+Cloning a zone that has GSLB copies its GSLB-managed names as plain records
+(from their current members) and leaves the `gslb` delegation out; the result
+says how many names were converted. GSLB tables are included in the app backup
+(`Admin → Settings → Backup`); the service-account password is exported as
+ciphertext, like PowerDNS API keys.
+
 ---
 
 [← Docs index](./README.md)

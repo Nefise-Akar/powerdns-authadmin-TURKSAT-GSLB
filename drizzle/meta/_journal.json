@@ -57,6 +57,55 @@
       "when": 1787788306369,
       "tag": "0007_granular_zone_permissions_backfill",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1791965054630,
+      "tag": "0008_gslb_backends",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1791967448998,
+      "tag": "0009_gslb_regions",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1791980897481,
+      "tag": "0010_gslb_zones_records",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1791984169058,
+      "tag": "0011_gslb_presets_zone_pairs",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1792319021396,
+      "tag": "0012_drop_zone_pairs",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1792319062844,
+      "tag": "0013_gslb_pools",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1792343865616,
+      "tag": "0014_remove_gslb_pools",
+      "breakpoints": true
     }
   ]
 }

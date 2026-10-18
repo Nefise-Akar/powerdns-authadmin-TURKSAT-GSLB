@@ -108,6 +108,7 @@ const SUPER_ADMIN: Permission[] = [
   "settings.write",
   "auth.read",
   "auth.manage",
+  "gslb.manage",
   "system.backup",
 ];
 

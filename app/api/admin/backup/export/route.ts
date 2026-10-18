@@ -32,6 +32,11 @@ import {
   oidcProviders,
   pdnsClusters,
   pdnsServers,
+  gslbBackends,
+  gslbRecordPresets,
+  gslbRecords,
+  gslbRegions,
+  gslbZones,
   roleAssignments,
   roles,
   samlProviders,
@@ -73,6 +78,11 @@ export async function GET(): Promise<Response> {
       authProviderSlugsRows,
       zoneTemplatesRows,
       backendAdvisoriesRows,
+      gslbBackendsRows,
+      gslbRegionsRows,
+      gslbZonesRows,
+      gslbRecordsRows,
+      gslbRecordPresetsRows,
       auditLogRows,
     ] = await Promise.all([
       db.select().from(users),
@@ -100,6 +110,13 @@ export async function GET(): Promise<Response> {
       // for compliance archival should use `pg_dump`/SQLite `.dump` on
       // the raw table; this endpoint is for app-state DR, not forensic
       // retention.
+      // GSLB (ADR-0024). `gslb_backends.password_encrypted` rides along as
+      // ciphertext, exactly like `pdns_servers.api_key_encrypted`.
+      db.select().from(gslbBackends),
+      db.select().from(gslbRegions),
+      db.select().from(gslbZones),
+      db.select().from(gslbRecords),
+      db.select().from(gslbRecordPresets),
       db.select().from(auditLog).limit(10_000),
     ]);
 
@@ -134,6 +151,11 @@ export async function GET(): Promise<Response> {
         auth_provider_slugs: authProviderSlugsRows,
         zone_templates: zoneTemplatesRows,
         backend_advisories: backendAdvisoriesRows,
+        gslb_backends: gslbBackendsRows,
+        gslb_regions: gslbRegionsRows,
+        gslb_zones: gslbZonesRows,
+        gslb_records: gslbRecordsRows,
+        gslb_record_presets: gslbRecordPresetsRows,
         audit_log: auditLogRows,
       },
     };

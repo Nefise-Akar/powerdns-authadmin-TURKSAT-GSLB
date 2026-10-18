@@ -175,6 +175,16 @@ IP into the connection as a DNS-rebinding defense. Link-local addresses (incl. t
 | `APP_PDNS_ALLOW_PRIVATE_NETWORKS` | `false` in production, `true` otherwise | Allow PDNS URLs that resolve to loopback/RFC1918/CGNAT/ULA. Needed for in-cluster/compose PDNS.     |
 | `APP_PDNS_ALLOW_INSECURE_HTTP`    | requires `https://` in production       | Allow `http://` PDNS base URLs. Both flags must be opted in for an internal `http://host:port` URL. |
 
+PowerGSLB backends (**Admin → GSLB**) get their own pair with the same semantics. Their
+admin API is called server-side with the service-account password, so prefer `https://`;
+trust a private CA with `NODE_EXTRA_CA_CERTS=/path/to/ca.pem` rather than relaxing TLS. See
+[GSLB (PowerGSLB)](./04-BACKENDS.md#gslb-powergslb).
+
+| Variable                          | Default                                 | Notes                                                                                      |
+| --------------------------------- | --------------------------------------- | ------------------------------------------------------------------------------------------ |
+| `APP_GSLB_ALLOW_PRIVATE_NETWORKS` | `false` in production, `true` otherwise | Allow GSLB base URLs that resolve to loopback/RFC1918/CGNAT/ULA.                           |
+| `APP_GSLB_ALLOW_INSECURE_HTTP`    | requires `https://` in production       | Allow `http://` GSLB base URLs. Both flags must be opted in for an internal `http://` URL. |
+
 ### `PDNS_BACKGROUND_POLLING`
 
 Opt-in switch for AuthAdmin's replication-awareness layer. **Defaults to

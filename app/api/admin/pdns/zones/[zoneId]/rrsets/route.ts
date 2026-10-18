@@ -33,7 +33,7 @@ import { scheduleImmediatePoll } from "@/lib/realtime/zone-poller";
 import { getRequestContext } from "@/lib/client-ip";
 import { requireUser } from "@/lib/auth/require-user";
 import { requireCsrf } from "@/lib/auth/csrf";
-import { ForbiddenError, NotFoundError, ValidationError } from "@/lib/errors";
+import { ConflictError, ForbiddenError, NotFoundError, ValidationError } from "@/lib/errors";
 import { errorResponse } from "@/lib/http/error-response";
 import { newSystemRequestId, withRequestId } from "@/lib/request-context";
 import { logger } from "@/lib/logger";
@@ -49,6 +49,8 @@ import { PdnsError, PdnsNotFoundError } from "@/lib/pdns/errors";
 import { canActOnZone } from "@/lib/rbac/zone-permissions";
 import { protectedRRsetPermission } from "@/lib/rbac/protected-rrsets";
 import { patchRRsetsSchema } from "@/lib/validators/rrsets";
+import { loadGslbOwnedRRsets } from "@/lib/db/repositories/gslb-records";
+import { horizonScopeFor } from "@/lib/db/repositories/zone-horizons";
 
 interface RouteContext {
   params: Promise<{ zoneId: string }>;
@@ -153,6 +155,27 @@ export async function PATCH(request: Request, context: RouteContext): Promise<Re
     }
     if (needsDelete && !hasZonePermission("record.delete")) {
       throw new ForbiddenError("Missing record.delete.");
+    }
+
+    // ADR-0024: RRsets owned by GSLB - a managed name's CNAME into the GSLB
+    // subzone and the subzone's delegation - change only through the GSLB
+    // switch, which keeps PowerGSLB and its own snapshot in step. A generic
+    // edit here would silently break that name's failover (or the restore).
+    const gslbOwned = await loadGslbOwnedRRsets(horizonScopeFor(server), zoneName);
+    if (gslbOwned) {
+      for (const change of input.changes) {
+        const name = normalizeName(change.name, zoneName);
+        if (gslbOwned.names.has(name)) {
+          throw new ConflictError(
+            `${name} is managed by GSLB. Edit it with the GSLB switch, or switch GSLB off first.`,
+          );
+        }
+        if (gslbOwned.delegationKeys.has(`${name}|${change.type}`)) {
+          throw new ConflictError(
+            `${name} ${change.type} is managed by GSLB (subzone delegation).`,
+          );
+        }
+      }
     }
 
     const client = getBackendGateway(server);

@@ -52,6 +52,7 @@ Custom roles are built from these. Names are stable strings (`resource.action`):
 | API tokens       | `token.read.own` `token.create.own` `token.delete.own` `token.read.all` `token.delete.all`             |
 | Audit & settings | `audit.read` `settings.read` `settings.write`                                                          |
 | Auth providers   | `auth.read` `auth.manage` (OIDC, SAML, LDAP)                                                           |
+| GSLB             | `gslb.manage` (PowerGSLB backend connections; Super Admin only by default)                             |
 | System           | `system.backup`                                                                                        |
 
 ## Splitting record editing from a zone's authority

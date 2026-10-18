@@ -385,6 +385,26 @@ export const envSchema = z.object({
     .pipe(z.boolean())
     .optional(),
 
+  // --- PowerGSLB admin-API connectivity (SSRF guard, mirrors the PDNS pair) ---
+  // GSLB backend base URLs are operator-supplied and fetched server-side (Test
+  // probe + record writes, ADR-0024), so they run through the same outbound-URL
+  // guard. Same defaults as the PDNS pair: private destinations allowed outside
+  // production only, https required in production. Link-local / cloud-metadata
+  // is always blocked. A private CA is trusted via NODE_EXTRA_CA_CERTS, not here.
+  APP_GSLB_ALLOW_PRIVATE_NETWORKS: z
+    .string()
+    .transform((s) => s.toLowerCase() === "true")
+    .pipe(z.boolean())
+    .optional(),
+  // Relax the https-in-production scheme check for GSLB base URLs. The admin
+  // API carries the service-account password in every request, so keep this
+  // off unless the hop never leaves a trusted network.
+  APP_GSLB_ALLOW_INSECURE_HTTP: z
+    .string()
+    .transform((s) => s.toLowerCase() === "true")
+    .pipe(z.boolean())
+    .optional(),
+
   // --- Email / SMTP ---
   // All SMTP knobs are optional. With SMTP_HOST unset, the email
   // module no-ops (calls are still safe to make; they log and return
@@ -573,6 +593,8 @@ export const ENV_KEYS = [
   "PDNS_BACKGROUND_POLLING",
   "APP_OIDC_ALLOW_PRIVATE_NETWORKS",
   "APP_OIDC_ALLOW_INSECURE_HTTP",
+  "APP_GSLB_ALLOW_PRIVATE_NETWORKS",
+  "APP_GSLB_ALLOW_INSECURE_HTTP",
   "LDAP_ALLOW_INSECURE_PORT_389",
   "LDAP_TLS_INSECURE_SKIP_VERIFY",
   "SMTP_HOST",

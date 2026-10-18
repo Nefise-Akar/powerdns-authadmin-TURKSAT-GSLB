@@ -177,6 +177,38 @@ export const AUDIT_ACTIONS = [
   // search can spot "a user's perms shifted under them" patterns.
   "auth.token.idp_perms_refreshed",
 
+  // PowerGSLB backend connections (ADR-0024). `test` records each
+  // operator-triggered probe and its verdict; the password never appears in
+  // before/after snapshots.
+  "gslb.backend.create",
+  "gslb.backend.update",
+  "gslb.backend.delete",
+  "gslb.backend.test",
+  // GSLB regions (operator-defined sites → panel-owned PowerGSLB views).
+  // `resync` rewrites the remote view from the stored region.
+  "gslb.region.create",
+  "gslb.region.update",
+  "gslb.region.delete",
+  "gslb.region.resync",
+  // Per-record GSLB (ADR-0024 §3). `zone.enable` is the one-time subzone
+  // creation + delegation; the parent RRset swaps also emit the usual
+  // record.* rows through the normal write path.
+  "gslb.zone.enable",
+  // Tear-down of a zone's GSLB setup (subzone delegation + PowerGSLB domain).
+  "gslb.zone.disable",
+  "gslb.record.enable",
+  "gslb.record.update",
+  "gslb.record.disable",
+  // LEGACY: GSLB service pools were removed (ADR-0024, "Rejected: service
+  // pools"). Kept so audit rows written while they existed still render.
+  "gslb.pool.create",
+  "gslb.pool.update",
+  "gslb.pool.delete",
+  // LEGACY: the sister-zone feature was removed (ADR-0024).
+  // Kept so audit rows written while it existed still type-check and render.
+  "gslb.zone_pair.create",
+  "gslb.zone_pair.delete",
+
   // Super-admin-gated app-DB backup. Excludes PDNS zone data and
   // symmetric secrets. The `after` snapshot carries row counts per
   // table - useful for audit search to spot empty / partial exports.

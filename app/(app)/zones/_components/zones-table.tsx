@@ -15,6 +15,7 @@ import { useEffect, useMemo, useState } from "react";
 import { type ColumnDef } from "@tanstack/react-table";
 import { Lock, Unlock } from "lucide-react";
 import { CountBadge } from "@/components/ui/badge";
+import { gslbZoneChipLabel } from "@/lib/gslb/model";
 import { DataTable } from "@/components/ui/data-table";
 import { tabClass, tabStripClass } from "@/components/ui/tabs";
 import { SyncIndicator } from "@/components/ui/sync-indicator";
@@ -122,6 +123,8 @@ export interface ZoneRow {
   /** True when this row is a read-only mirror (an unpinned secondary's zone
    *  that no primary serves). The row links to a read-only zone detail. */
   readOnly?: boolean;
+  /** GSLB health (ADR-0024 §8). Null/absent: no GSLB records in this zone. */
+  gslb?: { total: number; down: number; serversDown: number; unavailable: boolean } | null;
 }
 
 interface ZonesTableProps {
@@ -138,6 +141,8 @@ interface ZonesTableProps {
    * verdict to display, so the column is dropped entirely.
    */
   showSync: boolean;
+  /** Render the GSLB column - only when at least one GSLB backend is enabled. */
+  showGslb?: boolean;
 }
 
 /** Detail URL for a zone row - cluster-backed zones carry ?cluster=, standalone
@@ -148,7 +153,7 @@ function zoneHref(row: ZoneRow): string {
     : `/zones/${encodeURIComponent(row.id)}?server=${encodeURIComponent(row.backend.serverSlug)}`;
 }
 
-export function ZonesTable({ zones, showLastEdit, showSync }: ZonesTableProps) {
+export function ZonesTable({ zones, showLastEdit, showSync, showGslb = false }: ZonesTableProps) {
   const columns = useMemo<Array<ColumnDef<ZoneRow, unknown>>>(() => {
     const cols: Array<ColumnDef<ZoneRow, unknown>> = [
       {
@@ -235,6 +240,19 @@ export function ZonesTable({ zones, showLastEdit, showSync }: ZonesTableProps) {
       });
     }
 
+    if (showGslb) {
+      cols.push({
+        id: "gslb",
+        // Down first when sorted descending, then healthy, then none.
+        accessorFn: (row) =>
+          !row.gslb || row.gslb.total === 0 ? -1 : row.gslb.unavailable ? 0.5 : row.gslb.down + 1,
+        sortingFn: "basic" as const,
+        header: "GSLB",
+        cell: (ctx) => <GslbCell health={ctx.row.original.gslb ?? null} />,
+        meta: { className: "w-[12%]" },
+      });
+    }
+
     if (showLastEdit) {
       cols.push({
         accessorKey: "lastEditIso",
@@ -259,7 +277,7 @@ export function ZonesTable({ zones, showLastEdit, showSync }: ZonesTableProps) {
     }
 
     return cols;
-  }, [showLastEdit, showSync]);
+  }, [showLastEdit, showSync, showGslb]);
 
   // Forward / Reverse / All segmented filter above the table. Persisted to
   // localStorage so the choice sticks across navigations (same pattern as
@@ -508,6 +526,38 @@ function SyncCell({ row }: { row: ZoneRow }) {
         {label}
         <span className="text-muted-foreground tabular-nums">{total}</span>
       </span>
+    </span>
+  );
+}
+
+/**
+ * GSLB health chip, same frame as the Sync chip: "n/n up" (green), "k down"
+ * (red) or "status unavailable" (grey). A dot plus words, never color alone.
+ */
+function GslbCell({
+  health,
+}: {
+  health: { total: number; down: number; serversDown: number; unavailable: boolean } | null;
+}) {
+  if (!health || health.total === 0) {
+    return <span className="text-muted-foreground text-xs">-</span>;
+  }
+  const tone = health.unavailable ? "unknown" : health.down > 0 ? "down" : "up";
+  const textClass =
+    tone === "up" ? "text-success" : tone === "down" ? "text-destructive" : "text-muted-foreground";
+  const dotClass =
+    tone === "up" ? "bg-success" : tone === "down" ? "bg-destructive" : "bg-muted-foreground";
+  return (
+    <span
+      title={
+        tone === "unknown"
+          ? `${health.total} GSLB record(s); PowerGSLB couldn't be read`
+          : undefined
+      }
+      className={`border-border bg-card text-caption inline-flex h-6 items-center gap-1.5 rounded-sm border px-2 whitespace-nowrap ${textClass}`}
+    >
+      <span aria-hidden className={`h-1.5 w-1.5 rounded-full ${dotClass}`} />
+      {gslbZoneChipLabel(health)}
     </span>
   );
 }

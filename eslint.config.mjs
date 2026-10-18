@@ -8,6 +8,7 @@
  *  • A `lib/db/**` file importing from `lib/rbac/**` (the DB layer must not know about RBAC).
  *  • A `lib/pdns/**` file importing from `lib/rbac/**` or `lib/audit/**` (PDNS client is
  *    a pure protocol adapter, RBAC and audit happen above it).
+ *  • The same for `lib/gslb/**` (PowerGSLB client, ADR-0024).
  *
  * When you find yourself wanting to disable one of these rules, that's a signal you're
  * about to break the architecture. Stop and either refactor or write an ADR explaining
@@ -145,6 +146,11 @@ export default tseslint.config(
                 "UI components must not import lib/pdns. PDNS access goes through server components or route handlers.",
             },
             {
+              group: ["@/lib/gslb", "@/lib/gslb/**"],
+              message:
+                "UI components must not import lib/gslb. PowerGSLB access goes through server components or route handlers.",
+            },
+            {
               group: ["@/lib/auth", "@/lib/auth/**"],
               message:
                 "UI components must not import lib/auth. Receive `currentUser` as a prop from a server component.",
@@ -199,6 +205,36 @@ export default tseslint.config(
               ],
               message:
                 "lib/pdns is a pure protocol adapter (ADR-0004). RBAC/audit/DB/auth happen in the caller. If this is a deliberate DB bridge, see ADR-0013.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+
+  // === Import boundary: the PowerGSLB client is a pure protocol adapter ===
+  // Same rule as lib/pdns (ADR-0024). The one sanctioned DB bridge
+  // (lib/gslb/registry.ts) carries a file-top disable referencing ADR-0013.
+  {
+    files: ["lib/gslb/**/*.ts"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: [
+                "@/lib/rbac",
+                "@/lib/rbac/**",
+                "@/lib/audit",
+                "@/lib/audit/**",
+                "@/lib/db",
+                "@/lib/db/**",
+                "@/lib/auth",
+                "@/lib/auth/**",
+              ],
+              message:
+                "lib/gslb is a pure protocol adapter (ADR-0024). RBAC/audit/DB/auth happen in the caller. The only DB bridge is lib/gslb/registry.ts (ADR-0013).",
             },
           ],
         },

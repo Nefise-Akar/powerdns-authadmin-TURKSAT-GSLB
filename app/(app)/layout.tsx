@@ -113,6 +113,9 @@ export default async function AppLayout({ children }: Readonly<{ children: React
   const canReadSettings = current.ability.can("read", "Settings");
   const canReadAuth = current.ability.can("read", "Auth");
   const canUseTemplates = current.ability.can("use", "Template");
+  // Global grant only, matching the page/route gate: a scoped `gslb.manage`
+  // would pass a type-level CASL check yet still be refused by the page.
+  const canManageGslb = current.globalPermissions.has("gslb.manage");
 
   // Health-bell advisories (ADR-0015) - only for users who can read backends.
   const advisories = canReadServers
@@ -137,6 +140,7 @@ export default async function AppLayout({ children }: Readonly<{ children: React
     ...(canUseTemplates ? [{ href: "/admin/zone-templates", label: "Zone templates" }] : []),
     ...(canReadZones ? [{ href: "/admin/import-export", label: "Import / Export" }] : []),
     ...(canReadTsig ? [{ href: "/admin/tsig-keys", label: "TSIG keys" }] : []),
+    ...(canManageGslb ? [{ href: "/admin/gslb", label: "GSLB" }] : []),
     ...(canReadAudit ? [{ href: "/admin/requests", label: "Request log" }] : []),
   ];
   const accessItems: NavItem[] = [

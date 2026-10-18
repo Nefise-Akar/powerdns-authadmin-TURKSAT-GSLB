@@ -29,6 +29,7 @@ import { isNull } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { pdnsClusters, pdnsServers, type PdnsCluster, type PdnsServer } from "@/lib/db/schema";
 import { isReadOnlyBackend, isServerWriteTarget } from "@/lib/pdns/capabilities";
+import { choosePeer } from "@/lib/pdns/cluster-picker";
 
 export type SelectableBackend =
   | {
@@ -102,4 +103,27 @@ export async function listSelectableBackends(): Promise<SelectableBackend[]> {
   }
 
   return out;
+}
+
+/**
+ * A backend row to read a zone from, given the zone's stored scope (the
+ * `{ serverId } | { clusterId }` pair zone horizons, GSLB and zone pairs key
+ * on). A cluster resolves through its peer strategy, like the zone page does.
+ * Null when the server is gone/disabled or the cluster has no writable peer.
+ */
+export async function serverForScope(
+  scope: { serverId: string } | { clusterId: string },
+): Promise<PdnsServer | null> {
+  const backends = await listSelectableBackends();
+  if ("serverId" in scope) {
+    for (const b of backends) {
+      const servers = b.kind === "server" ? [b.server] : b.peers;
+      const hit = servers.find((s) => s.id === scope.serverId);
+      if (hit) return hit;
+    }
+    return null;
+  }
+  const cluster = backends.find((b) => b.kind === "cluster" && b.cluster.id === scope.clusterId);
+  if (cluster?.kind !== "cluster") return null;
+  return choosePeer(cluster.cluster, cluster.peers);
 }

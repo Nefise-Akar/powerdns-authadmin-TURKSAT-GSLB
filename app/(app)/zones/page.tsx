@@ -38,6 +38,7 @@ import {
   horizonFrom,
   horizonScopeFor,
   loadZoneHorizonIndex,
+  horizonKey,
   type ZoneHorizonIndex,
 } from "@/lib/db/repositories/zone-horizons";
 import { DEFAULT_ZONE_HORIZON } from "@/lib/dns/zone-horizon";
@@ -53,6 +54,7 @@ import { ensureBackendsObserved } from "@/lib/realtime/zone-poller";
 import { backendUnreachability } from "@/lib/realtime/backend-status";
 import type { PdnsServer } from "@/lib/db/schema";
 import { ZonesTable, type ZoneRow } from "./_components/zones-table";
+import { loadZoneGslbHealthIndex, type ZoneGslbHealth } from "./_lib/gslb-health";
 import { pdnsBackgroundPollingEnabled } from "@/lib/env";
 import { PollingDisabledHint } from "@/components/domain/polling-disabled-hint";
 import { ServerRealtimeSubscriber } from "./_components/server-realtime-subscriber";
@@ -94,7 +96,12 @@ export default async function ZonesPage() {
   // Horizon classifications for the whole fleet, in one query (#121). Every row
   // needs one, and the table only holds deliberately-classified zones, so a
   // single indexed read beats a lookup per row.
-  const horizonIndex = await loadZoneHorizonIndex();
+  // GSLB health per zone (ADR-0024 §8) - null when no GSLB backend is enabled,
+  // which also hides the column. Bounded by a short, cached PowerGSLB read.
+  const [horizonIndex, gslbIndex] = await Promise.all([
+    loadZoneHorizonIndex(),
+    loadZoneGslbHealthIndex(),
+  ]);
 
   // Backend rows by id, so a derived secondary can inherit its primary's
   // classification below.
@@ -105,7 +112,9 @@ export default async function ZonesPage() {
   }
 
   // Build the amalgamated list from the broker store - no PDNS calls here.
-  const fetched = await Promise.all(backends.map((b) => rowsFromBackend(b, horizonIndex)));
+  const fetched = await Promise.all(
+    backends.map((b) => rowsFromBackend(b, horizonIndex, gslbIndex)),
+  );
 
   const errors: Array<{ backendName: string; message: string }> = [];
   const allRows: ZoneRow[] = [];
@@ -293,6 +302,7 @@ export default async function ZonesPage() {
         zones={visibleRows}
         showLastEdit={canReadAudit}
         showSync={pdnsBackgroundPollingEnabled}
+        showGslb={gslbIndex !== null}
       />
     </div>
   );
@@ -321,6 +331,7 @@ function unreachableMessage(kind: "down" | "auth"): string {
 async function rowsFromBackend(
   backend: SelectableBackend,
   horizonIndex: ZoneHorizonIndex,
+  gslbIndex: ReadonlyMap<string, ZoneGslbHealth> | null,
 ): Promise<FetchResult> {
   const label = backend.kind === "cluster" ? backend.cluster.name : backend.server.name;
 
@@ -379,14 +390,15 @@ async function rowsFromBackend(
       ? { clusterId: backend.cluster.id }
       : horizonScopeFor(backend.server);
 
-  const rows = zones.map((z) =>
-    toZoneRow(
+  const rows = zones.map((z) => ({
+    ...toZoneRow(
       z,
       rowsBackend,
       syncByZone.get(z.name) ?? [],
       horizonFrom(horizonIndex, horizonScope, z.name),
     ),
-  );
+    gslb: gslbIndex?.get(horizonKey(horizonScope, z.name)) ?? null,
+  }));
   return { label, lastEditServerSlug, rows, error: null };
 }
 
