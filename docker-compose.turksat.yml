@@ -1,33 +1,33 @@
-# docker-compose.liman.yml - run the demo stack from THIS checkout's code.
+# docker-compose.turksat.yml - run the demo stack from THIS checkout's code.
 #
 # docker-compose.yml pulls the published ghcr image, which carries the
 # previous UI. Layer this file on top to build the app from the working tree
-# (the Liman redesign) instead:
+# (the Turksat redesign) instead:
 #
-#   docker compose -f docker-compose.yml -f docker-compose.liman.yml up -d --build
+#   docker compose -f docker-compose.yml -f docker-compose.turksat.yml up -d --build
 #
 # Host ports default to the demo's own (3000 app, 8081 PDNS API, 5300 DNS).
 # To run next to another stack, give it its own project name and ports, and
 # open it on 127.0.0.1 - browsers share `localhost` cookies across ports, so
 # two apps on localhost:3000 and localhost:3010 would sign each other out:
 #
-#   LIMAN_APP_PORT=3010 LIMAN_APP_URL=http://127.0.0.1:3010 \
-#   LIMAN_PDNS_API_PORT=8086 LIMAN_DNS_PORT=5320 \
-#   docker compose -p pdns-liman -f docker-compose.yml -f docker-compose.liman.yml up -d --build
+#   TURKSAT_APP_PORT=3010 TURKSAT_APP_URL=http://127.0.0.1:3010 \
+#   TURKSAT_PDNS_API_PORT=8086 TURKSAT_DNS_PORT=5320 \
+#   docker compose -p pdns-turksat -f docker-compose.yml -f docker-compose.turksat.yml up -d --build
 #
 # Everything else (PowerDNS, volumes, env) comes from docker-compose.yml.
 services:
   pdns:
     ports: !override
-      - "${LIMAN_DNS_PORT:-5300}:53"
-      - "${LIMAN_DNS_PORT:-5300}:53/udp"
-      - "${LIMAN_PDNS_API_PORT:-8081}:8081"
+      - "${TURKSAT_DNS_PORT:-5300}:53"
+      - "${TURKSAT_DNS_PORT:-5300}:53/udp"
+      - "${TURKSAT_PDNS_API_PORT:-8081}:8081"
 
   app:
     image: powerdns-authadmin:local
     build: .
     pull_policy: build
     ports: !override
-      - "${LIMAN_APP_PORT:-3000}:3000"
+      - "${TURKSAT_APP_PORT:-3000}:3000"
     environment:
-      APP_URL: ${LIMAN_APP_URL:-http://localhost:3000}
+      APP_URL: ${TURKSAT_APP_URL:-http://localhost:3000}

@@ -1,7 +1,7 @@
 /**
  * components/ui/badge.tsx
  *
- * Small inline markers, per the Liman design system. All are 20px tall with
+ * Small inline markers, per the Turksat design system. All are 20px tall with
  * 2px corners - never pill-shaped.
  *
  *   Tag         - a category or role value (`primary`, `internal`, `lua`).

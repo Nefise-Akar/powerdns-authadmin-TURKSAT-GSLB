@@ -3,7 +3,7 @@
 /**
  * components/ui/app-shell.tsx
  *
- * Chrome for the authenticated app, per the Liman shell:
+ * Chrome for the authenticated app, per the Turksat shell:
  *
  *   ┌──────┬──────────────────────────────────────────────┐
  *   │ rail │ top bar 56 · brand · actions                 │

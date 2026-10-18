@@ -6,7 +6,7 @@
  * change-log header chip (`<ActionChip>`) and the admin-detail
  * recent-activity panel (`<AdminAuditPanel>`).
  *
- * Per the Liman design system, actions are categories and so are not
+ * Per the Turksat design system, actions are categories and so are not
  * color-coded - every chip is a neutral tag - with one exception: deletions
  * (`.delete`, `.revoked`) keep the destructive color, which the system
  * reserves for exactly that meaning.

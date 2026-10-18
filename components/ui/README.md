@@ -6,7 +6,7 @@ chrome, theme controls, toasts, skeletons, and small interaction helpers.
 These components are domain-neutral. Feature-specific DNS/admin behavior belongs
 under `components/domain` or the relevant `app/` route segment.
 
-Styling follows the Liman design system tokens in `app/globals.css`. Build new
+Styling follows the Turksat design system tokens in `app/globals.css`. Build new
 UI from the shared primitives instead of re-typing their classes:
 
 - `button.tsx` - `Button` / `buttonClass()` (primary, secondary, ghost,

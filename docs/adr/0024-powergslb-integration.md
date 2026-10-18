@@ -141,7 +141,7 @@ and audit itself.
   zones and service pools are created and dropped again by later migrations; the pool removal
   refuses to run while pool rows exist.
 - **Configuration.** New env flags and new permission and audit vocabulary entries.
-- **Fork maintenance.** This is a fork-local feature, so upstream merges into the Liman branch get
+- **Fork maintenance.** This is a fork-local feature, so upstream merges into the Turksat branch get
   harder.
 - **Operations.** Each site should run its own PowerGSLB + PowerDNS, with MariaDB replication between
   them (PowerGSLB documents master-slave and Galera; not yet tested here), so losing one site does

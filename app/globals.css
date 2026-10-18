@@ -1,7 +1,7 @@
 /* =============================================================================
  * app/globals.css - Tailwind v4 entry + design tokens.
  *
- * Tokens follow the Liman design system: every color token has the same name
+ * Tokens follow the Turksat design system: every color token has the same name
  * in the light and dark theme, selected by `data-theme` on <html>. Values are
  * copied from the system's token tables; don't add colors, hex literals in
  * components, or derived tints/gradients (the one exception is
@@ -135,7 +135,7 @@
 
   /* Legacy palette, aliased onto the tokens above until every component
    * uses the token utilities. The old "accent" was the action color, so it
-   * maps to primary - Liman's own `accent` is reserved for selection. */
+   * maps to primary - Turksat's own `accent` is reserved for selection. */
   --color-bg: var(--card);
   --color-bg-subtle: var(--background);
   --color-bg-muted: var(--muted);
@@ -150,7 +150,7 @@
   --color-warn-fg: var(--warning);
   --color-error: var(--destructive);
   /* Orange only tinted category badges (autosecondary, lua, internal);
-   * Liman doesn't color categories, so they fall back to the tag colors. */
+   * Turksat doesn't color categories, so they fall back to the tag colors. */
   --color-orange: var(--tag-foreground);
   --color-orange-fg: var(--foreground);
 }
@@ -264,7 +264,7 @@
   --shadow-focus-ring: var(--focus-ring);
   --shadow-tab-indicator: var(--tab-indicator);
 
-  /* Liman type styles: text-<name> sets size, line height, weight and
+  /* Turksat type styles: text-<name> sets size, line height, weight and
    * (where the style has one) letter spacing. */
   --text-display: 30px;
   --text-display--line-height: 36px;
@@ -350,7 +350,7 @@
   --text-signature-sm--letter-spacing: 0.08em;
 
   /* Interim: the stock size utilities, still used across components, are
-   * pinned to the nearest Liman style (xs=label/meta, sm/base=body, lg=h3,
+   * pinned to the nearest Turksat style (xs=label/meta, sm/base=body, lg=h3,
    * xl=h2, 2xl=h1, 3xl=display) until each component moves to the named
    * styles. Weights stay whatever the component already sets. */
   --text-xs: 12px;

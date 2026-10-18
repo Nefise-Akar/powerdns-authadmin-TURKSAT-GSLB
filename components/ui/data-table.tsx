@@ -13,7 +13,7 @@
  *   - Client-side pagination with a page-size selector and numbered pages.
  *   - "Showing N–M of K" counter above and beneath the table.
  *
- * Look follows the Liman table: 36px header and rows, `background` header
+ * Look follows the Turksat table: 36px header and rows, `background` header
  * row, rows split by 1px borders (no zebra), `background` on hover (never
  * accent), an inset ring on the keyboard-focused row, a 12px arrow on the
  * sorted column only. Cells keep wrapping (the guide truncates to one line)

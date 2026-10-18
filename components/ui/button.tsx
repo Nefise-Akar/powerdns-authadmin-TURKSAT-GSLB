@@ -1,7 +1,7 @@
 /**
  * components/ui/button.tsx
  *
- * The app's button styles, per the Liman design system:
+ * The app's button styles, per the Turksat design system:
  *
  *   primary      - the single main action on a screen ("Add zone"). Only one
  *                  per screen; everything else is secondary/ghost.

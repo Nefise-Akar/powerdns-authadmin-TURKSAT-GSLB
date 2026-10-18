@@ -3,7 +3,7 @@
 /**
  * components/ui/field.tsx
  *
- * Form control styles + the label/control/help wrapper, per the Liman design
+ * Form control styles + the label/control/help wrapper, per the Turksat design
  * system: 32px controls on the card surface with an `input` border (the
  * meaning-bearing edge), a `ring` border plus the focus ring on keyboard
  * focus, and a `destructive` border when invalid. Label, control and help

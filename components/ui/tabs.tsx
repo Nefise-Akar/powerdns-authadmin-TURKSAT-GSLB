@@ -1,7 +1,7 @@
 /**
  * components/ui/tabs.tsx
  *
- * Tab styling, per the Liman design system: a 40px strip with a bottom
+ * Tab styling, per the Turksat design system: a 40px strip with a bottom
  * border; inactive tabs in muted body-medium, the current one in
  * body-strong with the 2px primary `tab-indicator` underline. A count, when
  * shown, is a CountBadge after the label ("All 10").

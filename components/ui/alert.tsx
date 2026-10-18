@@ -1,7 +1,7 @@
 /**
  * components/ui/alert.tsx
  *
- * Section/page-level notice, per the Liman design system. Text runs in a
+ * Section/page-level notice, per the Turksat design system. Text runs in a
  * fixed order: the colored prefix ("Warning:" / "Error:") with a short
  * lowercase status, then the facts and what to do, then (optionally) one
  * action link named after the action.

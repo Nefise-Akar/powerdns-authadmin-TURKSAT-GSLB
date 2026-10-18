@@ -6,9 +6,9 @@
 # host(s). The panel reaches them over the network (configured in the UI).
 services:
   app:
-    # The Liman build, pushed to the organisation's registry - not the upstream
-    # image, which has neither the Liman UI nor GSLB.
-    image: REGISTRY/powerdns-authadmin-liman:VERSION
+    # The Turksat build, pushed to the organisation's registry - not the upstream
+    # image, which has neither the Turksat UI nor GSLB.
+    image: REGISTRY/powerdns-authadmin-turksat:VERSION
     restart: unless-stopped
     ports: ["3000:3000"] # the reverse proxy forwards to this; do not expose it publicly
     depends_on:
