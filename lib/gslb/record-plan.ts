@@ -231,10 +231,7 @@ export function gslbEligibility(
   // update - so a CNAME rrset can never get a second row (region + Public),
   // and an existing one can't be rewritten. Lift this once PowerGSLB is fixed.
   if (types.includes("CNAME")) {
-    return {
-      eligible: false,
-      reason: "CNAME records can't use GSLB yet (PowerGSLB 2.4.3 limitation). Use A/AAAA records.",
-    };
+    return { eligible: false, reason: "Not supported for CNAME yet." };
   }
   return { eligible: true, kind: "address", types };
 }

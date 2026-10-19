@@ -86,10 +86,7 @@ describe("gslbEligibility", () => {
         ZONE,
         "app.example.com.",
       ),
-    ).toEqual({
-      eligible: false,
-      reason: "CNAME records can't use GSLB yet (PowerGSLB 2.4.3 limitation). Use A/AAAA records.",
-    });
+    ).toEqual({ eligible: false, reason: "Not supported for CNAME yet." });
   });
 
   it("refuses the apex", () => {
