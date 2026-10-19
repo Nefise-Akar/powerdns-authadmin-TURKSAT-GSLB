@@ -424,9 +424,25 @@ with the reason. Switching needs `record.create`, `record.update` and
   override. When the backend has regions and some servers have none, saving asks
   first - those servers answer every client, so nobody gets a nearby one.
 - **Health checks** come from presets (HTTP, HTTPS, TCP, TLS, ICMP; HTTP
-  `/health` by default) and are created as `authadmin:` monitors. Mode, weights
-  and TTL are under _Advanced settings_: Failover (default, weight tiers) or
-  Distribute (weighted random); weight 10 and TTL 30 s by default.
+  `/health` by default) and are created as `authadmin:` monitors. The TTL
+  (default 30 s) is under _Advanced settings_.
+- **Load balancing method** is chosen per record in the dialog:
+  - _Global availability_ - the server list order is the priority (use the
+    up/down buttons): the first healthy server answers, the next takes over when
+    it is down. Across sites it still follows that order.
+  - _Round robin_ (default) - all healthy servers are returned together. The DNS
+    server does not rotate answers per query; the resolver picks or reorders.
+  - _Ratio_ - one healthy server per query, chosen at random in proportion to
+    its ratio (0-1000; 3:1 is about 75% / 25%).
+  - _Persistence_ (Round robin only) - a client network keeps getting the same
+    server (PowerGSLB `sticky-hash`, /24 and /64).
+  - CNAME names always return a single answer. **Regions** (topology) decide
+    which servers are preferred for a client's network and apply with every
+    method. There is no "last resort" setting: when every server is down,
+    PowerGSLB serves all of them, so a name never goes empty.
+  - Records created before methods existed keep working: _Failover_ with equal
+    weights shows as Round robin, with unequal weights as Global availability
+    (ordered by weight), and _Distribute_ as Ratio.
 - **Switching off** restores A/AAAA records from the current members (or the
   first member, for a CNAME), with the original TTLs and comments, but only if
   the name still holds the panel's CNAME; otherwise it refuses.

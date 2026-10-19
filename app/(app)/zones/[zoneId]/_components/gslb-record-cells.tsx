@@ -12,7 +12,7 @@
 import { Tag } from "@/components/ui/badge";
 import { buttonClass } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import type { GslbMonitorConfig } from "@/lib/gslb/model";
+import { methodLabel, type GslbMonitorConfig } from "@/lib/gslb/model";
 import type { GslbRecordView, GslbTableContext } from "../_lib/gslb-context";
 
 const NO_PERMISSION_REASON =
@@ -113,8 +113,7 @@ export function GslbManagedValue({
       <span className="flex flex-wrap items-center gap-1.5">
         <Tag>GSLB</Tag>
         <span className="text-muted-foreground text-xs">
-          {record.mode === "failover" ? "Failover" : "Distribute"} ·{" "}
-          {describeMonitor(record.monitor)} · TTL {record.ttl}
+          {methodLabel(record)} · {describeMonitor(record.monitor)} · TTL {record.ttl}
         </span>
       </span>
       <ul className="space-y-0.5">

@@ -6,8 +6,32 @@
  * only - no "server-only", so client components can import it.
  */
 
-/** Failover = weight tiers under round-robin; Distribute = weighted-random. */
-export type GslbMode = "failover" | "distribute";
+/**
+ * How a record picks among its healthy members (ADR-0024 §5):
+ *   - global-availability: the member list order is the priority; the first
+ *     live member answers (ordered failover);
+ *   - round-robin: every live member of the preferred set is returned;
+ *   - ratio: one member per query, chosen at random in proportion to its ratio.
+ * Which members form the "preferred set" is decided by the regions (topology),
+ * not by the method.
+ */
+export type GslbMethod = "global-availability" | "round-robin" | "ratio";
+
+export const GSLB_METHODS: readonly GslbMethod[] = ["global-availability", "round-robin", "ratio"];
+
+/**
+ * The value kept in the record's `mode` column (and in presets). The column
+ * predates methods, so no migration: new writes use the three methods plus
+ * `round-robin+persistence` (persistence only exists with round robin), and
+ * the two legacy values are still read - see {@link decodeMode}.
+ */
+export type GslbMode = GslbMethod | "round-robin+persistence" | "failover" | "distribute";
+
+export interface GslbBalancing {
+  method: GslbMethod;
+  /** Same client network → same member (PowerGSLB `sticky-hash`). Round robin only. */
+  persistence: boolean;
+}
 
 /**
  * A/AAAA names move together as one "address" record; a lone CNAME is a
@@ -57,7 +81,8 @@ export const GSLB_MAX_TTL = 86_400;
 export const GSLB_MAX_WEIGHT = 1000;
 /** Every member starts in the same tier, so all healthy members serve. */
 export const GSLB_DEFAULT_WEIGHT = 10;
-export const GSLB_DEFAULT_MODE: GslbMode = "failover";
+/** Keeps what the panel did before methods existed: all members equal, local first. */
+export const GSLB_DEFAULT_METHOD: GslbMethod = "round-robin";
 export const GSLB_MAX_MEMBERS = 32;
 export const GSLB_DEFAULT_HTTP_PATH = "/health";
 export const GSLB_DEFAULT_EXPECTED_STATUS = "200-399";
@@ -111,4 +136,111 @@ export function gslbZoneChipLabel(health: {
 export function unassignedRegionWarning(unassigned: number, regionCount: number): string | null {
   if (regionCount === 0 || unassigned === 0) return null;
   return `${plural(unassigned, "server")} ${unassigned === 1 ? "has" : "have"} no region, so ${unassigned === 1 ? "it serves" : "they serve"} all clients and won't give users a nearby server. Continue?`;
+}
+
+// =============================================================================
+// Load-balancing methods
+// =============================================================================
+
+/** Step between ordered members' derived weights; room for 32 members under the 1000 cap. */
+const ORDER_WEIGHT_STEP = 10;
+
+/** Value to store in the `mode` column for a method + persistence. */
+export function encodeMode(balancing: GslbBalancing): GslbMode {
+  return balancing.method === "round-robin" && balancing.persistence
+    ? "round-robin+persistence"
+    : balancing.method;
+}
+
+/**
+ * Read a stored `mode` (current or legacy) into a method + persistence, and
+ * the members in the order they should be shown:
+ *   - `failover` with equal weights was effectively round robin;
+ *   - `failover` with unequal weights was a priority list → global
+ *     availability, ordered by descending weight (stable);
+ *   - `distribute` → ratio, weights untouched.
+ */
+export function decodeMode<M extends { weight: number }>(
+  stored: GslbMode,
+  members: readonly M[],
+): GslbBalancing & { members: M[] } {
+  switch (stored) {
+    case "global-availability":
+    case "round-robin":
+    case "ratio":
+      return { method: stored, persistence: false, members: [...members] };
+    case "round-robin+persistence":
+      return { method: "round-robin", persistence: true, members: [...members] };
+    case "distribute":
+      return { method: "ratio", persistence: false, members: [...members] };
+    case "failover": {
+      const equal = members.every((m) => m.weight === members[0]?.weight);
+      if (equal) return { method: "round-robin", persistence: false, members: [...members] };
+      return {
+        method: "global-availability",
+        persistence: false,
+        members: [...members].sort((a, b) => b.weight - a.weight),
+      };
+    }
+  }
+}
+
+/**
+ * Weights the PowerGSLB rows carry for a method:
+ *   - global availability: derived from list position - first is highest, all
+ *     distinct, so exactly one live member is the top tier;
+ *   - round robin: all equal (default weight), one tier;
+ *   - ratio: the operator's ratios as given.
+ */
+export function deriveWeights<M extends { weight: number }>(
+  method: GslbMethod,
+  members: readonly M[],
+): M[] {
+  switch (method) {
+    case "global-availability":
+      return members.map((m, index) => ({
+        ...m,
+        weight: (members.length - index) * ORDER_WEIGHT_STEP,
+      }));
+    case "round-robin":
+      return members.map((m) => ({ ...m, weight: GSLB_DEFAULT_WEIGHT }));
+    case "ratio":
+      return members.map((m) => ({ ...m }));
+  }
+}
+
+/** Why a method + persistence + member combination is not allowed, or null. */
+export function balancingError(
+  balancing: GslbBalancing,
+  members: ReadonlyArray<{ weight: number }>,
+): string | null {
+  if (balancing.persistence && balancing.method !== "round-robin") {
+    return "Persistence only works with the Round robin method.";
+  }
+  if (balancing.method === "ratio" && !members.some((m) => m.weight > 0)) {
+    return "Give at least one server a ratio above 0.";
+  }
+  return null;
+}
+
+export const GSLB_METHOD_LABELS: Record<GslbMethod, string> = {
+  "global-availability": "Global availability",
+  "round-robin": "Round robin",
+  ratio: "Ratio",
+};
+
+/** One sentence per method, shown under the select and in the docs. */
+export const GSLB_METHOD_HELP: Record<GslbMethod, string> = {
+  "global-availability":
+    "Servers are tried in the order listed: the first healthy one answers, the next takes over when it is down.",
+  "round-robin":
+    "All healthy servers are returned together and the resolver picks one (the DNS server itself does not rotate per query).",
+  ratio:
+    "Each query gets one healthy server, chosen at random in proportion to its ratio (a 3:1 ratio sends about 75% / 25%).",
+};
+
+/** Label for a record row: "Round robin", "Round robin · persistent". */
+export function methodLabel(balancing: GslbBalancing): string {
+  const label = GSLB_METHOD_LABELS[balancing.method];
+  return balancing.persistence ? `${label} · persistent` : label;
 }

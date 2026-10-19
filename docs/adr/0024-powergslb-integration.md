@@ -62,10 +62,30 @@ and audit itself.
    prefix first (geo tokens can't place an IP and are ignored); the operator can override it.
    Saving with regions defined but some members region-less asks first: those servers answer all
    clients, so no user gets a nearby one.
-5. **Policies.** Failover uses weight tiers under `round-robin`; distribution uses
-   `weighted-random`. Health checks are chosen from managed presets (ICMP, TCP, HTTP, HTTPS, TLS),
-   with HTTP(S) as the recommended default. All monitors and routings the panel creates are named
-   `authadmin:*` and derived from their settings; anything else in PowerGSLB is never touched.
+5. **Load-balancing method and health checks.** Each record has an explicit method, chosen in the
+   dialog (not hidden under Advanced), modelled on the choices a classic GTM offers:
+   - **Global availability** - ordered failover. The member list order is the priority; weights
+     are derived from position (`(n - index) * 10`: distinct, so the top tier is exactly the first
+     live member) under plain `round-robin`. Region rows and the `Public` fallback rows carry the
+     same weights, so cross-site failover follows the global order.
+   - **Round robin** - all members equal weight under `round-robin`: every live member of the
+     preferred set is returned. PowerGSLB does not rotate per query; the resolver reorders.
+   - **Ratio** - the operator's 0-1000 ratios under `weighted-random`, one answer per query.
+   - **Persistence** (Round robin only) maps to `sticky-hash` (one answer, PowerGSLB's default
+     /24 and /64 prefixes). Sticky-hash treats weight as a tier and global availability is already
+     single-answer, so the combination is rejected server-side.
+     CNAME names always get a single-answer policy. There is deliberately **no "last resort"
+     option**: when every member is down PowerGSLB already serves all of them ("all down = all up"),
+     so a name never goes empty. **Topology is not a method**: it is what regions already do. The
+     method is per record, not per region. The method lives in the existing `mode` column
+     (`global-availability`, `round-robin`, `round-robin+persistence`, `ratio`) - no migration; the
+     legacy `failover` (equal weights → round robin, unequal → global availability ordered by
+     weight) and `distribute` (→ ratio) are still read, in records, presets and restored backups.
+     Health checks are chosen from managed presets (ICMP, TCP, HTTP, HTTPS, TLS), with HTTP(S) as
+     the recommended default. All monitors and routings the panel creates are named `authadmin:*`
+     and derived from their settings, one object per distinct JSON (`failover` = round-robin,
+     `failover-single`, `weighted`, `sticky`; the first three keep their historic names so rows
+     written earlier stay valid); anything else in PowerGSLB is never touched.
 6. **State in the app DB.** `gslb_zones` binds a zone (server/cluster scope + name) to its backend
    once its `gslb.<zone>` is provisioned and delegated. `gslb_records` holds each managed name, the
    original RRset snapshot and its GSLB settings. `gslb_record_presets` keeps a name's last

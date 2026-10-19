@@ -160,9 +160,24 @@ describe("GslbClient", () => {
   it("maps a status:error reply to kind upstream with the message", async () => {
     fetchMock.mockResolvedValue(reply(200, { status: "error", message: "record not changed" }));
     const client = await newClient();
-    await expect(client.saveRecord("records", 4, { name: "x" })).rejects.toMatchObject({
+    await expect(client.saveRecord("records", 0, { name: "x" })).rejects.toMatchObject({
       kind: "upstream",
       message: expect.stringContaining("record not changed") as unknown,
+    });
+  });
+
+  it("treats an update that changes nothing as success", async () => {
+    // A sibling row of the same rrset already picked up the new ttl/policy.
+    fetchMock.mockResolvedValue(reply(200, { status: "error", message: "record not changed" }));
+    const client = await newClient();
+    await expect(client.saveRecord("records", 4, { name: "x" })).resolves.toBeUndefined();
+  });
+
+  it("still throws other upstream errors on update", async () => {
+    fetchMock.mockResolvedValue(reply(200, { status: "error", message: "internal error" }));
+    const client = await newClient();
+    await expect(client.saveRecord("records", 4, { name: "x" })).rejects.toMatchObject({
+      kind: "upstream",
     });
   });
 

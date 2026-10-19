@@ -16,11 +16,12 @@
 
 import { normalizeIpAddress } from "@/lib/validators/gslb-region-rules";
 import {
+  deriveWeights,
   GSLB_OWNED_PREFIX,
   GSLB_PUBLIC_VIEW,
   GSLB_SUBZONE_LABEL,
   type GslbMember,
-  type GslbMode,
+  type GslbBalancing,
   type GslbMonitorConfig,
   type GslbRecordKind,
   type GslbRRsetSnapshot,
@@ -333,24 +334,47 @@ export function monitorFor(config: GslbMonitorConfig, family: MemberFamily): Gsl
   }
 }
 
+/**
+ * Owned routing policies. PowerGSLB keys `routings` on the name only, but
+ * each distinct JSON still gets exactly one object here. The first three keep
+ * the names the panel has always used (`failover` is plain round-robin, whose
+ * answers are the top weight tier), so rows written before methods existed
+ * keep pointing at a policy that is still correct.
+ */
 export const ROUTINGS = {
+  /** round-robin, up to 8 answers from the top weight tier. */
   failover: { name: `${GSLB_OWNED_PREFIX}failover`, json: JSON.stringify({ type: "round-robin" }) },
+  /** round-robin, one answer - for CNAME names. */
   failoverSingle: {
     name: `${GSLB_OWNED_PREFIX}failover-single`,
     json: JSON.stringify({ type: "round-robin", max_answers: 1 }),
   },
+  /** weighted-random, one answer by ratio. */
   weighted: {
     name: `${GSLB_OWNED_PREFIX}weighted`,
     json: JSON.stringify({ type: "weighted-random", max_answers: 1 }),
   },
+  /** sticky-hash, one answer per client network (default /24 and /64). */
+  sticky: {
+    name: `${GSLB_OWNED_PREFIX}sticky`,
+    json: JSON.stringify({ type: "sticky-hash", max_answers: 1 }),
+  },
 } as const satisfies Record<string, GslbObject>;
 
 /**
- * Routing for a record. A CNAME RRset may hold one answer only, so a cname
- * record never gets the multi-answer failover policy.
+ * Routing for a record:
+ *   - persistence (round robin only) → sticky-hash, one answer;
+ *   - ratio → weighted-random, one answer;
+ *   - global availability / round robin → round-robin over the top weight
+ *     tier. Global availability's weights are all distinct, so that tier is
+ *     exactly the first live member; round robin's are all equal, so it is
+ *     every live member.
+ * A CNAME RRset can hold one answer only, so a cname record never gets the
+ * multi-answer round-robin policy.
  */
-export function routingFor(mode: GslbMode, kind: GslbRecordKind): GslbObject {
-  if (mode === "distribute") return ROUTINGS.weighted;
+export function routingFor(balancing: GslbBalancing, kind: GslbRecordKind): GslbObject {
+  if (balancing.persistence) return ROUTINGS.sticky;
+  if (balancing.method === "ratio") return ROUTINGS.weighted;
   return kind === "cname" ? ROUTINGS.failoverSingle : ROUTINGS.failover;
 }
 
@@ -358,10 +382,9 @@ export function routingFor(mode: GslbMode, kind: GslbRecordKind): GslbObject {
 // Rows
 // =============================================================================
 
-export interface RecordPlanInput {
+export interface RecordPlanInput extends GslbBalancing {
   target: GslbTarget;
   kind: GslbRecordKind;
-  mode: GslbMode;
   monitor: GslbMonitorConfig;
   ttl: number;
   members: readonly GslbMember[];
@@ -377,11 +400,15 @@ export interface RecordPlanInput {
 export function planMemberRows(input: RecordPlanInput): PlannedRow[] {
   const domain = stripDot(canonicalName(input.target.domain));
   const label = input.target.label;
-  const policy = routingFor(input.mode, input.kind).name;
+  const policy = routingFor(input, input.kind).name;
+  // Weights follow the method (list order / equal / ratio), the same for a
+  // member's region row and its Public row, so cross-site failover keeps the
+  // global order.
+  const members = deriveWeights(input.method, input.members);
   const rows: PlannedRow[] = [];
   const seen = new Set<string>();
 
-  for (const member of input.members) {
+  for (const member of members) {
     const normalized = normalizeMemberContent(input.kind, member.content);
     if (!normalized.ok) throw new Error(normalized.error);
     const family: MemberFamily =

@@ -10,11 +10,14 @@
 import "server-only";
 import { z } from "zod";
 import {
+  balancingError,
   GSLB_MAX_MEMBERS,
+  GSLB_METHODS,
   GSLB_MAX_TTL,
   GSLB_MAX_WEIGHT,
   GSLB_MIN_TTL,
   type GslbMember,
+  type GslbMethod,
   type GslbRecordKind,
 } from "@/lib/gslb/model";
 import { normalizeMemberContent } from "@/lib/gslb/record-plan";
@@ -65,9 +68,11 @@ export const gslbMemberSchema = z.object({
     .max(GSLB_MAX_WEIGHT, `Weight must be 0-${GSLB_MAX_WEIGHT}.`),
 });
 
-/** Mode, health check, TTL and members of a GSLB record. */
+/** Load-balancing method, health check, TTL and members of a GSLB record. */
 export const gslbSettingsShape = {
-  mode: z.enum(["failover", "distribute"]),
+  method: z.enum(GSLB_METHODS as [GslbMethod, ...GslbMethod[]]),
+  /** Same client network → same server. Round robin only (checked below). */
+  persistence: z.boolean().default(false),
   monitor: gslbMonitorSchema,
   ttl: z
     .number()
@@ -93,15 +98,33 @@ const targetShape = {
   name: z.string().trim().min(1).max(253),
 };
 
-export const enableGslbRecordSchema = z.object({
-  ...targetShape,
-  ...gslbSettingsShape,
-  /** Required only for a zone's first GSLB record when several backends are enabled. */
-  backendId: z.string().min(1).max(64).optional(),
-  expected: expectedSchema,
-});
+/** Method/persistence/ratio rules that span fields; keeps one message per problem. */
+function checkBalancing(
+  value: { method: GslbMethod; persistence: boolean; members: ReadonlyArray<{ weight: number }> },
+  ctx: z.RefinementCtx,
+): void {
+  const message = balancingError(value, value.members);
+  if (message)
+    ctx.addIssue({
+      code: "custom",
+      message,
+      path: [value.persistence ? "persistence" : "members"],
+    });
+}
 
-export const updateGslbRecordSchema = z.object({ ...targetShape, ...gslbSettingsShape });
+export const enableGslbRecordSchema = z
+  .object({
+    ...targetShape,
+    ...gslbSettingsShape,
+    /** Required only for a zone's first GSLB record when several backends are enabled. */
+    backendId: z.string().min(1).max(64).optional(),
+    expected: expectedSchema,
+  })
+  .superRefine(checkBalancing);
+
+export const updateGslbRecordSchema = z
+  .object({ ...targetShape, ...gslbSettingsShape })
+  .superRefine(checkBalancing);
 
 export const disableGslbRecordSchema = z.object(targetShape);
 

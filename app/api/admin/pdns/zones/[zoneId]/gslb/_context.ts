@@ -17,6 +17,7 @@ import { findDefaultPdnsServer, findPdnsServerBySlug } from "@/lib/db/repositori
 import { horizonScopeFor } from "@/lib/db/repositories/zone-horizons";
 import type { GslbRecordRow, PdnsServer } from "@/lib/db/schema";
 import { ForbiddenError, ValidationError } from "@/lib/errors";
+import { decodeMode } from "@/lib/gslb/model";
 import { canonicalName, type ZoneRRset } from "@/lib/gslb/record-plan";
 import { GslbPlanError } from "@/lib/gslb/record-sync";
 import { normalizeZoneId } from "@/lib/pdns/client";
@@ -115,13 +116,16 @@ export function expectedRRsetGuard(
 export function gslbRecordAuditSnapshot(
   row: Pick<GslbRecordRow, "name" | "kind" | "backendId" | "mode" | "monitor" | "ttl" | "members">,
 ) {
+  // Legacy rows (failover/distribute) are shown as the method they behave as.
+  const decoded = decodeMode(row.mode, row.members);
   return {
     name: row.name,
     kind: row.kind,
     backendId: row.backendId,
-    mode: row.mode,
+    method: decoded.method,
+    persistence: decoded.persistence,
     monitor: row.monitor,
     ttl: row.ttl,
-    members: row.members,
+    members: decoded.members,
   };
 }

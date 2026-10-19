@@ -35,7 +35,7 @@ import {
 } from "./objects";
 import type {
   GslbMember,
-  GslbMode,
+  GslbBalancing,
   GslbMonitorConfig,
   GslbRecordKind,
   GslbRRsetSnapshot,
@@ -80,8 +80,7 @@ export class GslbPlanError extends Error {
   }
 }
 
-export interface GslbRecordSettings {
-  mode: GslbMode;
+export interface GslbRecordSettings extends GslbBalancing {
   monitor: GslbMonitorConfig;
   ttl: number;
   members: GslbMember[];
@@ -120,7 +119,7 @@ async function ensureRowObjects(client: GslbClient, input: RecordPlanInput): Pro
   for (const monitor of monitorsForMembers(input)) {
     await ensureOwnedObject(client, "monitors", monitor);
   }
-  await ensureOwnedObject(client, "routings", routingFor(input.mode, input.kind));
+  await ensureOwnedObject(client, "routings", routingFor(input, input.kind));
 }
 
 /**

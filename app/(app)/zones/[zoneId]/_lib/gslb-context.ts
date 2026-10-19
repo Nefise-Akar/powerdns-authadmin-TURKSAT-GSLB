@@ -24,12 +24,13 @@ import { listGslbRegions } from "@/lib/db/repositories/gslb-regions";
 import { horizonScopeFor } from "@/lib/db/repositories/zone-horizons";
 import type { GslbBackend, PdnsServer } from "@/lib/db/schema";
 import { GslbError, gslbFailureHint } from "@/lib/gslb/errors";
-import type {
-  GslbMember,
-  GslbMode,
-  GslbMonitorConfig,
-  GslbRecordKind,
-  GslbRecordPreset,
+import {
+  decodeMode,
+  type GslbBalancing,
+  type GslbMember,
+  type GslbMonitorConfig,
+  type GslbRecordKind,
+  type GslbRecordPreset,
 } from "@/lib/gslb/model";
 import { readAllStatus, type MemberState } from "@/lib/gslb/objects";
 import {
@@ -53,10 +54,9 @@ export interface GslbMemberView {
   state: MemberState | null;
 }
 
-export interface GslbRecordView {
+export interface GslbRecordView extends GslbBalancing {
   name: string;
   kind: GslbRecordKind;
-  mode: GslbMode;
   monitor: GslbMonitorConfig;
   ttl: number;
   members: GslbMemberView[];
@@ -196,14 +196,18 @@ export async function loadGslbTableContext(args: {
 
   const recordViews: Record<string, GslbRecordView> = {};
   for (const record of records) {
+    // Legacy failover/distribute rows are shown as the method they behave as,
+    // members in priority order.
+    const balancing = decodeMode(record.mode, record.members);
     recordViews[record.name] = {
       name: record.name,
       kind: record.kind,
-      mode: record.mode,
+      method: balancing.method,
+      persistence: balancing.persistence,
       monitor: record.monitor,
       ttl: record.ttl,
       members: memberViews(
-        record.members,
+        balancing.members,
         recordTarget(record.name, zoneName),
         regionNames,
         status.states,

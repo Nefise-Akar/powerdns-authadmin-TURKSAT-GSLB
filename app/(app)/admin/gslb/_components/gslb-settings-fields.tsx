@@ -13,7 +13,8 @@
  */
 
 import { Checkbox } from "@/components/ui/checkbox";
-import { buttonClass } from "@/components/ui/button";
+import { ArrowDown, ArrowUp } from "lucide-react";
+import { buttonClass, iconButtonClass } from "@/components/ui/button";
 import { Tag } from "@/components/ui/badge";
 import { Disclosure } from "@/components/ui/disclosure";
 import { Field, inputClass } from "@/components/ui/field";
@@ -22,15 +23,18 @@ import { SelectMenu } from "@/components/ui/select-menu";
 import {
   GSLB_DEFAULT_EXPECTED_STATUS,
   GSLB_DEFAULT_HTTP_PATH,
-  GSLB_DEFAULT_MODE,
   GSLB_DEFAULT_TTL,
   GSLB_DEFAULT_WEIGHT,
   GSLB_MAX_MEMBERS,
   GSLB_MAX_TTL,
   GSLB_MAX_WEIGHT,
+  GSLB_METHOD_HELP,
+  GSLB_METHOD_LABELS,
+  GSLB_METHODS,
   GSLB_MIN_TTL,
+  type GslbBalancing,
   type GslbMember,
-  type GslbMode,
+  type GslbMethod,
   type GslbMonitorConfig,
   type GslbMonitorType,
   type GslbRecordKind,
@@ -151,17 +155,61 @@ export function membersPayload(members: readonly MemberDraft[]): GslbMember[] {
   }));
 }
 
-/** Advanced settings differ from the defaults - open the section so nothing in effect is hidden. */
-export function advancedDiffers(settings: {
-  mode: GslbMode;
-  ttl: number;
-  members: ReadonlyArray<{ weight: number }>;
-}): boolean {
+/** Advanced settings (the TTL) differ from the default - open the section so nothing in effect is hidden. */
+export function advancedDiffers(settings: { ttl: number }): boolean {
+  return settings.ttl !== GSLB_DEFAULT_TTL;
+}
+
+/**
+ * Load-balancing method + persistence. The method is the main choice of a
+ * GSLB record, so it sits in the body, not under Advanced. Persistence maps to
+ * sticky-hash, which only makes sense with Round robin.
+ */
+export function MethodFields({
+  value,
+  onChange,
+}: {
+  value: GslbBalancing;
+  onChange: (next: GslbBalancing) => void;
+}) {
+  const persistenceAvailable = value.method === "round-robin";
   return (
-    settings.mode !== GSLB_DEFAULT_MODE ||
-    settings.ttl !== GSLB_DEFAULT_TTL ||
-    settings.members.some((m) => m.weight !== GSLB_DEFAULT_WEIGHT)
+    <fieldset className="space-y-3">
+      <legend className="text-label text-foreground">Load balancing method</legend>
+      <SelectMenu
+        value={value.method}
+        onChange={(method) =>
+          // Persistence has no meaning outside Round robin, so it never lingers.
+          onChange({ method, persistence: method === "round-robin" ? value.persistence : false })
+        }
+        ariaLabel="Load balancing method"
+        options={GSLB_METHODS.map((method) => ({
+          value: method,
+          label: GSLB_METHOD_LABELS[method],
+          description: GSLB_METHOD_HELP[method],
+        }))}
+      />
+      <p className="text-muted-foreground text-xs">{GSLB_METHOD_HELP[value.method]}</p>
+      <span
+        className="inline-block"
+        title={persistenceAvailable ? undefined : "Persistence is only available with Round robin."}
+      >
+        <Checkbox
+          checked={value.persistence}
+          disabled={!persistenceAvailable}
+          onChange={(persistence) => onChange({ ...value, persistence })}
+          label="Persistence - a client network keeps getting the same server"
+        />
+      </span>
+    </fieldset>
   );
+}
+
+function moveItem<T>(list: readonly T[], from: number, to: number): T[] {
+  const next = [...list];
+  const [item] = next.splice(from, 1);
+  next.splice(to, 0, item!);
+  return next;
 }
 
 export function MonitorFields({
@@ -236,12 +284,15 @@ export function MonitorFields({
 
 export function MemberRows({
   kind,
+  method,
   members,
   regions,
   onChange,
   nextKey,
 }: {
   kind: GslbRecordKind;
+  /** Decides the per-server control: order (global availability), ratio, or none. */
+  method: GslbMethod;
   members: MemberDraft[];
   regions: readonly RegionChoice[];
   onChange: (next: MemberDraft[]) => void;
@@ -270,9 +321,12 @@ export function MemberRows({
     <fieldset className="space-y-2">
       <legend className="text-label text-foreground">Members</legend>
       <p className="text-muted-foreground text-xs">
-        Each member answers for its region first; if every member of a region is down, clients there
-        get the others.
-        {kind === "cname" ? " Members are host names (one answer at a time)." : ""}
+        Regions decide which servers are preferred for a client&apos;s network (topology). If every
+        server of a client&apos;s region is down, that client gets the others.
+        {method === "global-availability"
+          ? " The order below is the priority: first is preferred."
+          : ""}
+        {kind === "cname" ? " Servers are host names (one answer at a time)." : ""}
       </p>
       {members.map((member, index) => (
         <div key={member.key} className="flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -298,6 +352,46 @@ export function MemberRows({
               </Tag>
             ) : null}
           </span>
+          {method === "global-availability" ? (
+            <span
+              className="flex items-center gap-1"
+              role="group"
+              aria-label={`Member ${index + 1} order`}
+            >
+              <span className="text-muted-foreground w-10 text-xs tabular-nums">#{index + 1}</span>
+              <button
+                type="button"
+                onClick={() => onChange(moveItem(members, index, index - 1))}
+                disabled={index === 0}
+                aria-label={`Move member ${index + 1} up`}
+                className={iconButtonClass("sm")}
+              >
+                <ArrowUp aria-hidden />
+              </button>
+              <button
+                type="button"
+                onClick={() => onChange(moveItem(members, index, index + 1))}
+                disabled={index === members.length - 1}
+                aria-label={`Move member ${index + 1} down`}
+                className={iconButtonClass("sm")}
+              >
+                <ArrowDown aria-hidden />
+              </button>
+            </span>
+          ) : null}
+          {method === "ratio" ? (
+            <span className="flex items-center gap-1.5">
+              <span className="text-muted-foreground text-xs">Ratio</span>
+              <NumberInput
+                value={member.weight}
+                min={0}
+                max={GSLB_MAX_WEIGHT}
+                ariaLabel={`Member ${index + 1} ratio`}
+                onChange={(weight) => update(member.key, { weight })}
+                className="w-20"
+              />
+            </span>
+          ) : null}
           <button
             type="button"
             onClick={() => onChange(members.filter((m) => m.key !== member.key))}
@@ -343,72 +437,16 @@ export function MemberRows({
 }
 
 export function AdvancedFields({
-  mode,
-  onMode,
   ttl,
   onTtl,
-  members,
-  onMembers,
   defaultOpen,
 }: {
-  mode: GslbMode;
-  onMode: (mode: GslbMode) => void;
   ttl: number;
   onTtl: (ttl: number) => void;
-  members: MemberDraft[];
-  onMembers: (next: MemberDraft[]) => void;
   defaultOpen: boolean;
 }) {
   return (
     <Disclosure label="Advanced settings" defaultOpen={defaultOpen} bodyClassName="mt-3 space-y-4">
-      <Field
-        label="Mode"
-        hint="Both modes fail over automatically when a server is down; the mode only decides whether healthy servers in the same region share traffic."
-      >
-        <SelectMenu
-          value={mode}
-          onChange={onMode}
-          ariaLabel="Mode"
-          options={[
-            {
-              value: "failover",
-              label: "Failover",
-              description: "Answer from the highest-weight healthy members",
-            },
-            {
-              value: "distribute",
-              label: "Distribute",
-              description: "Pick one healthy member at random, by weight",
-            },
-          ]}
-        />
-      </Field>
-      <fieldset className="space-y-2">
-        <legend className="text-label text-foreground">Weights</legend>
-        <p className="text-muted-foreground text-xs">
-          {mode === "failover"
-            ? "Failover: only the highest-weight healthy members answer; lower weights are standby."
-            : "Distribute: each member's share of answers is proportional to its weight."}{" "}
-          0-{GSLB_MAX_WEIGHT}.
-        </p>
-        {members.map((member, index) => (
-          <div key={member.key} className="flex items-center gap-2">
-            <span className="text-muted-foreground min-w-0 flex-1 truncate font-mono text-xs">
-              {member.content || `Member ${index + 1}`}
-            </span>
-            <NumberInput
-              value={member.weight}
-              min={0}
-              max={GSLB_MAX_WEIGHT}
-              ariaLabel={`Member ${index + 1} weight`}
-              onChange={(weight) =>
-                onMembers(members.map((m) => (m.key === member.key ? { ...m, weight } : m)))
-              }
-              className="w-24"
-            />
-          </div>
-        ))}
-      </fieldset>
       <Field
         label="TTL (seconds)"
         hint="Short TTLs make failover faster: resolvers re-ask sooner after a member goes down."

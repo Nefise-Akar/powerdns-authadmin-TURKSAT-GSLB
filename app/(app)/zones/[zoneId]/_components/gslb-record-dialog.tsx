@@ -22,9 +22,11 @@ import { Dialog, useDialog } from "@/components/ui/dialog";
 import { Field } from "@/components/ui/field";
 import { SelectMenu } from "@/components/ui/select-menu";
 import {
-  GSLB_DEFAULT_MODE,
+  balancingError,
+  decodeMode,
+  GSLB_DEFAULT_METHOD,
   GSLB_DEFAULT_TTL,
-  type GslbMode,
+  type GslbBalancing,
   type GslbRecordKind,
 } from "@/lib/gslb/model";
 import { useGslbFetch } from "@/app/(app)/admin/gslb/_lib/use-gslb-fetch";
@@ -35,6 +37,7 @@ import {
   memberDraft,
   MemberRows,
   membersPayload,
+  MethodFields,
   monitorDraftFrom,
   MonitorFields,
   monitorFromDraft,
@@ -79,7 +82,11 @@ export function GslbRecordDialog({ target, context, zoneIdEncoded, serverSlug, o
 
   // Last settings for this name (GSLB was on before) - offered as the
   // starting point, applied only when the operator confirms.
-  const preset = existing ? null : (context.presets[target.name] ?? null);
+  const rawPreset = existing ? null : (context.presets[target.name] ?? null);
+  // Presets may hold a legacy mode: map it, and keep the members in priority order.
+  const preset = rawPreset
+    ? { ...rawPreset, ...decodeMode(rawPreset.mode, rawPreset.members) }
+    : null;
   const presetBackendUsable =
     preset !== null && context.backends.some((b) => b.id === preset.backendId);
 
@@ -99,14 +106,28 @@ export function GslbRecordDialog({ target, context, zoneIdEncoded, serverSlug, o
   const sameContent = (a: string, b: string) =>
     a.replace(/\.$/, "").toLowerCase() === b.replace(/\.$/, "").toLowerCase();
 
-  /** Members from the current contents, with a preset's region/weight where it still matches. */
+  /**
+   * Members from the current contents. With a preset, the members it
+   * remembers come first in its (priority) order with their region/weight, and
+   * contents it doesn't know are appended with defaults.
+   */
   function membersFromCurrent(usePreset: boolean): MemberDraft[] {
-    return target.currentContents.map((content, index) => {
-      const remembered = usePreset
-        ? preset?.members.find((m) => sameContent(m.content, content))
-        : undefined;
-      return memberDraft(index, content.replace(/\.$/, ""), regions, remembered);
-    });
+    const current = target.currentContents.map((c) => c.replace(/\.$/, ""));
+    const remembered = usePreset ? (preset?.members ?? []) : [];
+    const ordered = [
+      ...remembered
+        .map((m) => current.find((c) => sameContent(c, m.content)))
+        .filter((c): c is string => c !== undefined),
+      ...current.filter((c) => !remembered.some((m) => sameContent(m.content, c))),
+    ];
+    return ordered.map((content, index) =>
+      memberDraft(
+        index,
+        content,
+        regions,
+        remembered.find((m) => sameContent(m.content, content)),
+      ),
+    );
   }
 
   const [members, setMembers] = useState<MemberDraft[]>(() =>
@@ -119,7 +140,10 @@ export function GslbRecordDialog({ target, context, zoneIdEncoded, serverSlug, o
   const [monitor, setMonitor] = useState<MonitorDraft>(() =>
     monitorDraftFrom(existing?.monitor ?? preset?.monitor ?? null, target.kind),
   );
-  const [mode, setMode] = useState<GslbMode>(existing?.mode ?? preset?.mode ?? GSLB_DEFAULT_MODE);
+  const [balancing, setBalancing] = useState<GslbBalancing>({
+    method: existing?.method ?? preset?.method ?? GSLB_DEFAULT_METHOD,
+    persistence: existing?.persistence ?? preset?.persistence ?? false,
+  });
   const [ttl, setTtl] = useState(existing?.ttl ?? preset?.ttl ?? GSLB_DEFAULT_TTL);
   const [presetLoaded, setPresetLoaded] = useState(preset !== null);
   const [saving, setSaving] = useState(false);
@@ -133,7 +157,7 @@ export function GslbRecordDialog({ target, context, zoneIdEncoded, serverSlug, o
   function resetToDefaults() {
     setMembers(membersFromCurrent(false));
     setMonitor(monitorDraftFrom(null, target.kind));
-    setMode(GSLB_DEFAULT_MODE);
+    setBalancing({ method: GSLB_DEFAULT_METHOD, persistence: false });
     setTtl(GSLB_DEFAULT_TTL);
     setBackendId(defaultBackend);
     setPresetLoaded(false);
@@ -152,6 +176,14 @@ export function GslbRecordDialog({ target, context, zoneIdEncoded, serverSlug, o
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const invalid = balancingError(
+      balancing,
+      members.map((m) => ({ weight: m.weight })),
+    );
+    if (invalid) {
+      setError(invalid);
+      return;
+    }
     if (!(await confirmUnassignedRegions(confirm, members, regions.length))) return;
     setError(null);
     setFieldErrors([]);
@@ -159,7 +191,8 @@ export function GslbRecordDialog({ target, context, zoneIdEncoded, serverSlug, o
     const body: Record<string, unknown> = {
       serverSlug,
       name: target.name,
-      mode,
+      method: balancing.method,
+      persistence: balancing.persistence,
       ttl,
       monitor: monitorFromDraft(monitor),
       members: membersPayload(members),
@@ -257,22 +290,16 @@ export function GslbRecordDialog({ target, context, zoneIdEncoded, serverSlug, o
         ) : null}
 
         <MonitorFields kind={target.kind} value={monitor} onChange={setMonitor} />
+        <MethodFields value={balancing} onChange={setBalancing} />
         <MemberRows
           kind={target.kind}
+          method={balancing.method}
           members={members}
           regions={regions}
           onChange={setMembers}
           nextKey={nextKey}
         />
-        <AdvancedFields
-          mode={mode}
-          onMode={setMode}
-          ttl={ttl}
-          onTtl={setTtl}
-          members={members}
-          onMembers={setMembers}
-          defaultOpen={openAdvanced}
-        />
+        <AdvancedFields ttl={ttl} onTtl={setTtl} defaultOpen={openAdvanced} />
 
         {error ? (
           <Alert variant="destructive" live>

@@ -6,7 +6,16 @@
  */
 
 import { describe, expect, it } from "vitest";
-import { gslbZoneChipLabel, unassignedRegionWarning, type GslbMember } from "./model";
+import {
+  balancingError,
+  decodeMode,
+  deriveWeights,
+  encodeMode,
+  gslbZoneChipLabel,
+  methodLabel,
+  unassignedRegionWarning,
+  type GslbMember,
+} from "./model";
 import {
   delegationRRsetKeys,
   diffRows,
@@ -28,6 +37,7 @@ import {
   stripGslbForClone,
   recordTarget,
   relativeLabel,
+  ROUTINGS,
   routingFor,
   targetName,
   zoneGslbHealth,
@@ -212,16 +222,50 @@ describe("monitorFor", () => {
 });
 
 describe("routingFor", () => {
-  it("gives CNAME records a single-answer policy", () => {
-    expect(routingFor("failover", "address").json).toBe('{"type":"round-robin"}');
-    expect(routingFor("failover", "cname")).toEqual({
+  const rr = { method: "round-robin", persistence: false } as const;
+
+  it("uses round-robin over the top weight tier for global availability and round robin", () => {
+    for (const method of ["global-availability", "round-robin"] as const) {
+      expect(routingFor({ method, persistence: false }, "address")).toEqual({
+        name: "authadmin:failover",
+        json: '{"type":"round-robin"}',
+      });
+    }
+  });
+
+  it("uses weighted-random with one answer for ratio", () => {
+    expect(routingFor({ method: "ratio", persistence: false }, "address")).toEqual({
+      name: "authadmin:weighted",
+      json: '{"type":"weighted-random","max_answers":1}',
+    });
+  });
+
+  it("maps persistence to sticky-hash with one answer", () => {
+    expect(routingFor({ method: "round-robin", persistence: true }, "address")).toEqual({
+      name: "authadmin:sticky",
+      json: '{"type":"sticky-hash","max_answers":1}',
+    });
+  });
+
+  it("gives CNAME records a single-answer policy for every method", () => {
+    expect(routingFor(rr, "cname")).toEqual({
       name: "authadmin:failover-single",
       json: '{"type":"round-robin","max_answers":1}',
     });
-    expect(routingFor("distribute", "cname").name).toBe("authadmin:weighted");
-    expect(routingFor("distribute", "address").json).toBe(
-      '{"type":"weighted-random","max_answers":1}',
+    expect(routingFor({ method: "global-availability", persistence: false }, "cname").name).toBe(
+      "authadmin:failover-single",
     );
+    expect(routingFor({ method: "ratio", persistence: false }, "cname").name).toBe(
+      "authadmin:weighted",
+    );
+    expect(routingFor({ method: "round-robin", persistence: true }, "cname").name).toBe(
+      "authadmin:sticky",
+    );
+  });
+
+  it("never defines two objects with identical JSON", () => {
+    const jsons = Object.values(ROUTINGS).map((r) => r.json);
+    expect(new Set(jsons).size).toBe(jsons.length);
   });
 });
 
@@ -234,7 +278,8 @@ describe("planMemberRows", () => {
   const input = {
     target: recordTarget("www.example.com.", ZONE),
     kind: "address" as const,
-    mode: "failover" as const,
+    method: "ratio" as const,
+    persistence: false,
     monitor: { type: "http" as const, path: "/health", expectedStatus: "200-399" },
     ttl: 30,
     members,
@@ -252,7 +297,7 @@ describe("planMemberRows", () => {
     expect(
       rows.every((r) => r.domain === "gslb.example.com" && r.name === "www" && r.ttl === 30),
     ).toBe(true);
-    expect(rows.every((r) => r.policy === "authadmin:failover" && r.disabled === 0)).toBe(true);
+    expect(rows.every((r) => r.policy === "authadmin:weighted" && r.disabled === 0)).toBe(true);
     expect(rows[2]!.monitor).toBe("authadmin:http:/health:200-399:v6");
   });
 
@@ -266,6 +311,7 @@ describe("planMemberRows", () => {
   it("writes CNAME members without the trailing dot under the single-answer policy", () => {
     const rows = planMemberRows({
       ...input,
+      method: "round-robin",
       target: recordTarget("app.example.com.", ZONE),
       kind: "cname",
       members: [{ content: "edge-a.example.net.", region: "site-a", weight: 10 }],
@@ -806,5 +852,185 @@ describe("stripGslbForClone", () => {
         delegationKeys: [],
       }),
     ).toEqual({ rrsets: plain, plainNames: 0 });
+  });
+});
+
+describe("planMemberRows by method", () => {
+  const members: GslbMember[] = [
+    { content: "192.0.2.1", region: "a", weight: 7 },
+    { content: "192.0.2.2", region: "b", weight: 99 },
+    { content: "192.0.2.3", region: null, weight: 1 },
+  ];
+  const base = {
+    target: recordTarget("www.example.com.", ZONE),
+    kind: "address" as const,
+    monitor: { type: "icmp" as const },
+    ttl: 30,
+    members,
+  };
+  const weights = (rows: ReturnType<typeof planMemberRows>) =>
+    rows.map((r) => `${r.view}:${r.content}:${r.weight}`);
+
+  it("global availability: weights follow list order, identical in region and Public rows", () => {
+    const rows = planMemberRows({ ...base, method: "global-availability", persistence: false });
+    expect(weights(rows)).toEqual([
+      "authadmin:a:192.0.2.1:30",
+      "Public:192.0.2.1:30",
+      "authadmin:b:192.0.2.2:20",
+      "Public:192.0.2.2:20",
+      "Public:192.0.2.3:10",
+    ]);
+    expect(new Set(rows.map((r) => r.policy))).toEqual(new Set(["authadmin:failover"]));
+  });
+
+  it("round robin: all weights equal under round-robin", () => {
+    const rows = planMemberRows({ ...base, method: "round-robin", persistence: false });
+    expect(new Set(rows.map((r) => r.weight))).toEqual(new Set([10]));
+    expect(rows[0]!.policy).toBe("authadmin:failover");
+  });
+
+  it("round robin with persistence: sticky-hash", () => {
+    const rows = planMemberRows({ ...base, method: "round-robin", persistence: true });
+    expect(new Set(rows.map((r) => r.policy))).toEqual(new Set(["authadmin:sticky"]));
+  });
+
+  it("ratio: the given ratios under weighted-random", () => {
+    const rows = planMemberRows({ ...base, method: "ratio", persistence: false });
+    expect(weights(rows)).toEqual([
+      "authadmin:a:192.0.2.1:7",
+      "Public:192.0.2.1:7",
+      "authadmin:b:192.0.2.2:99",
+      "Public:192.0.2.2:99",
+      "Public:192.0.2.3:1",
+    ]);
+    expect(rows[0]!.policy).toBe("authadmin:weighted");
+  });
+
+  it("CNAME names keep a single-answer policy under every method", () => {
+    const cname = {
+      ...base,
+      target: recordTarget("app.example.com.", ZONE),
+      kind: "cname" as const,
+      members: [{ content: "edge.example.net.", region: null, weight: 10 }],
+    };
+    const policies = (
+      method: "global-availability" | "round-robin" | "ratio",
+      persistence = false,
+    ) => planMemberRows({ ...cname, method, persistence })[0]!.policy;
+    expect(policies("global-availability")).toBe("authadmin:failover-single");
+    expect(policies("round-robin")).toBe("authadmin:failover-single");
+    expect(policies("ratio")).toBe("authadmin:weighted");
+    expect(policies("round-robin", true)).toBe("authadmin:sticky");
+  });
+
+  it("changing the method rewrites weights/policy in place without emptying the name", () => {
+    const toRemote = (rows: ReturnType<typeof planMemberRows>): RemoteRow[] =>
+      rows.map((r, i) => ({
+        recid: i + 1,
+        name_type: r.name_type,
+        view: r.view,
+        content: r.content,
+        ttl: r.ttl,
+        policy: r.policy,
+        monitor: r.monitor,
+        weight: r.weight,
+        disabled: r.disabled,
+      }));
+    const before = toRemote(planMemberRows({ ...base, method: "round-robin", persistence: false }));
+    const diff = diffRows(before, planMemberRows({ ...base, method: "ratio", persistence: false }));
+    // Same members, so every row is updated in place: nothing inserted or removed.
+    expect(diff.insert).toEqual([]);
+    expect(diff.remove).toEqual([]);
+    expect(diff.update).toHaveLength(before.length);
+    expect(new Set(diff.update.map((u) => u.row.policy))).toEqual(new Set(["authadmin:weighted"]));
+  });
+});
+
+describe("load-balancing methods", () => {
+  const three = [
+    { content: "a", weight: 5 },
+    { content: "b", weight: 5 },
+    { content: "c", weight: 5 },
+  ];
+
+  it("derives distinct descending weights from order, within the validator cap", () => {
+    expect(deriveWeights("global-availability", three).map((m) => m.weight)).toEqual([30, 20, 10]);
+    const max = Array.from({ length: 32 }, (_, i) => ({ content: String(i), weight: 0 }));
+    const weights = deriveWeights("global-availability", max).map((m) => m.weight);
+    expect(weights[0]).toBe(320);
+    expect(weights.at(-1)).toBe(10);
+    expect(new Set(weights).size).toBe(32);
+    expect(Math.max(...weights)).toBeLessThanOrEqual(1000);
+  });
+
+  it("gives round robin equal weights and passes ratios through", () => {
+    expect(
+      deriveWeights("round-robin", [
+        { content: "a", weight: 3 },
+        { content: "b", weight: 9 },
+      ]).map((m) => m.weight),
+    ).toEqual([10, 10]);
+    expect(
+      deriveWeights("ratio", [
+        { content: "a", weight: 3 },
+        { content: "b", weight: 9 },
+      ]).map((m) => m.weight),
+    ).toEqual([3, 9]);
+  });
+
+  it("allows persistence only with round robin, and a ratio needs a non-zero member", () => {
+    expect(balancingError({ method: "round-robin", persistence: true }, three)).toBeNull();
+    expect(balancingError({ method: "ratio", persistence: true }, three)).toMatch(
+      /only works with the Round robin/,
+    );
+    expect(balancingError({ method: "global-availability", persistence: true }, three)).toMatch(
+      /Round robin/,
+    );
+    expect(balancingError({ method: "ratio", persistence: false }, [{ weight: 0 }])).toMatch(
+      /ratio above 0/,
+    );
+    expect(balancingError({ method: "ratio", persistence: false }, three)).toBeNull();
+  });
+
+  it("round-trips current modes through encode/decode", () => {
+    for (const b of [
+      { method: "global-availability", persistence: false },
+      { method: "round-robin", persistence: false },
+      { method: "round-robin", persistence: true },
+      { method: "ratio", persistence: false },
+    ] as const) {
+      const decoded = decodeMode(encodeMode(b), three);
+      expect({ method: decoded.method, persistence: decoded.persistence }).toEqual(b);
+      expect(decoded.members).toEqual(three);
+    }
+  });
+
+  it("reads legacy modes: failover by weights, distribute as ratio", () => {
+    expect(decodeMode("failover", three)).toMatchObject({
+      method: "round-robin",
+      persistence: false,
+    });
+    const unequal = [
+      { content: "low", weight: 1 },
+      { content: "high", weight: 50 },
+      { content: "mid", weight: 10 },
+    ];
+    const ga = decodeMode("failover", unequal);
+    expect(ga.method).toBe("global-availability");
+    expect(ga.members.map((m) => m.content)).toEqual(["high", "mid", "low"]);
+    expect(decodeMode("distribute", unequal)).toMatchObject({
+      method: "ratio",
+      persistence: false,
+    });
+    expect(decodeMode("distribute", unequal).members).toEqual(unequal);
+  });
+
+  it("labels methods, noting persistence", () => {
+    expect(methodLabel({ method: "global-availability", persistence: false })).toBe(
+      "Global availability",
+    );
+    expect(methodLabel({ method: "round-robin", persistence: true })).toBe(
+      "Round robin · persistent",
+    );
   });
 });

@@ -14,7 +14,7 @@ import {
 
 const BASE = {
   name: "www",
-  mode: "failover",
+  method: "round-robin",
   monitor: { type: "http", path: "/health", expectedStatus: "200-399" },
   ttl: 30,
   members: [{ content: "192.0.2.10", region: null, weight: 10 }],
@@ -61,6 +61,30 @@ describe("enable / update schemas", () => {
     }));
     expect(updateGslbRecordSchema.safeParse({ ...BASE, members: many }).success).toBe(false);
     expect(updateGslbRecordSchema.safeParse({ ...BASE, members: [] }).success).toBe(false);
+  });
+
+  it("accepts persistence only with round robin", () => {
+    expect(updateGslbRecordSchema.safeParse({ ...BASE, persistence: true }).success).toBe(true);
+    for (const method of ["global-availability", "ratio"]) {
+      const result = updateGslbRecordSchema.safeParse({ ...BASE, method, persistence: true });
+      expect(result.success).toBe(false);
+      expect(!result.success && result.error.issues[0]?.message).toMatch(/Round robin/);
+    }
+  });
+
+  it("defaults persistence off and rejects unknown or legacy methods", () => {
+    expect(updateGslbRecordSchema.parse(BASE).persistence).toBe(false);
+    expect(updateGslbRecordSchema.safeParse({ ...BASE, method: "failover" }).success).toBe(false);
+  });
+
+  it("requires a non-zero ratio for the ratio method", () => {
+    const members = [{ content: "192.0.2.1", region: null, weight: 0 }];
+    expect(updateGslbRecordSchema.safeParse({ ...BASE, method: "ratio", members }).success).toBe(
+      false,
+    );
+    expect(
+      updateGslbRecordSchema.safeParse({ ...BASE, method: "round-robin", members }).success,
+    ).toBe(true);
   });
 
   it("requires the expected hashes on enable", () => {

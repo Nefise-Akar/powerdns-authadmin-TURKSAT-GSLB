@@ -157,7 +157,8 @@ const MEMBERS: GslbMember[] = [
   { content: "192.0.2.20", region: null, weight: 10 },
 ];
 const SETTINGS = {
-  mode: "failover" as const,
+  method: "round-robin" as const,
+  persistence: false,
   monitor: { type: "http" as const, path: "/health", expectedStatus: "200-399" },
   ttl: 30,
   members: MEMBERS,
@@ -352,6 +353,7 @@ describe("updateGslbRecord", () => {
       kind: "address",
       settings: {
         ...SETTINGS,
+        method: "ratio",
         members: [
           { content: "192.0.2.10", region: "site-a", weight: 5 },
           { content: "192.0.2.30", region: null, weight: 1 },
@@ -368,6 +370,54 @@ describe("updateGslbRecord", () => {
     expect(ids).toHaveLength(3);
     expect(persist).toHaveBeenCalledWith(ids);
     expect(parent.applied).toHaveLength(appliedBefore);
+  });
+});
+
+describe("changing the method on an enabled record", () => {
+  it("rewrites weights and policy in place - the name is never emptied", async () => {
+    await enableGslbRecord(enableArgs());
+    const idsBefore = gslb
+      .rowsAt("www")
+      .map((r) => r.recid)
+      .sort();
+    const deletesBefore = (client.deleteRecords as unknown as { mock: { calls: unknown[] } }).mock
+      .calls.length;
+
+    await updateGslbRecord({
+      backendId: "backend-1",
+      client,
+      target: recordTarget(NAME, ZONE),
+      kind: "address",
+      settings: { ...SETTINGS, method: "global-availability" },
+      persistRecord: () => Promise.resolve(),
+    });
+
+    const rows = gslb.rowsAt("www");
+    expect(rows.map((r) => r.recid).sort()).toEqual(idsBefore);
+    expect(
+      rows.map((r) => `${String(r["view"])} ${String(r["content"])} ${String(r["weight"])}`).sort(),
+    ).toEqual(["Public 192.0.2.10 20", "Public 192.0.2.20 10", "authadmin:site-a 192.0.2.10 20"]);
+    // Only an empty `delete-records` for removals - nothing was deleted.
+    const deletes = (client.deleteRecords as unknown as { mock: { calls: unknown[][] } }).mock
+      .calls;
+    expect(deletes.length - deletesBefore).toBeLessThanOrEqual(1);
+    expect(parent.at(NAME)[0]?.type).toBe("CNAME");
+  });
+
+  it("creates the owned sticky policy on demand for persistence", async () => {
+    await enableGslbRecord(enableArgs());
+    await updateGslbRecord({
+      backendId: "backend-1",
+      client,
+      target: recordTarget(NAME, ZONE),
+      kind: "address",
+      settings: { ...SETTINGS, method: "round-robin", persistence: true },
+      persistRecord: () => Promise.resolve(),
+    });
+    expect(gslb.tables["routings"]!.map((r) => r["policy"])).toContain("authadmin:sticky");
+    expect(new Set(gslb.rowsAt("www").map((r) => r["policy"]))).toEqual(
+      new Set(["authadmin:sticky"]),
+    );
   });
 });
 

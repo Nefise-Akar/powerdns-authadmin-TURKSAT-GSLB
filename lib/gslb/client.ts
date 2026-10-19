@@ -13,6 +13,8 @@
  *     `PageRequest.from_query`), so paging always sends both.
  *   - `save-record` with `recid=0` inserts and returns no id; with a real
  *     recid it overwrites the WHOLE row, so updates must resend every column.
+ *   - An overwrite that leaves the row byte-identical is answered with
+ *     `status: "error", message: "record not changed"` (zero affected rows).
  */
 
 import "server-only";
@@ -116,7 +118,17 @@ export class GslbClient {
     for (const [column, value] of Object.entries(fields)) {
       params.push([`record[${column}]`, String(value)]);
     }
-    await gslbRequest(this.config, { cmd: "save-record", data, params });
+    try {
+      await gslbRequest(this.config, { cmd: "save-record", data, params });
+    } catch (err) {
+      // An update can land on a row that already holds these values: `ttl` and
+      // `policy` belong to the rrset, so rewriting one record of an rrset moves
+      // them for its siblings too, and the sibling's own update then changes
+      // nothing. The row is already in the desired state, so that is success.
+      // An insert that changes nothing is a real failure and still throws.
+      if (recid > 0 && isRecordNotChanged(err)) return;
+      throw err;
+    }
   }
 
   /**
@@ -158,4 +170,13 @@ export class GslbClient {
       throw err;
     }
   }
+}
+
+/** PowerGSLB's reply to an overwrite that left the row unchanged. */
+function isRecordNotChanged(err: unknown): boolean {
+  return (
+    err instanceof GslbError &&
+    err.kind === "upstream" &&
+    err.message.includes("record not changed")
+  );
 }

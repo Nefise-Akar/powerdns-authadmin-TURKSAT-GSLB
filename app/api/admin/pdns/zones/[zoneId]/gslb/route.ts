@@ -6,7 +6,7 @@
  * POST   - switch GSLB on for a name: zone setup on first use (PowerGSLB
  *          domain `gslb.<zone>` + parent delegation), PowerGSLB rows for the
  *          members, then the parent RRset(s) become `CNAME <name>.gslb.<zone>.`
- * PATCH  - edit an enabled name's members / mode / health check / TTL. Only
+ * PATCH  - edit an enabled name's members / method / health check / TTL. Only
  *          PowerGSLB rows change; the parent CNAME is untouched.
  * DELETE - switch it off (`?serverSlug=&name=`): restore the parent RRsets,
  *          then delete the PowerGSLB rows. The zone's subzone stays until
@@ -36,7 +36,13 @@ import {
 import { listGslbRegions } from "@/lib/db/repositories/gslb-regions";
 import type { GslbBackend, GslbZone } from "@/lib/db/schema";
 import { ConflictError, NotFoundError, ValidationError } from "@/lib/errors";
-import type { GslbMember, GslbRecordKind } from "@/lib/gslb/model";
+import {
+  decodeMode,
+  deriveWeights,
+  encodeMode,
+  type GslbMember,
+  type GslbRecordKind,
+} from "@/lib/gslb/model";
 import { gslbEligibility, recordTarget, subzoneFor } from "@/lib/gslb/record-plan";
 import {
   disableGslbRecord,
@@ -186,10 +192,15 @@ export async function POST(request: Request, context: RouteContext): Promise<Res
     };
 
     const settings: GslbRecordSettings = {
-      mode: input.mode,
+      method: input.method,
+      persistence: input.persistence,
       monitor: input.monitor,
       ttl: input.ttl,
-      members: await checkedMembers(backend, kind, input.members, ctx.zoneName),
+      // Stored with the weights the method actually writes (order / equal / ratio).
+      members: deriveWeights(
+        input.method,
+        await checkedMembers(backend, kind, input.members, ctx.zoneName),
+      ),
     };
     const zoneEnabled = existingZone !== null;
     const result = await enableGslbRecord({
@@ -233,7 +244,7 @@ export async function POST(request: Request, context: RouteContext): Promise<Res
               kind,
               originalTypes: enabled.originalTypes,
               originalRrsets: enabled.snapshot,
-              mode: settings.mode,
+              mode: encodeMode(settings),
               monitor: settings.monitor,
               ttl: settings.ttl,
               members: settings.members,
@@ -291,10 +302,14 @@ export async function PATCH(request: Request, context: RouteContext): Promise<Re
     if (!backend.enabled) throw new ConflictError(`GSLB backend "${backend.name}" is disabled.`);
 
     const settings: GslbRecordSettings = {
-      mode: input.mode,
+      method: input.method,
+      persistence: input.persistence,
       monitor: input.monitor,
       ttl: input.ttl,
-      members: await checkedMembers(backend, record.kind, input.members, ctx.zoneName),
+      members: deriveWeights(
+        input.method,
+        await checkedMembers(backend, record.kind, input.members, ctx.zoneName),
+      ),
     };
 
     await updateGslbRecord({
@@ -305,7 +320,17 @@ export async function PATCH(request: Request, context: RouteContext): Promise<Re
       settings,
       persistRecord: async (remoteRowIds) => {
         await db.transaction(async (tx) => {
-          const row = await updateGslbRecordRow(record.id, { ...settings, remoteRowIds }, tx);
+          const row = await updateGslbRecordRow(
+            record.id,
+            {
+              mode: encodeMode(settings),
+              monitor: settings.monitor,
+              ttl: settings.ttl,
+              members: settings.members,
+              remoteRowIds,
+            },
+            tx,
+          );
           if (!row) throw new NotFoundError("GSLB record vanished while saving.");
           await appendAudit(
             {
@@ -361,6 +386,7 @@ export async function DELETE(request: Request, context: RouteContext): Promise<R
         await db.transaction(async (tx) => {
           await deleteGslbRecordRow(record.id, tx);
           // Keep the settings so switching back on can offer them again.
+          const remembered = decodeMode(record.mode, record.members);
           await saveGslbRecordPreset(
             {
               scope: ctx.scope,
@@ -368,10 +394,12 @@ export async function DELETE(request: Request, context: RouteContext): Promise<R
               name,
               settings: {
                 backendId: record.backendId,
-                mode: record.mode,
+                // Stored as the current method (legacy rows are mapped), with the
+                // members in priority order so global availability round-trips.
+                mode: encodeMode(remembered),
                 monitor: record.monitor,
                 ttl: record.ttl,
-                members: record.members,
+                members: remembered.members,
               },
               createdBy: ctx.user.id,
             },
