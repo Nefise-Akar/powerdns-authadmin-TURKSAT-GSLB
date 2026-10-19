@@ -126,6 +126,7 @@ export function RolesTable({
       columns={columns}
       data={rows}
       searchPlaceholder="Search roles"
+      noDataMessage="No roles yet - use Add role to create the first one."
       initialSort={[{ id: "name", desc: false }]}
       sortParam="sort"
       pageSizeParam="pageSize"

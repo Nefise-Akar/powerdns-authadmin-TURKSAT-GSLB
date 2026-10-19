@@ -196,7 +196,13 @@ export function TotpSection({
           </button>
         </div>
       ) : enrolling ? (
-        <div className="space-y-3">
+        <form
+          className="space-y-3"
+          onSubmit={(e) => {
+            e.preventDefault();
+            void handleConfirm();
+          }}
+        >
           <div className="bg-background space-y-3 rounded p-3">
             <p className="text-xs font-medium">Scan with your authenticator app</p>
             <div className="flex flex-col items-start gap-4 sm:flex-row">
@@ -256,15 +262,14 @@ export function TotpSection({
             </button>
             <button
               aria-busy={busy}
-              type="button"
-              onClick={handleConfirm}
+              type="submit"
               disabled={busy || code.length !== 6}
               className={buttonClass({ variant: "primary", size: "sm" })}
             >
               Enable
             </button>
           </div>
-        </div>
+        </form>
       ) : (
         <button
           aria-busy={busy}

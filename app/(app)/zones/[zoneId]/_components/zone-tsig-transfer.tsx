@@ -126,7 +126,13 @@ export function ZoneTsigTransfer({
       </div>
 
       {canWrite ? (
-        <div className="mt-3 flex items-center gap-2">
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (toAdd) void change(toAdd, "add");
+          }}
+          className="mt-3 flex items-center gap-2"
+        >
           <SelectMenu
             value={toAdd}
             onChange={setToAdd}
@@ -137,14 +143,13 @@ export function ZoneTsigTransfer({
             className="min-w-48 font-mono"
           />
           <button
-            type="button"
-            onClick={() => toAdd && void change(toAdd, "add")}
+            type="submit"
             disabled={!toAdd || busy !== null}
             className={buttonClass({ size: "sm" })}
           >
             Add
           </button>
-        </div>
+        </form>
       ) : null}
 
       {!canWrite ? (

@@ -31,7 +31,7 @@ import { Disclosure } from "@/components/ui/disclosure";
 import { useRealtimeEvent } from "@/components/realtime/realtime-provider";
 import { PdnsHttpLog } from "@/app/(app)/zones/[zoneId]/_components/pdns-http-log";
 import { buttonClass } from "@/components/ui/button";
-import { inputClass } from "@/components/ui/field";
+import { Field, inputClass } from "@/components/ui/field";
 
 export interface PdnsRequestRowClient {
   id: string;
@@ -351,15 +351,6 @@ export function PdnsRequestsTable(props: Props) {
         pageSizeParam="pageSize"
       />
     </div>
-  );
-}
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <label className="space-y-1">
-      <span className="text-caption text-muted-foreground block">{label}</span>
-      {children}
-    </label>
   );
 }
 

@@ -9,6 +9,8 @@
 
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
+import { type ColumnDef } from "@tanstack/react-table";
+import { DataTable } from "@/components/ui/data-table";
 import { useDialog } from "@/components/ui/dialog";
 import { LocalTime } from "@/components/ui/local-time";
 import { SelectMenu } from "@/components/ui/select-menu";
@@ -129,6 +131,72 @@ export function RoleAssignmentsPanel(props: PanelProps) {
     }
   }
 
+  // Shared <DataTable> so the list reflows to cards under `md` like every
+  // other list; Remove is a per-row cell.
+  const columns = useMemo<Array<ColumnDef<Assignment, unknown>>>(
+    () => [
+      {
+        accessorKey: "roleName",
+        header: "Role",
+        cell: (ctx) => {
+          const a = ctx.row.original;
+          return (
+            <>
+              <span className="font-medium">{a.roleName}</span>
+              {a.isSystem ? (
+                <span className="bg-tag text-mono-xs text-tag-foreground ml-2 inline-flex h-5 items-center rounded-sm px-1.5 font-mono whitespace-nowrap">
+                  system
+                </span>
+              ) : null}
+            </>
+          );
+        },
+      },
+      {
+        accessorKey: "scopeLabel",
+        header: "Scope",
+        cell: (ctx) => (
+          <span className="font-mono text-xs break-words">{ctx.getValue<string>()}</span>
+        ),
+      },
+      {
+        accessorKey: "createdAt",
+        header: "Assigned",
+        cell: (ctx) => (
+          <span className="text-xs">
+            <LocalTime ts={ctx.getValue<string>()} />
+          </span>
+        ),
+      },
+      {
+        id: "actions",
+        header: "",
+        enableSorting: false,
+        cell: (ctx) => {
+          const a = ctx.row.original;
+          return props.canManage ? (
+            <button
+              aria-busy={removing === a.assignmentId}
+              type="button"
+              onClick={() => handleRemove(a.assignmentId)}
+              disabled={removing === a.assignmentId}
+              className="text-destructive text-xs hover:underline disabled:opacity-45"
+            >
+              Remove
+              <span className="sr-only">
+                {" "}
+                {a.roleName} ({a.scopeLabel})
+              </span>
+            </button>
+          ) : null;
+        },
+      },
+    ],
+    // handleRemove closes over props + router only.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [props.canManage, props.userId, removing],
+  );
+
   return (
     <section className="border-border space-y-4 rounded-md border p-5">
       <header>
@@ -138,61 +206,25 @@ export function RoleAssignmentsPanel(props: PanelProps) {
         </p>
       </header>
 
-      {props.assignments.length === 0 ? (
-        <p className="text-muted-foreground text-sm">No role assignments yet.</p>
-      ) : (
-        <div className="overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="border-border bg-background text-label text-muted-foreground border-y text-left">
-              <tr>
-                <th className="h-9 px-2 font-medium first:pl-3">Role</th>
-                <th className="h-9 px-2 font-medium first:pl-3">Scope</th>
-                <th className="h-9 px-2 font-medium first:pl-3">Assigned</th>
-                <th className="h-9 px-2 font-medium first:pl-3"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {props.assignments.map((a) => (
-                <tr
-                  key={a.assignmentId}
-                  className="border-border even:bg-background hover:bg-background border-t transition-colors"
-                >
-                  <td className="px-2 py-2 align-top first:pl-3">
-                    <span className="font-medium">{a.roleName}</span>
-                    {a.isSystem ? (
-                      <span className="bg-tag text-mono-xs text-tag-foreground ml-2 inline-flex h-5 items-center rounded-sm px-1.5 font-mono whitespace-nowrap">
-                        system
-                      </span>
-                    ) : null}
-                  </td>
-                  <td className="px-2 py-2 align-top font-mono text-xs first:pl-3">
-                    {a.scopeLabel}
-                  </td>
-                  <td className="px-2 py-2 align-top text-xs first:pl-3">
-                    <LocalTime ts={a.createdAt} />
-                  </td>
-                  <td className="px-2 py-2 text-right align-top first:pl-3">
-                    {props.canManage ? (
-                      <button
-                        aria-busy={removing === a.assignmentId}
-                        type="button"
-                        onClick={() => handleRemove(a.assignmentId)}
-                        disabled={removing === a.assignmentId}
-                        className="text-destructive text-xs hover:underline disabled:opacity-45"
-                      >
-                        Remove
-                      </button>
-                    ) : null}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+      <DataTable
+        columns={columns}
+        data={props.assignments}
+        pageSize={Math.max(props.assignments.length, 10)}
+        hideSearch
+        hidePagination
+        noDataMessage={
+          props.canManage ? "No role assignments yet - add one below." : "No role assignments yet."
+        }
+      />
 
       {props.canManage ? (
-        <div className="border-border bg-background space-y-3 rounded-md border border-dashed p-4">
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            void handleAssign();
+          }}
+          className="border-border bg-background space-y-3 rounded-md border border-dashed p-4"
+        >
           <p className="text-caption text-muted-foreground">Add assignment</p>
           <div className="grid gap-3 sm:grid-cols-3">
             <SelectMenu
@@ -235,8 +267,7 @@ export function RoleAssignmentsPanel(props: PanelProps) {
           <div className="flex items-center gap-3">
             <button
               aria-busy={busy}
-              type="button"
-              onClick={handleAssign}
+              type="submit"
               disabled={busy}
               className={buttonClass({ variant: "primary" })}
             >
@@ -248,7 +279,7 @@ export function RoleAssignmentsPanel(props: PanelProps) {
               </p>
             ) : null}
           </div>
-        </div>
+        </form>
       ) : null}
     </section>
   );

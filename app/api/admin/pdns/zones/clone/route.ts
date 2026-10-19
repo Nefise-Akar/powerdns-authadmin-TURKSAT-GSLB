@@ -23,6 +23,7 @@ import { publishZoneEvent } from "@/lib/realtime/event-bus";
 import { scheduleImmediatePoll } from "@/lib/realtime/zone-poller";
 import { getRequestContext } from "@/lib/client-ip";
 import { requireUser } from "@/lib/auth/require-user";
+import { canActOnZone } from "@/lib/rbac/zone-permissions";
 import { requireCsrf } from "@/lib/auth/csrf";
 import { findDefaultPdnsServer, findPdnsServerBySlug } from "@/lib/db/repositories/pdns-servers";
 import { normalizeZoneId } from "@/lib/pdns/client";
@@ -36,7 +37,7 @@ import type { PdnsServer } from "@/lib/db/schema";
 import { delegationRRsetKeys, stripGslbForClone } from "@/lib/gslb/record-plan";
 import { PdnsConflictError } from "@/lib/pdns/errors";
 import { errorResponse } from "@/lib/http/error-response";
-import { ConflictError, NotFoundError, ValidationError } from "@/lib/errors";
+import { ConflictError, NotFoundError, ValidationError, ForbiddenError } from "@/lib/errors";
 
 const KIND_VALUES = ["Native", "Master", "Primary", "Slave", "Secondary"] as const;
 type CloneableKind = (typeof KIND_VALUES)[number];
@@ -56,7 +57,11 @@ const cloneSchema = z.object({
 
 export async function POST(request: Request): Promise<Response> {
   try {
-    const { user: actor } = await requireUser({ can: "zone.create" });
+    const {
+      user: actor,
+      globalPermissions,
+      zoneGrants,
+    } = await requireUser({ can: "zone.create" });
     await requireCsrf(request);
 
     let input;
@@ -84,6 +89,21 @@ export async function POST(request: Request): Promise<Response> {
       throw new NotFoundError("No PDNS backend selected.");
     }
     const client = getBackendGateway(selected);
+
+    // Cloning copies every RRset of the source, so it is a read of that zone:
+    // `zone.create` alone must not let a grant-scoped operator lift the
+    // contents of a zone they can't open.
+    if (
+      !canActOnZone({
+        hasGlobalPermission: globalPermissions.has("zone.read"),
+        grants: zoneGrants,
+        serverId: selected.id,
+        zoneName: source,
+        permission: "zone.read",
+      })
+    ) {
+      throw new ForbiddenError("You don't have zone.read on the source zone.");
+    }
 
     const sourceZone = await client.getZone(source);
     if (!isCloneableKind(sourceZone.kind)) {
@@ -127,7 +147,7 @@ export async function POST(request: Request): Promise<Response> {
     await appendAudit({
       actor: { type: "user", id: actor.id },
       action: "zone.create",
-      resource: { type: "zone", id: target },
+      resource: { type: "zone", id: `${selected.slug}:${target}` },
       after: {
         name: target,
         kind: created.kind,

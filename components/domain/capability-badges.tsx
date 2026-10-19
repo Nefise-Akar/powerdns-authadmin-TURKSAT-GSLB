@@ -87,6 +87,8 @@ export function CapabilityBadges({
       {badges.map((b) => (
         <Tag key={b.key} title={b.title}>
           {b.label}
+          {/* The tooltip text, for keyboard and touch users who can't hover. */}
+          {b.title ? <span className="sr-only"> ({b.title})</span> : null}
         </Tag>
       ))}
     </span>

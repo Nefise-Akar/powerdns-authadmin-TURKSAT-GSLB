@@ -8,13 +8,15 @@
  * created zone via the same `updateZoneSettings` client call.
  */
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useDialog } from "@/components/ui/dialog";
 import { mutate } from "@/lib/client/api-fetch";
 import { Switch } from "@/components/ui/switch";
+import { SelectMenu, type SelectOption } from "@/components/ui/select-menu";
 import { NumberInput } from "@/components/ui/number-input";
 import { buttonClass } from "@/components/ui/button";
+import { Field } from "@/components/ui/field";
 
 interface InitialState {
   id: string;
@@ -59,23 +61,24 @@ const ZONE_KINDS = [
   },
 ] as const;
 
-const SOA_EDIT_OPTIONS = [
-  "DEFAULT",
-  "INCREASE",
-  "EPOCH",
-  "INCEPTION-INCREMENT",
-  "INCEPTION-EPOCH",
-  "NONE",
-] as const;
+// The empty value means "unset" - zones created from the template then follow
+// the server-wide default - so it is offered as a pickable option.
+const UNSET_OPTION: SelectOption<string> = { value: "", label: "(server default)" };
 
-const SOA_EDIT_API_OPTIONS = [
-  "DEFAULT",
-  "INCREASE",
-  "SOA-EDIT",
-  "SOA-EDIT-INCREASE",
-  "EPOCH",
-  "NONE",
-] as const;
+const SOA_EDIT_OPTIONS: ReadonlyArray<SelectOption<string>> = [
+  UNSET_OPTION,
+  ...["DEFAULT", "INCREASE", "EPOCH", "INCEPTION-INCREMENT", "INCEPTION-EPOCH", "NONE"].map(
+    (value) => ({ value, label: value }),
+  ),
+];
+
+const SOA_EDIT_API_OPTIONS: ReadonlyArray<SelectOption<string>> = [
+  UNSET_OPTION,
+  ...["DEFAULT", "INCREASE", "SOA-EDIT", "SOA-EDIT-INCREASE", "EPOCH", "NONE"].map((value) => ({
+    value,
+    label: value,
+  })),
+];
 
 export function TemplateSettingsForm({ initial, canEdit, primaries }: Props) {
   const router = useRouter();
@@ -157,10 +160,10 @@ export function TemplateSettingsForm({ initial, canEdit, primaries }: Props) {
   return (
     <section className="space-y-6">
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Zone Type" help="Default kind applied at zone create.">
-          <KindSelect value={kind} onChange={setKind} disabled={!canEdit} />
+        <Field label="Zone Type" hint="Default kind applied at zone create.">
+          <SelectMenu value={kind} options={ZONE_KINDS} onChange={setKind} disabled={!canEdit} />
         </Field>
-        <Field label="API-RECTIFY" help="Auto-rectify zone after every API change.">
+        <Field label="API-RECTIFY" hint="Auto-rectify zone after every API change.">
           <div className="flex items-center gap-2">
             <Switch
               checked={apiRectify}
@@ -171,22 +174,20 @@ export function TemplateSettingsForm({ initial, canEdit, primaries }: Props) {
             <span className="font-mono text-xs">{apiRectify ? "enabled" : "disabled"}</span>
           </div>
         </Field>
-        <Field label="SOA-EDIT" help="Algorithm for the serial sent to secondaries.">
-          <EnumSelect
+        <Field label="SOA-EDIT" hint="Algorithm for the serial sent to secondaries.">
+          <SelectMenu
             value={soaEdit}
             options={SOA_EDIT_OPTIONS}
             onChange={setSoaEdit}
             disabled={!canEdit}
-            placeholder="(server default)"
           />
         </Field>
-        <Field label="SOA-EDIT-API" help="Algorithm for serial bumps after API edits.">
-          <EnumSelect
+        <Field label="SOA-EDIT-API" hint="Algorithm for serial bumps after API edits.">
+          <SelectMenu
             value={soaEditApi}
             options={SOA_EDIT_API_OPTIONS}
             onChange={setSoaEditApi}
             disabled={!canEdit}
-            placeholder="(server default)"
           />
         </Field>
       </div>
@@ -252,7 +253,7 @@ export function TemplateSettingsForm({ initial, canEdit, primaries }: Props) {
             className="mt-0.5"
           />
           <span>
-            Use this template by default for these PDNS servers
+            Use this template by default for these PowerDNS servers
             <span className="text-muted-foreground text-caption ml-2 block">
               When ticked, the create-zone form auto-selects this template the moment the operator
               picks one of the chosen primaries.
@@ -263,7 +264,7 @@ export function TemplateSettingsForm({ initial, canEdit, primaries }: Props) {
         {defaultForOn ? (
           primaries.length === 0 ? (
             <p className="bg-tag text-mono-xs text-tag-foreground inline-flex h-5 items-center rounded-sm px-1.5 font-mono whitespace-nowrap">
-              No active PDNS primaries configured.
+              No active PowerDNS primaries configured.
             </p>
           ) : (
             <div className="flex flex-wrap gap-2 pt-1">
@@ -315,142 +316,4 @@ function normalizeKind(raw: string): string {
   if (raw === "Primary") return "Master";
   if (raw === "Secondary") return "Slave";
   return raw;
-}
-
-function Field({
-  label,
-  help,
-  children,
-}: {
-  label: string;
-  help?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div>
-      <label className="mb-1 block text-xs font-medium">{label}</label>
-      {children}
-      {help ? <p className="text-muted-foreground text-caption mt-1">{help}</p> : null}
-    </div>
-  );
-}
-
-interface KindSelectProps {
-  value: string;
-  onChange: (next: string) => void;
-  disabled?: boolean;
-}
-
-function KindSelect({ value, onChange, disabled }: KindSelectProps) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!open) return;
-    function onDown(e: MouseEvent) {
-      if (!ref.current?.contains(e.target as Node)) setOpen(false);
-    }
-    document.addEventListener("mousedown", onDown);
-    return () => document.removeEventListener("mousedown", onDown);
-  }, [open]);
-  const current = ZONE_KINDS.find((k) => k.value === value) ?? ZONE_KINDS[0];
-  return (
-    <div ref={ref} className="relative">
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        disabled={disabled}
-        className="border-input bg-card text-body focus-visible:border-ring focus-visible:shadow-focus-ring flex h-8 w-full items-center justify-between rounded-md border px-3 text-left focus-visible:outline-hidden disabled:opacity-45"
-      >
-        <span>{current.label}</span>
-        <span className="ml-2 opacity-60">▾</span>
-      </button>
-      {open ? (
-        <ul className="border-border bg-card absolute right-0 left-0 z-10 mt-1 overflow-hidden rounded-md border py-1 text-xs">
-          {ZONE_KINDS.map((k) => (
-            <li
-              key={k.value}
-              onMouseDown={(e) => {
-                e.preventDefault();
-                onChange(k.value);
-                setOpen(false);
-              }}
-              className={`cursor-pointer px-2 py-1.5 ${
-                k.value === value ? "bg-background font-medium" : "hover:bg-background"
-              }`}
-            >
-              <div>{k.label}</div>
-              <div className="text-muted-foreground text-caption">{k.description}</div>
-            </li>
-          ))}
-        </ul>
-      ) : null}
-    </div>
-  );
-}
-
-interface EnumSelectProps {
-  value: string;
-  options: readonly string[];
-  onChange: (next: string) => void;
-  disabled?: boolean;
-  placeholder?: string;
-}
-
-function EnumSelect({ value, options, onChange, disabled, placeholder }: EnumSelectProps) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!open) return;
-    function onDown(e: MouseEvent) {
-      if (!ref.current?.contains(e.target as Node)) setOpen(false);
-    }
-    document.addEventListener("mousedown", onDown);
-    return () => document.removeEventListener("mousedown", onDown);
-  }, [open]);
-  return (
-    <div ref={ref} className="relative">
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        disabled={disabled}
-        className="border-input bg-card text-body focus-visible:border-ring focus-visible:shadow-focus-ring flex h-8 w-full items-center justify-between rounded-md border px-3 text-left font-mono focus-visible:outline-hidden disabled:opacity-45"
-      >
-        <span className={value ? "" : "text-muted-foreground"}>
-          {value !== "" ? value : (placeholder ?? "Select…")}
-        </span>
-        <span className="ml-2 opacity-60">▾</span>
-      </button>
-      {open ? (
-        <ul className="border-border bg-card absolute right-0 left-0 z-10 mt-1 max-h-60 overflow-auto rounded-md border py-1 text-xs">
-          <li
-            onMouseDown={(e) => {
-              e.preventDefault();
-              onChange("");
-              setOpen(false);
-            }}
-            className={`text-muted-foreground cursor-pointer px-2 py-1.5 italic ${
-              value === "" ? "bg-background" : "hover:bg-background"
-            }`}
-          >
-            (unset - server default)
-          </li>
-          {options.map((o) => (
-            <li
-              key={o}
-              onMouseDown={(e) => {
-                e.preventDefault();
-                onChange(o);
-                setOpen(false);
-              }}
-              className={`cursor-pointer px-2 py-1.5 font-mono ${
-                o === value ? "bg-background font-medium" : "hover:bg-background"
-              }`}
-            >
-              {o}
-            </li>
-          ))}
-        </ul>
-      ) : null}
-    </div>
-  );
 }

@@ -86,7 +86,9 @@ function SideBySideDiff({
 }) {
   const pairs = pairLinesBySimilarity(removed, added);
   return (
-    <div className="divide-border grid grid-cols-2 divide-x">
+    // Stacks Before over After on a phone - two code columns in 375px are
+    // unreadable; the paired-row alignment only pays off from sm+.
+    <div className="divide-border grid grid-cols-1 divide-y sm:grid-cols-2 sm:divide-x sm:divide-y-0">
       <DiffSection title="Before">
         {pairs.map((p, i) => (
           <DiffRow

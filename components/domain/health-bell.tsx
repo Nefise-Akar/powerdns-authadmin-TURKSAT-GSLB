@@ -11,11 +11,12 @@
  * Presentational only - no lib/db / lib/pdns imports (three-layer boundary).
  */
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Bell } from "lucide-react";
 import { apiFetch } from "@/lib/client/api-fetch";
+import { useDialog } from "@/components/ui/dialog";
 import { useRealtimeEvent } from "@/components/realtime/realtime-provider";
 import { buttonClass, iconButtonClass } from "@/components/ui/button";
 
@@ -38,10 +39,21 @@ function dotClass(severity: string): string {
   return "bg-info";
 }
 
+/** The dot's colour, spelled out for people who can't see it. */
+function severityWord(severity: string): string {
+  if (severity === "error") return "Error";
+  if (severity === "warn") return "Warning";
+  return "Info";
+}
+
 export function HealthBell({ advisories }: { advisories: BellAdvisory[] }) {
   const router = useRouter();
+  const { toast } = useDialog();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const bellRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
 
   // Live-update over the SSE bus (ADR-0015): the poller publishes `health.updated`
   // only when the visible advisory set moves, so we refresh the server-rendered
@@ -57,6 +69,32 @@ export function HealthBell({ advisories }: { advisories: BellAdvisory[] }) {
     },
   );
 
+  // Click outside closes; Escape closes and hands focus back to the bell so a
+  // keyboard user isn't dropped at the top of the document.
+  useEffect(() => {
+    if (!open) return;
+    function onDown(e: MouseEvent) {
+      if (!rootRef.current?.contains(e.target as Node)) setOpen(false);
+    }
+    function onKey(e: KeyboardEvent) {
+      if (e.key !== "Escape") return;
+      e.preventDefault();
+      setOpen(false);
+      bellRef.current?.focus();
+    }
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  // Move focus into the panel on open so the list is the next thing read.
+  useEffect(() => {
+    if (open) panelRef.current?.focus();
+  }, [open]);
+
   const unacked = advisories.filter((a) => !a.acknowledged);
   const count = unacked.length;
 
@@ -64,19 +102,36 @@ export function HealthBell({ advisories }: { advisories: BellAdvisory[] }) {
     setBusy(id);
     try {
       const res = await apiFetch(`/api/admin/backend-advisories/${id}/ack`, { method: "POST" });
-      if (res.ok) router.refresh();
+      if (res.ok) {
+        router.refresh();
+        return;
+      }
+      const data = (await res.json().catch(() => null)) as { error?: string } | null;
+      toast({
+        kind: "error",
+        title: "Could not dismiss advisory",
+        description: data?.error ?? `The server answered ${res.status}.`,
+      });
+    } catch {
+      toast({
+        kind: "error",
+        title: "Could not dismiss advisory",
+        description: "Network error - the advisory is still active.",
+      });
     } finally {
       setBusy(null);
     }
   }
 
   return (
-    <div className="relative">
+    <div ref={rootRef} className="relative">
       <button
+        ref={bellRef}
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-label={`Backend health, ${count} active ${count === 1 ? "issue" : "issues"}`}
         aria-expanded={open}
+        aria-haspopup="dialog"
         className={iconButtonClass("lg", "relative")}
       >
         <Bell aria-hidden strokeWidth={1.75} />
@@ -93,19 +148,17 @@ export function HealthBell({ advisories }: { advisories: BellAdvisory[] }) {
       </button>
 
       {open ? (
-        <>
-          {/* click-away catcher */}
-          <button
-            type="button"
-            aria-hidden
-            tabIndex={-1}
-            className="fixed inset-0 z-10 cursor-default"
-            onClick={() => setOpen(false)}
-          />
+        <div>
           {/* Mobile: fixed to the viewport with small gutters so the dropdown
               can't overflow the right edge (the bell sits near it). sm+: back
               to absolute-anchored under the bell at a fixed 24rem width. */}
-          <div className="border-border bg-popover text-popover-foreground fixed inset-x-3 top-14 z-20 mt-1 overflow-hidden rounded-md border sm:absolute sm:inset-x-auto sm:top-auto sm:right-0 sm:w-96">
+          <div
+            ref={panelRef}
+            role="dialog"
+            aria-label="Backend health"
+            tabIndex={-1}
+            className="border-border bg-popover text-popover-foreground fixed inset-x-3 top-14 z-20 mt-1 overflow-hidden rounded-md border outline-none sm:absolute sm:inset-x-auto sm:top-auto sm:right-0 sm:w-96"
+          >
             <div className="border-border text-h3 border-b px-3 py-2">Backend health</div>
             {advisories.length === 0 ? (
               <p className="text-body text-muted-foreground px-3 py-6 text-center">
@@ -127,6 +180,7 @@ export function HealthBell({ advisories }: { advisories: BellAdvisory[] }) {
                               a.acknowledged ? "text-muted-foreground" : "text-body-strong"
                             }
                           >
+                            <span className="sr-only">{severityWord(a.severity)}: </span>
                             {a.title}
                           </span>
                           <Link
@@ -147,6 +201,7 @@ export function HealthBell({ advisories }: { advisories: BellAdvisory[] }) {
                             className={buttonClass({ variant: "link", size: "xs" })}
                           >
                             Dismiss
+                            <span className="sr-only"> {a.title}</span>
                           </button>
                         ) : (
                           <span className="text-meta text-muted-foreground mt-1 inline-block">
@@ -160,7 +215,7 @@ export function HealthBell({ advisories }: { advisories: BellAdvisory[] }) {
               </ul>
             )}
           </div>
-        </>
+        </div>
       ) : null}
     </div>
   );

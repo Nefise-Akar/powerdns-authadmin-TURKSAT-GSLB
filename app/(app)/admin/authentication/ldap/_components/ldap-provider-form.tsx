@@ -16,7 +16,7 @@ import { useState, type FormEvent } from "react";
 import { apiFetch } from "@/lib/client/api-fetch";
 import { SelectMenu } from "@/components/ui/select-menu";
 import { buttonClass } from "@/components/ui/button";
-import { inputClass as baseInputClass, textareaClass } from "@/components/ui/field";
+import { Field, inputClass, textareaClass } from "@/components/ui/field";
 
 export interface LdapFormInitial {
   id: string;
@@ -460,7 +460,7 @@ export function LdapProviderForm(props: Props) {
         </Field>
       </fieldset>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid gap-4 sm:grid-cols-2">
         <Field id="claimEmail" label="Email attribute" errors={fieldErrors["claimEmail"]}>
           <input
             id="claimEmail"
@@ -500,7 +500,7 @@ export function LdapProviderForm(props: Props) {
               ? "(CA pin set - paste a new PEM to replace, or check Clear)"
               : "-----BEGIN CERTIFICATE-----\n...\n-----END CERTIFICATE-----"
           }
-          className={`mt-1.5 ${textareaClass} font-mono text-xs`}
+          className={`${textareaClass} font-mono text-xs`}
         />
         {props.mode === "edit" && initial.tlsCaCertSet ? (
           <label className="mt-2 flex items-center gap-2 text-xs">
@@ -546,7 +546,7 @@ export function LdapProviderForm(props: Props) {
               onChange={(e) => setDomainsText(e.target.value)}
               disabled={!canEdit}
               placeholder="example.com&#10;acme.corp"
-              className={`mt-1.5 ${textareaClass} font-mono`}
+              className={`${textareaClass} font-mono`}
             />
           </Field>
         ) : null}
@@ -569,7 +569,7 @@ export function LdapProviderForm(props: Props) {
             {groupMappings.map((m, i) => (
               <li
                 key={i}
-                className="border-border bg-background grid grid-cols-[1fr_1fr_1fr_1fr_auto] gap-2 rounded border p-2"
+                className="border-border bg-background grid grid-cols-1 gap-2 rounded border p-2 sm:grid-cols-2 md:grid-cols-[1fr_1fr_1fr_1fr_auto]"
               >
                 <label className="text-xs">
                   LDAP group
@@ -578,7 +578,7 @@ export function LdapProviderForm(props: Props) {
                     onChange={(e) => updateGroupMapping(i, { group: e.target.value })}
                     disabled={!canEdit}
                     placeholder="CN=Admins,OU=Groups,DC=example,DC=com"
-                    className={`${inputClass} font-mono text-xs`}
+                    className={`mt-1 ${inputClass} font-mono text-xs`}
                   />
                 </label>
                 <label className="text-xs">
@@ -618,7 +618,12 @@ export function LdapProviderForm(props: Props) {
                 <label className="text-xs">
                   Target
                   {m.scopeType === "global" ? (
-                    <input value="" disabled placeholder="-" className={`${inputClass} text-xs`} />
+                    <input
+                      value=""
+                      disabled
+                      placeholder="-"
+                      className={`mt-1 ${inputClass} text-xs`}
+                    />
                   ) : m.scopeType === "team" ? (
                     <SelectMenu
                       value={m.scopeId ?? ""}
@@ -657,7 +662,7 @@ export function LdapProviderForm(props: Props) {
                       onChange={(e) => updateGroupMapping(i, { scopeId: e.target.value })}
                       disabled={!canEdit}
                       placeholder="example.com."
-                      className={`${inputClass} font-mono text-xs`}
+                      className={`mt-1 ${inputClass} font-mono text-xs`}
                     />
                   )}
                 </label>
@@ -725,36 +730,5 @@ export function LdapProviderForm(props: Props) {
         </p>
       )}
     </form>
-  );
-}
-
-const inputClass = `mt-1.5 ${baseInputClass}`;
-
-function Field({
-  id,
-  label,
-  hint,
-  errors,
-  children,
-}: {
-  id: string;
-  label: string;
-  hint?: string;
-  errors?: string[];
-  children: React.ReactNode;
-}) {
-  return (
-    <div>
-      <label htmlFor={id} className="block text-sm font-medium">
-        {label}
-      </label>
-      {children}
-      {hint ? <p className="text-muted-foreground mt-1 text-xs">{hint}</p> : null}
-      {errors && errors.length > 0 ? (
-        <p className="text-destructive mt-1 text-xs" role="alert">
-          {errors.join(" ")}
-        </p>
-      ) : null}
-    </div>
   );
 }

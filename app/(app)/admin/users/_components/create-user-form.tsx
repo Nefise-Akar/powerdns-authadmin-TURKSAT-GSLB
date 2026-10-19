@@ -9,7 +9,7 @@ import { useState, type FormEvent } from "react";
 import { SelectMenu } from "@/components/ui/select-menu";
 import { apiFetch } from "@/lib/client/api-fetch";
 import { buttonClass } from "@/components/ui/button";
-import { inputClass as baseInputClass } from "@/components/ui/field";
+import { Field, inputClass } from "@/components/ui/field";
 
 interface RoleOption {
   id: string;
@@ -117,7 +117,7 @@ export function CreateUserForm({ roles = [] }: { roles?: RoleOption[] }) {
               ...roles.map((r) => ({ value: r.id, label: `${r.name} (${r.slug})` })),
             ]}
             ariaLabel="Initial role (optional)"
-            className="mt-1 w-full text-sm"
+            className="w-full text-sm"
           />
         </Field>
       ) : null}
@@ -142,39 +142,5 @@ export function CreateUserForm({ roles = [] }: { roles?: RoleOption[] }) {
         </button>
       </div>
     </form>
-  );
-}
-
-const inputClass = `mt-1.5 ${baseInputClass}`;
-
-function Field({
-  id,
-  label,
-  required,
-  hint,
-  errors,
-  children,
-}: {
-  id: string;
-  label: string;
-  required?: boolean;
-  hint?: string;
-  errors?: string[];
-  children: React.ReactNode;
-}) {
-  return (
-    <div>
-      <label htmlFor={id} className="block text-sm font-medium">
-        {label}
-        {required ? <span className="text-destructive"> *</span> : null}
-      </label>
-      {children}
-      {hint ? <p className="text-muted-foreground mt-1 text-xs">{hint}</p> : null}
-      {errors && errors.length > 0 ? (
-        <p className="text-destructive mt-1 text-xs" role="alert">
-          {errors.join(" ")}
-        </p>
-      ) : null}
-    </div>
   );
 }

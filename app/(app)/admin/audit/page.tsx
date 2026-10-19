@@ -341,7 +341,7 @@ export default async function AuditLogPage({ searchParams }: PageProps) {
         rows={buildAuditRows(page.entries, navAbilities, userEmailById, httpEntriesFor)}
       />
 
-      <nav className="flex items-center justify-between text-sm">
+      <nav aria-label="Audit log pages" className="flex items-center justify-between text-sm">
         {prevHref ? (
           <Link href={prevHref} className="text-primary hover:text-primary-hover hover:underline">
             ← Newer

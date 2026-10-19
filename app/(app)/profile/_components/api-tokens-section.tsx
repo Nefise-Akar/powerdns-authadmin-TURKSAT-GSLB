@@ -206,7 +206,13 @@ export function ApiTokensSection({ initialTokens, availablePermissions }: Props)
       ) : null}
 
       {open ? (
-        <div className="border-border bg-card mb-4 space-y-3 rounded border p-3">
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            void handleCreate();
+          }}
+          className="border-border bg-card mb-4 space-y-3 rounded border p-3"
+        >
           <div className="grid gap-2 sm:grid-cols-[2fr_1fr]">
             <div>
               <label htmlFor="tk-name" className="block text-xs font-medium">
@@ -271,15 +277,14 @@ export function ApiTokensSection({ initialTokens, availablePermissions }: Props)
             </button>
             <button
               aria-busy={issuing}
-              type="button"
-              onClick={handleCreate}
+              type="submit"
               disabled={issuing}
               className={buttonClass({ variant: "primary", size: "sm" })}
             >
               Issue
             </button>
           </div>
-        </div>
+        </form>
       ) : null}
 
       {active.length === 0 && revoked.length === 0 ? (

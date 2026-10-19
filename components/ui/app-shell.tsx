@@ -22,9 +22,15 @@
  * The server layout owns auth and builds the RBAC-filtered `nav` (plain data,
  * so it crosses the server/client boundary); this component only resolves
  * the active entry from the pathname and manages the drawer.
+ *
+ * Drawer accessibility: while closed the drawer is `inert` and `aria-hidden`
+ * - a translated-off-screen panel is otherwise still in the tab order and
+ * the accessibility tree, so a phone user would tab through every invisible
+ * link before reaching the page. Opening moves focus to the first nav link;
+ * closing hands it back to the menu button.
  */
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -70,6 +76,8 @@ export function isActivePath(pathname: string | null, href: string): boolean {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
+export const MAIN_CONTENT_ID = "main-content";
+
 export function AppShell({
   nav,
   mark,
@@ -88,6 +96,9 @@ export function AppShell({
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
   const activeGroup = nav.find((g) => g.items.some((i) => isActivePath(pathname, i.href)));
+  const drawerRef = useRef<HTMLElement>(null);
+  const hamburgerRef = useRef<HTMLButtonElement>(null);
+  const wasOpen = useRef(false);
 
   // Close the drawer after navigating (tapping a nav link changes the route).
   useEffect(() => {
@@ -102,8 +113,29 @@ export function AppShell({
     return () => window.removeEventListener("keydown", onKey);
   }, [open]);
 
+  // Focus follows the drawer: into the first link on open, back to the
+  // hamburger on close (including closes triggered by navigation and Esc).
+  useEffect(() => {
+    if (open) {
+      wasOpen.current = true;
+      drawerRef.current?.querySelector<HTMLElement>("a[href]")?.focus();
+    } else if (wasOpen.current) {
+      wasOpen.current = false;
+      hamburgerRef.current?.focus();
+    }
+  }, [open]);
+
   return (
     <div className="bg-background flex h-dvh overflow-hidden">
+      {/* Skip link - the first tab stop on every page; visible only while
+          focused so sighted mouse users never see it. */}
+      <a
+        href={`#${MAIN_CONTENT_ID}`}
+        className="bg-primary text-body-strong text-primary-foreground focus-visible:shadow-focus-ring sr-only z-50 rounded-md px-3 py-2 focus:not-sr-only focus:fixed focus:top-2 focus:left-2"
+      >
+        Skip to content
+      </a>
+
       <nav
         aria-label="Main navigation"
         className="border-border bg-rail hidden w-18 shrink-0 flex-col border-r md:flex"
@@ -127,7 +159,10 @@ export function AppShell({
         }`}
       />
       <nav
+        ref={drawerRef}
         aria-label="Main navigation"
+        inert={!open || undefined}
+        aria-hidden={!open || undefined}
         className={`border-border bg-rail fixed inset-y-0 left-0 z-40 flex w-72 max-w-[85vw] flex-col border-r transition-transform duration-200 md:hidden ${
           open ? "translate-x-0" : "-translate-x-full"
         }`}
@@ -149,6 +184,7 @@ export function AppShell({
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="border-border bg-card flex h-14 shrink-0 items-center gap-4 border-b pr-4 pl-5">
           <button
+            ref={hamburgerRef}
             type="button"
             onClick={() => setOpen(true)}
             aria-label="Open navigation"
@@ -178,8 +214,16 @@ export function AppShell({
             exact "scroll-in-scroll, black at the bottom" bug on the zones list at
             high row counts even with `min-h-0` already in place (each row's
             screen-reader label is one such span; 50 of them push the document to
-            ~2000px tall behind a correctly-sized 100dvh shell). */}
-        <main className="bg-card relative min-h-0 flex-1 overflow-y-auto">
+            ~2000px tall behind a correctly-sized 100dvh shell).
+
+            `tabIndex={-1}` lets the skip link land focus here without adding the
+            region to the Tab order; `outline-none` because that programmatic
+            focus shouldn't draw a ring around the whole page. */}
+        <main
+          id={MAIN_CONTENT_ID}
+          tabIndex={-1}
+          className="bg-card relative min-h-0 flex-1 overflow-y-auto outline-none"
+        >
           {activeGroup && activeGroup.items.length > 1 ? (
             <SectionTabs group={activeGroup} pathname={pathname} />
           ) : null}

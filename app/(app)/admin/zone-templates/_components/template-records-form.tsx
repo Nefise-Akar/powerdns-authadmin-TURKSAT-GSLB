@@ -102,6 +102,7 @@ export function TemplateRecordsForm({ templateId, initial, canEdit, defaultRecor
                 onChange={(e) => setNs(i, e.target.value)}
                 disabled={!canEdit}
                 placeholder="ns1.example.net."
+                aria-label={`Name server ${i + 1}`}
                 className={inputClass + " flex-1 font-mono"}
               />
               {canEdit ? (
@@ -150,6 +151,7 @@ export function TemplateRecordsForm({ templateId, initial, canEdit, defaultRecor
                     onChange={(e) => setRecord(i, { name: e.target.value })}
                     disabled={!canEdit}
                     placeholder="@"
+                    aria-label="Record name"
                     className={inputClass + " font-mono"}
                   />
                   <SelectMenu
@@ -165,6 +167,7 @@ export function TemplateRecordsForm({ templateId, initial, canEdit, defaultRecor
                     onChange={(n) => setRecord(i, { ttl: n })}
                     min={0}
                     disabled={!canEdit}
+                    ariaLabel="TTL (seconds)"
                     className={inputClass + " font-mono"}
                   />
                   {canEdit ? (
@@ -182,6 +185,7 @@ export function TemplateRecordsForm({ templateId, initial, canEdit, defaultRecor
                   onChange={(e) => setRecord(i, { content: e.target.value })}
                   disabled={!canEdit}
                   placeholder={validator.placeholder}
+                  aria-label="Record content"
                   className={inputClass + " font-mono"}
                 />
                 {issues.length > 0 ? (

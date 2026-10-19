@@ -14,7 +14,7 @@ import { apiFetch } from "@/lib/client/api-fetch";
 import { safeIconUrl } from "@/lib/security/icon-url";
 import { SelectMenu } from "@/components/ui/select-menu";
 import { buttonClass } from "@/components/ui/button";
-import { inputClass as baseInputClass, textareaClass } from "@/components/ui/field";
+import { Field, inputClass, textareaClass } from "@/components/ui/field";
 
 interface FormInitial {
   id: string;
@@ -360,7 +360,7 @@ export function OidcProviderForm(props: Props) {
         />
       </Field>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid gap-4 sm:grid-cols-2">
         <Field
           id="claimEmail"
           label="Email claim"
@@ -466,7 +466,7 @@ export function OidcProviderForm(props: Props) {
               onChange={(e) => setDomainsText(e.target.value)}
               disabled={!canEdit}
               placeholder="example.com&#10;acme.corp"
-              className={`mt-1.5 ${textareaClass} font-mono`}
+              className={`${textareaClass} font-mono`}
             />
           </Field>
         ) : null}
@@ -490,7 +490,7 @@ export function OidcProviderForm(props: Props) {
             {groupMappings.map((m, i) => (
               <li
                 key={i}
-                className="border-border bg-background grid grid-cols-[1fr_1fr_1fr_1fr_auto] gap-2 rounded border p-2"
+                className="border-border bg-background grid grid-cols-1 gap-2 rounded border p-2 sm:grid-cols-2 md:grid-cols-[1fr_1fr_1fr_1fr_auto]"
               >
                 <label className="text-xs">
                   IdP group
@@ -499,7 +499,7 @@ export function OidcProviderForm(props: Props) {
                     onChange={(e) => updateGroupMapping(i, { group: e.target.value })}
                     disabled={!canEdit}
                     placeholder="authentik Admins"
-                    className={`${inputClass} font-mono text-xs`}
+                    className={`mt-1 ${inputClass} font-mono text-xs`}
                   />
                 </label>
                 <label className="text-xs">
@@ -539,7 +539,12 @@ export function OidcProviderForm(props: Props) {
                 <label className="text-xs">
                   Target
                   {m.scopeType === "global" ? (
-                    <input value="" disabled placeholder="-" className={`${inputClass} text-xs`} />
+                    <input
+                      value=""
+                      disabled
+                      placeholder="-"
+                      className={`mt-1 ${inputClass} text-xs`}
+                    />
                   ) : m.scopeType === "team" ? (
                     <SelectMenu
                       value={m.scopeId ?? ""}
@@ -578,7 +583,7 @@ export function OidcProviderForm(props: Props) {
                       onChange={(e) => updateGroupMapping(i, { scopeId: e.target.value })}
                       disabled={!canEdit}
                       placeholder="example.com."
-                      className={`${inputClass} font-mono text-xs`}
+                      className={`mt-1 ${inputClass} font-mono text-xs`}
                     />
                   )}
                 </label>
@@ -665,36 +670,5 @@ export function OidcProviderForm(props: Props) {
         </p>
       )}
     </form>
-  );
-}
-
-const inputClass = `mt-1.5 ${baseInputClass}`;
-
-function Field({
-  id,
-  label,
-  hint,
-  errors,
-  children,
-}: {
-  id: string;
-  label: string;
-  hint?: string;
-  errors?: string[];
-  children: React.ReactNode;
-}) {
-  return (
-    <div>
-      <label htmlFor={id} className="block text-sm font-medium">
-        {label}
-      </label>
-      {children}
-      {hint ? <p className="text-muted-foreground mt-1 text-xs">{hint}</p> : null}
-      {errors && errors.length > 0 ? (
-        <p className="text-destructive mt-1 text-xs" role="alert">
-          {errors.join(" ")}
-        </p>
-      ) : null}
-    </div>
   );
 }

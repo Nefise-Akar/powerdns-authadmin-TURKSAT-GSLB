@@ -10,6 +10,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useDialog } from "@/components/ui/dialog";
+import { useUnsavedChangesGuard } from "@/components/ui/use-unsaved-changes-guard";
 import { mutate } from "@/lib/client/api-fetch";
 import { isKindApiWritable } from "./kind-specs";
 import { MetadataValuesInput } from "./metadata-values-input";
@@ -31,6 +32,7 @@ export function MetadataEditor({ zoneIdEncoded, serverSlug, kind, initialValues 
   const [deleting, setDeleting] = useState(false);
 
   const dirty = !sameValues(values, initialValues);
+  useUnsavedChangesGuard(dirty);
   const writable = isKindApiWritable(kind);
 
   if (!writable) {
@@ -41,7 +43,7 @@ export function MetadataEditor({ zoneIdEncoded, serverSlug, kind, initialValues 
         <code className="font-mono">
           pdnsutil set-meta {`<zone>`} {kind} {`<value>`}
         </code>{" "}
-        on the PDNS host to change it.
+        on the PowerDNS host to change it.
       </Alert>
     );
   }
@@ -77,7 +79,7 @@ export function MetadataEditor({ zoneIdEncoded, serverSlug, kind, initialValues 
   async function handleDelete() {
     const ok = await confirm({
       title: `Delete ${kind}?`,
-      description: `The kind will be removed entirely from this zone. PDNS reverts to its default behavior for this setting.`,
+      description: `The kind will be removed entirely from this zone. PowerDNS reverts to its default behavior for this setting.`,
       confirmLabel: "Delete kind",
       variant: "danger",
     });
@@ -106,13 +108,18 @@ export function MetadataEditor({ zoneIdEncoded, serverSlug, kind, initialValues 
   }
 
   return (
-    <div className="mt-3 space-y-2">
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (dirty && !saving) void handleSave();
+      }}
+      className="mt-3 space-y-2"
+    >
       <MetadataValuesInput kind={kind} values={values} onChange={setValues} />
       <div className="flex items-center gap-3">
         <button
           aria-busy={saving}
-          type="button"
-          onClick={handleSave}
+          type="submit"
           disabled={saving || !dirty}
           className={buttonClass({ variant: "primary", size: "sm" })}
         >
@@ -131,7 +138,7 @@ export function MetadataEditor({ zoneIdEncoded, serverSlug, kind, initialValues 
           <span className="text-muted-foreground text-caption">No unsaved changes</span>
         ) : null}
       </div>
-    </div>
+    </form>
   );
 }
 

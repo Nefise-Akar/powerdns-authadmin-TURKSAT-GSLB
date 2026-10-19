@@ -427,6 +427,7 @@ export function DataTable<TData>({
                 }
               }}
               placeholder={searchPlaceholder}
+              aria-label={searchPlaceholder.replace(/…$/, "")}
               aria-keyshortcuts={searchShortcut ? "/" : undefined}
               className={`${inputClass} pl-8 ${searchShortcut ? "pr-9" : ""}`}
             />
@@ -538,12 +539,24 @@ export function DataTable<TData>({
                   {headerGroup.headers.map((header) => {
                     const canSort = header.column.getCanSort();
                     const sortDir = header.column.getIsSorted();
+                    const label = header.isPlaceholder
+                      ? null
+                      : flexRender(header.column.columnDef.header, header.getContext());
+                    const sortIcon =
+                      sortDir === "asc" ? (
+                        <ArrowUp aria-hidden size={12} strokeWidth={2} />
+                      ) : sortDir === "desc" ? (
+                        <ArrowDown aria-hidden size={12} strokeWidth={2} />
+                      ) : null;
                     return (
                       <th
                         key={header.id}
                         scope="col"
                         className={[
-                          "h-9 px-2 font-medium first:pl-3",
+                          // Sortable headers carry their padding on the inner
+                          // button so the whole cell stays the click target.
+                          "h-9 font-medium",
+                          canSort ? "px-0 first:pl-1" : "px-2 first:pl-3",
                           sortDir ? "text-foreground" : "",
                           // Action columns (no header text) shrink to content so
                           // the table's spare width spreads across the data
@@ -551,10 +564,8 @@ export function DataTable<TData>({
                           layout === "auto" && isUnlabeledColumn(header.column.columnDef)
                             ? "w-px whitespace-nowrap"
                             : "",
-                          canSort ? "hover:text-foreground cursor-pointer select-none" : "",
                           header.column.columnDef.meta?.className ?? "",
                         ].join(" ")}
-                        onClick={canSort ? header.column.getToggleSortingHandler() : undefined}
                         aria-sort={
                           sortDir === "asc"
                             ? "ascending"
@@ -565,16 +576,21 @@ export function DataTable<TData>({
                                 : undefined
                         }
                       >
-                        <span className="inline-flex items-center gap-1.5">
-                          {header.isPlaceholder
-                            ? null
-                            : flexRender(header.column.columnDef.header, header.getContext())}
-                          {sortDir === "asc" ? (
-                            <ArrowUp aria-hidden size={12} strokeWidth={2} />
-                          ) : sortDir === "desc" ? (
-                            <ArrowDown aria-hidden size={12} strokeWidth={2} />
-                          ) : null}
-                        </span>
+                        {canSort ? (
+                          // A real button so the sort is reachable from the
+                          // keyboard - `aria-sort` on a click-only <th> advertised
+                          // a control that didn't exist.
+                          <button
+                            type="button"
+                            onClick={header.column.getToggleSortingHandler()}
+                            className="hover:text-foreground focus-visible:shadow-focus-ring flex h-9 w-full items-center gap-1.5 rounded-sm px-2 text-left font-medium select-none focus-visible:outline-hidden"
+                          >
+                            {label}
+                            {sortIcon}
+                          </button>
+                        ) : (
+                          <span className="inline-flex items-center gap-1.5">{label}</span>
+                        )}
                       </th>
                     );
                   })}

@@ -6,6 +6,222 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [1.9.1] - 2026-10-17
+
+Focus fix for the Create zone form. **No schema change, no migration.** Pull the new
+tag and recreate the container.
+
+### Fixed
+
+- **Zone name input lost focus after the first character on Create zone.** The shared
+  form field rendered its control as a lone element until a sibling appeared next to it
+  (the "Stored as" preview that shows on the first keystroke), and React remounted the
+  input on that change of shape. The field now renders its children in one stable shape,
+  so every field whose control is followed by a conditional note keeps focus.
+  ([#161](https://github.com/PowerDNS-AuthAdmin/powerdns-authadmin/issues/161))
+
+## [1.9.0] - 2026-10-09
+
+Feature release. The headline is an **MCP server** (`POST /api/mcp`) so Claude Code,
+Codex and other MCP clients can manage records in natural language through the same
+RBAC, validation and audit path as the UI. Alongside it: a security hardening pass
+(read-only backends now refuse writes, privilege ceilings applied consistently,
+login CSRF closed, the password-reset link kept out of the audit log), an
+accessibility pass (keyboard operability, labelled forms, WCAG AA contrast), the
+OIDC/SAML session-expiry bounce fix, and a correctness pass over migrations,
+backup/restore, the PowerDNS client and zonefile import. **No schema change, no
+migration.** SQLite installs that upgraded through 1.1.0 should read the
+[upgrade notes](./docs/09-UPGRADING.md#upgrading-to-190-from-184) - a migration
+bug at that version may have deleted per-zone grants.
+
+### Added
+
+- **MCP server: manage DNS from Claude Code, Codex and other AI clients.** `POST /api/mcp`
+  speaks the Model Context Protocol (Streamable HTTP, stateless) and authenticates with a
+  personal access token. Nine tools cover listing backends and zones, reading records, and
+  replacing / appending / deleting records, plus creating and deleting zones. Every call runs
+  as the token's owner through the existing RBAC, validation, concurrency and audit path;
+  write tools are only shown to tokens that can write. Setup for each client in
+  [`docs/14-MCP.md`](docs/14-MCP.md).
+
+### Security - dependency advisories
+
+- `next` 16.3.6 → 16.4.0 (and `eslint-config-next` 16.2.6 → 16.4.0) - six
+  high-severity advisories published after 1.8.4: pending `use cache` fill
+  leaking Draft Mode content
+  ([GHSA-3w37-wq28-93x7](https://github.com/advisories/GHSA-3w37-wq28-93x7)),
+  cache poisoning of SSG/ISR pages on self-hosted apps
+  ([GHSA-4jqv-mc3x-m676](https://github.com/advisories/GHSA-4jqv-mc3x-m676)),
+  information disclosure in the dev server's MCP endpoint
+  ([GHSA-39w2-rjm5-chcv](https://github.com/advisories/GHSA-39w2-rjm5-chcv)),
+  information disclosure in App Router metadata image routes via a
+  `dynamicParams` bypass
+  ([GHSA-f87g-xv8r-7p7x](https://github.com/advisories/GHSA-f87g-xv8r-7p7x)),
+  SSG/ISR cache poisoning leading to cross-user content substitution and
+  persistent denial of service
+  ([GHSA-mcj8-r9mp-w47p](https://github.com/advisories/GHSA-mcj8-r9mp-w47p)),
+  and SSRF in Image Optimization
+  ([GHSA-cjq9-62q9-8jv4](https://github.com/advisories/GHSA-cjq9-62q9-8jv4)).
+  `npm audit --omit=dev` is back to 0 vulnerabilities.
+
+### Security
+
+- **The password-reset link is no longer written to the audit log when SMTP
+  is off.** Any `audit.read` holder could request a reset for another local
+  account, read the link from the audit panel and take the account over. The
+  link now goes to the server log only (warn level); the admin "Reset
+  password" flow is the supported out-of-band path. Signup-verification,
+  re-verification and email-change links stay in the audit row: they only
+  complete an action the account holder initiated and are not a credential.
+- **Read-only backends now refuse writes.** `write_mode = read_only` only
+  steered the backend pickers; any write route accepted the backend by slug.
+  The gateway now rejects zone, record, metadata, DNSSEC key, TSIG and
+  autoprimary writes to a read-only backend. NOTIFY and cache flush stay
+  allowed.
+- **Privilege ceilings applied consistently.** `user.update` can no longer
+  disable, force a password change on, or relax MFA for a user who holds
+  global permissions the actor lacks; `role.assign` can no longer remove a
+  role that grants permissions the actor lacks; adding a team member now
+  checks the actor against every zone grant the team holds; cloning a zone
+  requires `zone.read` on the source; a team-scoped `role.assign` no longer
+  assigns global roles at user creation.
+- **Unauthenticated endpoints rate-limited and cross-site hardened.** The
+  passkey challenge/verify endpoints and the DynDNS endpoint share the login
+  rate limit (the challenge endpoint could evict every pending MFA challenge
+  and reveal token from the server-side store). Pre-session JSON endpoints
+  (login, LDAP login, MFA, passkeys) now require `application/json` and a
+  same-origin `Origin` / `Sec-Fetch-Site`, closing login CSRF. Anonymous
+  reveal-store entries have their own quota and can never evict a user's.
+- **Passwordless passkey sign-in requires user verification** (PIN or
+  biometric) regardless of the global `WEBAUTHN_USER_VERIFICATION` default;
+  as a second factor, `preferred` still applies.
+- **Disabled accounts can't sign in through OIDC, SAML or LDAP.** The
+  callbacks created a session row and a "login success" audit line before
+  the per-request check refused them; they now fail with
+  `account-disabled` and an `auth.login.failure` audit entry.
+- **SAML: `require_encrypted_assertion` is now enforced** (it was stored but
+  never checked), and SP-initiated single logout is audited as
+  `auth.logout` with an HttpOnly flag cookie.
+- Provisioning refuses a `roles[]` entry whose slug is a system role instead
+  of silently rewriting the seeded role's permissions on every boot.
+- The admin password-reset reveal token is bound to the target user, so the
+  audit row names the account whose password was revealed rather than the
+  `[id]` the caller typed; PAT plaintext reveals are now audited
+  (`auth.token.revealed`).
+
+### Changed
+
+- "Skip to content" link and labelled navigation landmarks; the Sync chip names the
+  actual state ("lagging", "missing", "error") instead of "desynced"; hover-only badge
+  tooltips are repeated as screen-reader text; "PowerDNS" replaces "PDNS" in
+  operator-facing copy; list tables name the next action when empty; the admin list
+  pages show loading skeletons.
+- Backup export awaits its audit row; backup restore caps the body at 64 MiB;
+  RRset PATCH bodies are bounded (500 changes, 1000 records per RRset).
+- Team member role changes are audited as `team.member.role_changed`,
+  OIDC discovery probes as `oidc.provider.tested`, instead of borrowing
+  unrelated actions.
+
+### Fixed
+
+- **Session expiry showed the local login form even when the default sign-in
+  method is OIDC or SAML.** An expired or revoked session lands on
+  `/login?flash=session-required`, and the page treated any flash as a reason
+  not to auto-bounce to the default provider. A lost session now bounces to
+  the IdP like a plain visit (carrying `next`); explicit sign-out,
+  `?force-local=1` and real error codes still keep the form.
+  ([#153](https://github.com/PowerDNS-AuthAdmin/powerdns-authadmin/issues/153))
+- **SAML sign-in was rejected with "InResponseTo is not valid".** The
+  AuthnRequest id was recorded in a throwaway node-saml instance while the
+  Response was validated by another, so `validateInResponseTo: always`
+  never found it. The expected id (from the signed cookie) is now seeded
+  into the validating instance, and a Response with no `InResponseTo` is
+  refused as unsolicited.
+- Query-string validation failures on TSIG delete, cryptokey delete and
+  metadata delete returned 500 instead of 400; malformed bodies on
+  forgot-password, reset-password and email-verify did the same.
+- Bulk zone export/import no longer echo raw upstream error strings;
+  they're redacted like every other PowerDNS error.
+- **Keyboard operability.** Table column sorting is a real button (it was a click-only
+  header that advertised `aria-sort`), the zone-kind / SOA-EDIT / metadata pickers are
+  the shared select menu instead of mouse-only lists, the user menu follows the menu-button
+  keyboard model, the zones filter tabs take arrow keys, and the mobile navigation drawer
+  is `inert` while closed so phone users no longer tab through twenty hidden links.
+- **Form labels.** Every field caption is wired to its control (`htmlFor` / `id` /
+  `aria-describedby`) through one shared `Field`; inputs in dense rows carry an
+  `aria-label`; the eight panels that were `<div>`s with a button are real forms that
+  submit on Enter; the import/export zone picker's checkbox has an accessible name.
+- **Dialogs and toasts.** Destructive confirms open with focus on Cancel, modals make the
+  page behind them `inert`, the record editor no longer discards an edit on a stray
+  backdrop click, settings panels with unsaved edits ask before the tab closes, error
+  toasts stay until dismissed and auto-dismiss pauses on hover/focus, the TSIG wizard
+  uses the shared dialog (focus trap + restore), and the health bell closes on Escape,
+  speaks severity and reports a failed acknowledge.
+- **Contrast and motion.** Semantic colours used as text now meet WCAG AA in both themes
+  via new `--color-success-fg` / `--color-error-fg` tokens, `--color-fg-subtle` is
+  darker/lighter, and the header dot and dashboard skeletons honour
+  `prefers-reduced-motion`.
+- **Small screens.** Provider group-mapping rows, the Before/After diff and the SRV /
+  NAPTR / CAA / URI editors reflow below `sm`; team members and role assignments use the
+  shared data table with its card layout.
+- **SQLite upgrades lost zone grants and metrics.** Release 1.1.0's migration
+  rebuilt the `pdns_servers` table while SQLite foreign-key enforcement was still
+  on (drizzle-kit's `PRAGMA foreign_keys=OFF` is a no-op inside the migrator's
+  transaction), so the `DROP TABLE` cascaded into `zone_grants`, `metric_samples`
+  and `pdns_server_stats` and nulled `pdns_requests.server_id`. The migration
+  runner now disables foreign keys on the connection before applying migrations
+  and verifies referential integrity afterwards, so this cannot recur on future
+  table rebuilds. **If you run SQLite and upgraded through 1.1.0, check Admin →
+  Users for missing per-zone grants** - they were deleted at that upgrade and need
+  to be re-created (see [Upgrading](./docs/09-UPGRADING.md#unreleased)).
+- **Backup export and restore did not work.** On Postgres the export answered 500
+  whenever the audit log had rows (bigserial ids are not JSON-serialisable); on both
+  databases the restore converted no timestamps, so every row was rejected while the
+  response said `ok: true` and an audit entry claimed a restore had happened. Export
+  now serialises ids and dates explicitly, restore converts them back by column type,
+  counts real inserts (the result table shows Inserted / Skipped / Failed), reports
+  `ok: false` when any row failed, and moves the Postgres audit-id sequence past the
+  restored rows so the next audited action does not collide. **Backups taken with
+  earlier versions are incomplete - take a fresh export after upgrading.**
+- **Retried writes could double-apply on PowerDNS.** A `POST` that timed out after
+  PowerDNS had committed it (new cryptokey, new zone, new TSIG key, new autoprimary)
+  was sent again, producing a second KSK or a spurious "already exists" error. Writes
+  are now repeated only when safe: idempotent requests (GET/PUT/DELETE, PATCH with
+  REPLACE/DELETE changetypes) or a failure that proves the request never reached the
+  daemon (connection refused, DNS failure).
+- **Zonefile import mis-read common BIND syntax.** Blank-owner continuation lines
+  (`    300 IN A 192.0.2.5` under a previous owner) imported as `300.<zone>` /
+  `in.<zone>` records, and unit TTLs (`1h`) produced a record of type `1H` - all with
+  no diagnostic. Blank owners now inherit the previous owner, TTL units are parsed on
+  records and in `$TTL`, and a token that cannot be a record type is a reported error
+  rather than a bogus record.
+- **Per-zone grants did not match some URL spellings.** Deleting a zone, saving zone
+  settings or editing metadata as a grant holder returned 403 when the zone was
+  requested without the trailing dot or in a different case, and the audit resource id
+  varied with the caller's spelling. The three routes now canonicalise the zone name
+  like every other route.
+- **Cloned, imported and exported zones had no entry in the zone's History.** Their
+  audit rows were written without the backend prefix the change-log filters on.
+- **A slow backend held up every other write to it.** The per-backend lock was held
+  across all retry attempts and their back-off (~31 s against a hung daemon), so
+  concurrent saves queued N × 31 s. The lock now covers one attempt at a time.
+- **Mirrors of SOA-EDIT=EPOCH zones were permanently "lagging"** and raised a
+  replication-drift advisory that never cleared. A mirror of such a zone is now judged
+  by how recently it transferred (within one SOA refresh is in sync).
+- **Catalog Producer zones were not NOTIFYed on create**, leaving their Consumers to
+  the SOA refresh; they are now treated as transferred zones everywhere (NOTIFY, sync
+  checks, TSIG eligibility), consistent with the DNSSEC code that already did.
+- **Record edits on large zones were slow.** A single-record change fetched every
+  record of the zone twice; on PowerDNS 4.5+ the editor now fetches only the record
+  sets it touches (and DNSSEC disable/rectify/key listing no longer fetch records).
+- **The PowerDNS request log grew without bound.** `pdns_requests` rows older than
+  `PDNS_REQUEST_LOG_RETENTION_DAYS` (new setting, default 7) are now pruned alongside
+  the metrics tables.
+- Zones deleted outside the app (pdnsutil, another client) now refresh open zone
+  lists instead of lingering until the next navigation; classless reverse zones
+  (`0/25.2.0.192.in-addr.arpa.`) are addressed with PowerDNS' own zone-id encoding;
+  the delete-record API validates the record type like the create/update API.
+
 ## [1.8.4] - 2026-10-07
 
 Layout fix for the inline record editor introduced in 1.8.3. **No schema

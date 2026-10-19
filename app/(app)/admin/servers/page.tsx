@@ -20,6 +20,7 @@ import { latestAdminEditTimestampsForServers } from "@/lib/db/repositories/audit
 import { freshnessOf } from "@/lib/freshness";
 import { rawCache } from "@/lib/pdns/zone-state-cache";
 import { classifyMirrorSerial, isSettledSyncState } from "@/lib/pdns/serial-sync";
+import { isTransferredKind } from "@/lib/pdns/zone-kinds";
 import { derivedParentOf } from "@/lib/pdns/topology-cache";
 import { isReadOnlyBackend } from "@/lib/pdns/capabilities";
 import { CapabilityBadges } from "@/components/domain/capability-badges";
@@ -217,17 +218,34 @@ export default async function PdnsServersListPage() {
               <table className="w-full text-sm">
                 <thead className="border-border bg-background text-label text-muted-foreground border-y text-left">
                   <tr>
-                    <th className="h-9 px-2 font-medium first:pl-3">Name</th>
-                    <th className="h-9 px-2 font-medium first:pl-3">Base URL</th>
-                    <th className="h-9 px-2 font-medium first:pl-3">Status</th>
-                    <th className="h-9 px-2 font-medium first:pl-3">Version</th>
+                    <th scope="col" className="h-9 px-2 font-medium first:pl-3">
+                      Name
+                    </th>
+                    <th scope="col" className="h-9 px-2 font-medium first:pl-3">
+                      Base URL
+                    </th>
+                    <th scope="col" className="h-9 px-2 font-medium first:pl-3">
+                      Status
+                    </th>
+                    <th scope="col" className="h-9 px-2 font-medium first:pl-3">
+                      Version
+                    </th>
                     {pdnsBackgroundPollingEnabled ? (
-                      <th className="h-9 px-2 font-medium first:pl-3">Sync</th>
+                      <th scope="col" className="h-9 px-2 font-medium first:pl-3">
+                        Sync
+                      </th>
                     ) : null}
                     {canReadAudit ? (
-                      <th className="h-9 px-2 font-medium first:pl-3">Last admin edit</th>
+                      <th scope="col" className="h-9 px-2 font-medium first:pl-3">
+                        Last admin edit
+                      </th>
                     ) : null}
-                    <th className="h-9 w-px px-2 font-medium whitespace-nowrap first:pl-3"></th>
+                    <th
+                      scope="col"
+                      className="h-9 w-px px-2 font-medium whitespace-nowrap first:pl-3"
+                    >
+                      <span className="sr-only">Actions</span>
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -531,32 +549,32 @@ function ServerCard({ row, canReadAudit, lastEdits, syncChip, reachability }: Se
       ) : null}
 
       <dl className="mt-3 text-sm">
-        <Field label="Base URL">
+        <DetailRow label="Base URL">
           <span className="font-mono text-xs break-all">{row.baseUrl}</span>
-        </Field>
-        <Field label="Status">
+        </DetailRow>
+        <DetailRow label="Status">
           <HealthBadge
             disabledAt={row.disabledAt}
             lastSeenAt={row.lastSeenAt}
             reachability={reachability}
           />
-        </Field>
-        <Field label="Version">
+        </DetailRow>
+        <DetailRow label="Version">
           <span className="text-xs">{row.versionCache?.version ?? "-"}</span>
-        </Field>
+        </DetailRow>
         {pdnsBackgroundPollingEnabled ? (
-          <Field label="Sync">
+          <DetailRow label="Sync">
             <SyncChip verdict={syncChip} isMirror={isMirror} />
-          </Field>
+          </DetailRow>
         ) : null}
         {canReadAudit ? (
-          <Field label="Last admin edit">
+          <DetailRow label="Last admin edit">
             <span className="text-muted-foreground text-xs">
               {lastEdits.has(row.id)
                 ? freshnessOf(lastEdits.get(row.id)!.toISOString()).label
                 : "-"}
             </span>
-          </Field>
+          </DetailRow>
         ) : null}
       </dl>
 
@@ -573,7 +591,8 @@ function ServerCard({ row, canReadAudit, lastEdits, syncChip, reachability }: Se
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+/** One label/value row of a server's mobile card - a description-list entry, not a form field. */
+function DetailRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="border-border flex justify-between gap-3 border-t py-1.5 first:border-t-0">
       <dt className="text-muted-foreground shrink-0">{label}</dt>
@@ -652,11 +671,12 @@ function computeSecondarySync(
 }
 
 /**
- * Zones that PDNS replicates via AXFR. Everything else (Native,
- * Producer/Consumer catalogs, anything mistakenly tagged Slave on a
- * primary) is skipped by the sync check - those legitimately don't
- * mirror onto the secondary.
+ * Zones that PDNS replicates via AXFR (Master/Primary and the catalog
+ * Producer, whose Consumers are ordinary secondaries of it). Everything else
+ * (Native, Consumer copies, anything mistakenly tagged Slave on a primary) is
+ * skipped by the sync check - those legitimately don't mirror onto the
+ * secondary.
  */
 function isReplicatedKind(kind: string): boolean {
-  return kind === "Master" || kind === "Primary";
+  return isTransferredKind(kind);
 }

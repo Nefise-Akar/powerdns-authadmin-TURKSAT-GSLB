@@ -18,6 +18,8 @@ interface CheckboxProps {
   disabled?: boolean;
   /** Accessible name when there's no visible `label`. */
   ariaLabel?: string;
+  /** Lets a `Field` caption point its `<label htmlFor>` at the checkbox. */
+  id?: string;
   className?: string;
 }
 
@@ -27,6 +29,7 @@ export function Checkbox({
   label,
   disabled,
   ariaLabel,
+  id,
   className,
 }: CheckboxProps) {
   return (
@@ -35,6 +38,7 @@ export function Checkbox({
     >
       <button
         type="button"
+        id={id}
         role="checkbox"
         aria-checked={checked}
         aria-label={ariaLabel}

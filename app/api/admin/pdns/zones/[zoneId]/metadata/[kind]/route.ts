@@ -25,9 +25,11 @@ import { requireCsrf } from "@/lib/auth/csrf";
 import { findDefaultPdnsServer, findPdnsServerBySlug } from "@/lib/db/repositories/pdns-servers";
 import { getBackendGateway } from "@/lib/realtime/backend-gateway";
 import { canActOnZone } from "@/lib/rbac/zone-permissions";
+import { canonicalZoneName } from "@/lib/dns/zone-name";
 import { assertApiWritableMetadataKind, normalizeMetadataValues } from "@/lib/pdns/metadata-policy";
 import { ForbiddenError, NotFoundError, ValidationError } from "@/lib/errors";
 import { errorResponse } from "@/lib/http/error-response";
+import { parseSearchParams } from "@/lib/http/parse-query";
 
 // PDNS metadata kinds are uppercase ASCII letters / digits / hyphens,
 // e.g. `ALSO-NOTIFY`. The regex below accepts that shape and rejects
@@ -83,7 +85,7 @@ export async function PUT(request: Request, context: RouteContext): Promise<Resp
 
     const selected = await resolveServer(body.serverSlug);
     const client = getBackendGateway(selected);
-    const zoneName = decodeURIComponent(zoneId);
+    const zoneName = canonicalZoneName(decodeURIComponent(zoneId));
 
     if (
       !canActOnZone({
@@ -139,11 +141,11 @@ export async function DELETE(request: Request, context: RouteContext): Promise<R
     const kind = parseKind(rawKind);
     assertApiWritableMetadataKind(kind);
     const url = new URL(request.url);
-    const { serverSlug } = deleteQuerySchema.parse(Object.fromEntries(url.searchParams));
+    const { serverSlug } = parseSearchParams(deleteQuerySchema, url);
 
     const selected = await resolveServer(serverSlug);
     const client = getBackendGateway(selected);
-    const zoneName = decodeURIComponent(zoneId);
+    const zoneName = canonicalZoneName(decodeURIComponent(zoneId));
 
     if (
       !canActOnZone({

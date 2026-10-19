@@ -149,6 +149,11 @@
   --color-warn: var(--warning);
   --color-warn-fg: var(--warning);
   --color-error: var(--destructive);
+  /* Text variants of the semantic colours. The Turksat success/destructive
+   * values already clear AA as text on card and background in both themes,
+   * so they alias straight through. */
+  --color-success-fg: var(--success);
+  --color-error-fg: var(--destructive);
   /* Orange only tinted category badges (autosecondary, lua, internal);
    * Turksat doesn't color categories, so they fall back to the tag colors. */
   --color-orange: var(--tag-foreground);
@@ -449,6 +454,12 @@
   .pda-sync-pulse-a,
   .pda-sync-pulse-b {
     opacity: 0.4;
+  }
+  /* Safety net for Tailwind's own `animate-pulse` (header dot, skeleton
+   * blocks). Sites use `motion-safe:animate-pulse`; this catches any that
+   * don't. Unlayered, so it wins over the utility layer. */
+  .animate-pulse {
+    animation: none;
   }
 }
 

@@ -148,7 +148,7 @@ export async function POST(request: Request): Promise<Response> {
       }));
 
       try {
-        const created = await client.createZone({
+        await client.createZone({
           name: zone.name,
           kind: input.kind,
           rrsets: wireRrsets,
@@ -176,7 +176,7 @@ export async function POST(request: Request): Promise<Response> {
         await appendAudit({
           actor: { type: "user", id: user.id },
           action: "zone.create",
-          resource: { type: "zone", id: created.id },
+          resource: { type: "zone", id: `${server.slug}:${zone.name}` },
           after: {
             name: zone.name,
             source: "zonefile-import",
@@ -208,7 +208,7 @@ export async function POST(request: Request): Promise<Response> {
           err instanceof PdnsError
             ? redact(err.message)
             : err instanceof Error
-              ? err.message
+              ? redact(err.message)
               : "unknown";
         logger.warn(
           { zone: zone.name, server: server.slug, err: message },

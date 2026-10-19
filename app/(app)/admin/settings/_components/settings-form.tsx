@@ -11,7 +11,7 @@ import { useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { apiFetch } from "@/lib/client/api-fetch";
 import { buttonClass } from "@/components/ui/button";
-import { inputClass as baseInputClass, textareaClass } from "@/components/ui/field";
+import { Field, inputClass, textareaClass } from "@/components/ui/field";
 
 interface SettingsFormProps {
   initial: {
@@ -319,7 +319,7 @@ export function SettingsForm({ initial, canWrite, lockedByPolicy }: SettingsForm
           value={loginIntro}
           onChange={(e) => setLoginIntro(e.target.value)}
           disabled={!canWrite}
-          className={`mt-1.5 ${textareaClass} resize-y`}
+          className={`${textareaClass} resize-y`}
         />
       </Field>
 
@@ -431,37 +431,6 @@ export function SettingsForm({ initial, canWrite, lockedByPolicy }: SettingsForm
         </p>
       )}
     </form>
-  );
-}
-
-const inputClass = `mt-1.5 ${baseInputClass}`;
-
-function Field({
-  id,
-  label,
-  hint,
-  errors,
-  children,
-}: {
-  id: string;
-  label: string;
-  hint?: string;
-  errors?: string[];
-  children: React.ReactNode;
-}) {
-  return (
-    <div>
-      <label htmlFor={id} className="block text-sm font-medium">
-        {label}
-      </label>
-      {children}
-      {hint ? <p className="text-muted-foreground mt-1 text-xs">{hint}</p> : null}
-      {errors && errors.length > 0 ? (
-        <p className="text-destructive mt-1 text-xs" role="alert">
-          {errors.join(" ")}
-        </p>
-      ) : null}
-    </div>
   );
 }
 

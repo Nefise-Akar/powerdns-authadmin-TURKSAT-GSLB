@@ -23,7 +23,12 @@ import { apiFetch } from "@/lib/client/api-fetch";
 import { SUPPORTED_TYPES, getRRTypeValidator } from "@/lib/validators/rr-types";
 import { SelectMenu } from "@/components/ui/select-menu";
 import { buttonClass } from "@/components/ui/button";
-import { inputClass, textareaClass } from "@/components/ui/field";
+import {
+  Field as SharedField,
+  inputClass,
+  textareaClass,
+  type FieldProps,
+} from "@/components/ui/field";
 
 interface TemplateRecord {
   name: string;
@@ -318,6 +323,7 @@ export function ZoneTemplateForm(props: Props) {
                 onChange={(e) => setNs(i, e.target.value)}
                 disabled={!canEdit}
                 placeholder="ns1.example.com."
+                aria-label={`Name server ${i + 1}`}
                 className={`${inputClass} font-mono`}
               />
               {canEdit ? (
@@ -396,7 +402,7 @@ export function ZoneTemplateForm(props: Props) {
 
       <Section
         title="Auto-select for backends"
-        subtitle="When ticked, this template becomes the create-zone default the moment the operator selects one of the chosen PDNS primaries."
+        subtitle="When ticked, this template becomes the create-zone default the moment the operator selects one of the chosen PowerDNS primaries."
       >
         <label className="flex items-start gap-2 text-sm">
           <input
@@ -405,12 +411,12 @@ export function ZoneTemplateForm(props: Props) {
             onChange={(e) => setDefaultForOn(e.target.checked)}
             className="mt-0.5"
           />
-          <span>Use this template by default for these PDNS servers</span>
+          <span>Use this template by default for these PowerDNS servers</span>
         </label>
         {defaultForOn ? (
           primaries.length === 0 ? (
             <p className="bg-tag text-mono-xs text-tag-foreground mt-2 inline-flex h-5 items-center rounded-sm px-1.5 font-mono whitespace-nowrap">
-              No active PDNS primaries configured.
+              No active PowerDNS primaries configured.
             </p>
           ) : (
             <div className="mt-2 flex flex-wrap gap-2">
@@ -471,6 +477,7 @@ export function ZoneTemplateForm(props: Props) {
                     onChange={(e) => setRecord(i, { name: e.target.value })}
                     disabled={!canEdit}
                     placeholder="@"
+                    aria-label="Record name"
                     className={`${inputClass} font-mono`}
                   />
                   <SelectMenu
@@ -487,6 +494,7 @@ export function ZoneTemplateForm(props: Props) {
                     value={r.ttl}
                     onChange={(e) => setRecord(i, { ttl: Number(e.target.value) || 0 })}
                     disabled={!canEdit}
+                    aria-label="TTL (seconds)"
                     className={`${inputClass} font-mono`}
                   />
                   {canEdit ? (
@@ -504,6 +512,7 @@ export function ZoneTemplateForm(props: Props) {
                   onChange={(e) => setRecord(i, { content: e.target.value })}
                   disabled={!canEdit}
                   placeholder={validator.placeholder}
+                  aria-label="Record content"
                   className={`${inputClass} font-mono`}
                 />
                 {issues.length > 0 ? (
@@ -578,29 +587,9 @@ function Section({
   );
 }
 
-function Field({
-  label,
-  hint,
-  errors,
-  children,
-}: {
-  label: string;
-  hint?: string;
-  errors?: string[];
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="mt-3 first:mt-0">
-      <label className="block text-sm font-medium">{label}</label>
-      {children}
-      {hint ? <p className="text-muted-foreground mt-1 text-xs">{hint}</p> : null}
-      {errors && errors.length > 0 ? (
-        <p className="text-destructive mt-1 text-xs" role="alert">
-          {errors.join(" ")}
-        </p>
-      ) : null}
-    </div>
-  );
+/** Field with the extra vertical gap this form's sections stack their fields at. */
+function Field(props: FieldProps) {
+  return <SharedField {...props} className="mt-3 first:mt-0" />;
 }
 
 function TimerField({
@@ -615,8 +604,7 @@ function TimerField({
   disabled: boolean;
 }) {
   return (
-    <div>
-      <label className="block text-sm font-medium">{label}</label>
+    <SharedField label={label}>
       <input
         type="number"
         min={0}
@@ -626,9 +614,9 @@ function TimerField({
           if (Number.isInteger(n) && n >= 0) set(n);
         }}
         disabled={disabled}
-        className={`${inputClass} mt-1 font-mono`}
+        className={`${inputClass} font-mono`}
       />
-    </div>
+    </SharedField>
   );
 }
 

@@ -47,8 +47,7 @@ import { publishHealthEvent } from "./event-bus";
 import { getReplicationDriftMs } from "./replication-drift";
 import { getTsigMissingCount } from "./tsig-presence";
 import { recordBackendStatus } from "./backend-status";
-
-const MIRROR_KINDS = new Set(["slave", "secondary", "consumer"]);
+import { isMirrorKind } from "@/lib/pdns/zone-kinds";
 
 /**
  * The shared daemon-meta probe: force a live version re-probe + read /config +
@@ -152,6 +151,7 @@ export async function refreshBackendHealth(
       serial: z.serial ?? null,
       editedSerial: z.edited_serial ?? null,
       notifiedSerial: z.notified_serial ?? null,
+      soaEdit: z.soa_edit ?? null,
       kind: z.kind,
       dnssec: z.dnssec ?? false,
       masters: z.masters ?? [],
@@ -184,7 +184,7 @@ export async function refreshBackendHealth(
   for (const s of snapshots ?? []) {
     const k = s.kind.toLowerCase();
     zoneKinds[k] = (zoneKinds[k] ?? 0) + 1;
-    if (MIRROR_KINDS.has(k) && s.masters.length === 0) mirrorZonesWithoutMasters += 1;
+    if (isMirrorKind(k) && s.masters.length === 0) mirrorZonesWithoutMasters += 1;
   }
   try {
     const changed = await syncBackendAdvisories(

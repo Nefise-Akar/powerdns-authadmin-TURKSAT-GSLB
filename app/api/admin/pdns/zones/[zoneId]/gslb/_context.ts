@@ -12,6 +12,7 @@
 
 import "server-only";
 import { requireCsrf } from "@/lib/auth/csrf";
+import { canonicalZoneName } from "@/lib/dns/zone-name";
 import { requireUser } from "@/lib/auth/require-user";
 import { findDefaultPdnsServer, findPdnsServerBySlug } from "@/lib/db/repositories/pdns-servers";
 import { horizonScopeFor } from "@/lib/db/repositories/zone-horizons";
@@ -20,7 +21,6 @@ import { ForbiddenError, ValidationError } from "@/lib/errors";
 import { decodeMode } from "@/lib/gslb/model";
 import { canonicalName, type ZoneRRset } from "@/lib/gslb/record-plan";
 import { GslbPlanError } from "@/lib/gslb/record-sync";
-import { normalizeZoneId } from "@/lib/pdns/client";
 import { rrsetHash } from "@/lib/pdns/rrset-hash";
 import { canActOnZone } from "@/lib/rbac/zone-permissions";
 
@@ -49,7 +49,9 @@ export async function resolveGslbRouteContext(
 ): Promise<GslbRouteContext> {
   const { user, globalPermissions, zoneGrants } = await requireUser();
   await requireCsrf(request);
-  const zoneName = normalizeZoneId(decodeURIComponent(zoneParam));
+  // Canonical form, as the other zone routes use: grants are stored lowercase
+  // with the trailing dot, and audit ids must not vary with the URL spelling.
+  const zoneName = canonicalZoneName(decodeURIComponent(zoneParam));
   // The body is validated after auth; only a string slug is looked up here.
   const server =
     typeof serverSlug === "string" && serverSlug !== ""

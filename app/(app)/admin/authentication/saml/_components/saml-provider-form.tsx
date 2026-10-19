@@ -4,7 +4,7 @@
  * app/(app)/admin/authentication/saml/_components/saml-provider-form.tsx
  *
  * Shared create / edit form for a SAML provider. Structurally parallel to
- * the OIDC form (`../../oidc-providers/_components/oidc-provider-form.tsx`).
+ * the OIDC form (`../../oidc/_components/oidc-provider-form.tsx`).
  * SP private-key material is required on create and optional on edit (blank
  * keeps the existing encrypted value).
  */
@@ -14,7 +14,7 @@ import { useState, type FormEvent } from "react";
 import { apiFetch } from "@/lib/client/api-fetch";
 import { SelectMenu } from "@/components/ui/select-menu";
 import { buttonClass } from "@/components/ui/button";
-import { inputClass as baseInputClass, textareaClass } from "@/components/ui/field";
+import { Field, inputClass, textareaClass } from "@/components/ui/field";
 
 interface FormInitial {
   id: string;
@@ -376,7 +376,7 @@ export function SamlProviderForm(props: Props) {
             onChange={(e) => setIdpSigningCert(e.target.value)}
             disabled={!canEdit}
             placeholder="-----BEGIN CERTIFICATE-----&#10;...&#10;-----END CERTIFICATE-----"
-            className={`mt-1.5 ${textareaClass} font-mono text-xs`}
+            className={`${textareaClass} font-mono text-xs`}
           />
         </Field>
       </fieldset>
@@ -410,7 +410,7 @@ export function SamlProviderForm(props: Props) {
             onChange={(e) => setSpSigningKey(e.target.value)}
             disabled={!canEdit}
             placeholder="-----BEGIN PRIVATE KEY-----&#10;...&#10;-----END PRIVATE KEY-----"
-            className={`mt-1.5 ${textareaClass} font-mono text-xs`}
+            className={`${textareaClass} font-mono text-xs`}
           />
         </Field>
 
@@ -427,7 +427,7 @@ export function SamlProviderForm(props: Props) {
             onChange={(e) => setSpSigningCert(e.target.value)}
             disabled={!canEdit}
             placeholder="-----BEGIN CERTIFICATE-----&#10;...&#10;-----END CERTIFICATE-----"
-            className={`mt-1.5 ${textareaClass} font-mono text-xs`}
+            className={`${textareaClass} font-mono text-xs`}
           />
         </Field>
 
@@ -465,7 +465,7 @@ export function SamlProviderForm(props: Props) {
                 value={spEncryptionKey}
                 onChange={(e) => setSpEncryptionKey(e.target.value)}
                 disabled={!canEdit}
-                className={`mt-1.5 ${textareaClass} font-mono text-xs`}
+                className={`${textareaClass} font-mono text-xs`}
               />
             </Field>
             <Field
@@ -479,7 +479,7 @@ export function SamlProviderForm(props: Props) {
                 value={spEncryptionCert}
                 onChange={(e) => setSpEncryptionCert(e.target.value)}
                 disabled={!canEdit}
-                className={`mt-1.5 ${textareaClass} font-mono text-xs`}
+                className={`${textareaClass} font-mono text-xs`}
               />
             </Field>
           </div>
@@ -615,7 +615,7 @@ export function SamlProviderForm(props: Props) {
               onChange={(e) => setDomainsText(e.target.value)}
               disabled={!canEdit}
               placeholder="example.com&#10;acme.corp"
-              className={`mt-1.5 ${textareaClass} font-mono`}
+              className={`${textareaClass} font-mono`}
             />
           </Field>
         ) : null}
@@ -635,7 +635,7 @@ export function SamlProviderForm(props: Props) {
             {groupMappings.map((m, i) => (
               <li
                 key={i}
-                className="border-border bg-background grid grid-cols-[1fr_1fr_1fr_1fr_auto] gap-2 rounded border p-2"
+                className="border-border bg-background grid grid-cols-1 gap-2 rounded border p-2 sm:grid-cols-2 md:grid-cols-[1fr_1fr_1fr_1fr_auto]"
               >
                 <label className="text-xs">
                   IdP group
@@ -644,7 +644,7 @@ export function SamlProviderForm(props: Props) {
                     onChange={(e) => updateGroupMapping(i, { group: e.target.value })}
                     disabled={!canEdit}
                     placeholder="DomainAdmins"
-                    className={`${inputClass} font-mono text-xs`}
+                    className={`mt-1 ${inputClass} font-mono text-xs`}
                   />
                 </label>
                 <label className="text-xs">
@@ -684,7 +684,12 @@ export function SamlProviderForm(props: Props) {
                 <label className="text-xs">
                   Target
                   {m.scopeType === "global" ? (
-                    <input value="" disabled placeholder="-" className={`${inputClass} text-xs`} />
+                    <input
+                      value=""
+                      disabled
+                      placeholder="-"
+                      className={`mt-1 ${inputClass} text-xs`}
+                    />
                   ) : m.scopeType === "team" ? (
                     <SelectMenu
                       value={m.scopeId ?? ""}
@@ -723,7 +728,7 @@ export function SamlProviderForm(props: Props) {
                       onChange={(e) => updateGroupMapping(i, { scopeId: e.target.value })}
                       disabled={!canEdit}
                       placeholder="example.com."
-                      className={`${inputClass} font-mono text-xs`}
+                      className={`mt-1 ${inputClass} font-mono text-xs`}
                     />
                   )}
                 </label>
@@ -791,36 +796,5 @@ export function SamlProviderForm(props: Props) {
         </p>
       )}
     </form>
-  );
-}
-
-const inputClass = `mt-1.5 ${baseInputClass}`;
-
-function Field({
-  id,
-  label,
-  hint,
-  errors,
-  children,
-}: {
-  id: string;
-  label: string;
-  hint?: string;
-  errors?: string[];
-  children: React.ReactNode;
-}) {
-  return (
-    <div>
-      <label htmlFor={id} className="block text-sm font-medium">
-        {label}
-      </label>
-      {children}
-      {hint ? <p className="text-muted-foreground mt-1 text-xs">{hint}</p> : null}
-      {errors && errors.length > 0 ? (
-        <p className="text-destructive mt-1 text-xs" role="alert">
-          {errors.join(" ")}
-        </p>
-      ) : null}
-    </div>
   );
 }

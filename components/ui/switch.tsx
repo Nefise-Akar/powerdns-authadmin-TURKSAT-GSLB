@@ -17,13 +17,26 @@ interface SwitchProps {
   disabled?: boolean;
   /** Accessible name when there's no associated visible label. */
   ariaLabel?: string;
+  /** Lets a `Field` caption point its `<label htmlFor>` at the switch. */
+  id?: string;
+  "aria-describedby"?: string;
   className?: string;
 }
 
-export function Switch({ checked, onChange, disabled, ariaLabel, className }: SwitchProps) {
+export function Switch({
+  checked,
+  onChange,
+  disabled,
+  ariaLabel,
+  id,
+  "aria-describedby": ariaDescribedBy,
+  className,
+}: SwitchProps) {
   return (
     <button
       type="button"
+      id={id}
+      aria-describedby={ariaDescribedBy}
       role="switch"
       aria-checked={checked}
       aria-label={ariaLabel}

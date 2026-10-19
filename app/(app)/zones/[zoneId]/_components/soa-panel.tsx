@@ -30,7 +30,7 @@ import {
   type SoaFields,
 } from "@/lib/validators/soa";
 import { buttonClass } from "@/components/ui/button";
-import { inputClass as baseInputClass } from "@/components/ui/field";
+import { Field, inputClass } from "@/components/ui/field";
 
 interface SoaPanelProps {
   zoneName: string;
@@ -270,26 +270,6 @@ export function SoaPanel(props: SoaPanelProps) {
         )}
       </form>
     </section>
-  );
-}
-
-const inputClass = `mt-1.5 ${baseInputClass}`;
-
-function Field({
-  label,
-  hint,
-  children,
-}: {
-  label: string;
-  hint?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div>
-      <label className="text-label block">{label}</label>
-      {children}
-      {hint ? <p className="text-caption text-muted-foreground mt-1.5">{hint}</p> : null}
-    </div>
   );
 }
 

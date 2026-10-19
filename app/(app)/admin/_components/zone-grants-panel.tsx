@@ -210,13 +210,20 @@ export function ZoneGrantsPanel({
       )}
 
       {open && canManage ? (
-        <div className="border-border bg-card mt-4 space-y-3 rounded border p-3">
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            void handleAdd();
+          }}
+          className="border-border bg-card mt-4 space-y-3 rounded border p-3"
+        >
           <div className="grid gap-2 sm:grid-cols-[1fr_2fr] sm:items-end">
             <div>
               <label htmlFor="zg-server" className="block text-xs font-medium">
                 Server
               </label>
               <SelectMenu
+                id="zg-server"
                 value={serverId}
                 onChange={(v) => setServerId(v)}
                 options={servers.map((s) => ({ value: s.id, label: s.name }))}
@@ -262,15 +269,14 @@ export function ZoneGrantsPanel({
             </button>
             <button
               aria-busy={adding}
-              type="button"
-              onClick={handleAdd}
+              type="submit"
               disabled={adding}
               className={buttonClass({ variant: "primary", size: "sm" })}
             >
               Grant
             </button>
           </div>
-        </div>
+        </form>
       ) : null}
     </section>
   );

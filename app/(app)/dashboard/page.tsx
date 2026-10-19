@@ -360,14 +360,22 @@ export default async function DashboardPage({ searchParams }: DashboardProps) {
               ) : null}
               {canReadServers ? (
                 <Card title="Backends snapshot">
-                  <div className="overflow-hidden text-sm">
+                  <div className="overflow-x-auto text-sm">
                     <table className="w-full">
                       <thead className="border-border bg-background text-label text-muted-foreground border-y text-left">
                         <tr>
-                          <th className="h-9 px-2 font-medium first:pl-3">Backend</th>
-                          <th className="h-9 px-2 font-medium first:pl-3">Zones</th>
-                          <th className="h-9 px-2 font-medium first:pl-3">p50</th>
-                          <th className="h-9 px-2 font-medium first:pl-3">p95</th>
+                          <th scope="col" className="h-9 px-2 font-medium first:pl-3">
+                            Backend
+                          </th>
+                          <th scope="col" className="h-9 px-2 font-medium first:pl-3">
+                            Zones
+                          </th>
+                          <th scope="col" className="h-9 px-2 font-medium first:pl-3">
+                            p50
+                          </th>
+                          <th scope="col" className="h-9 px-2 font-medium first:pl-3">
+                            p95
+                          </th>
                         </tr>
                       </thead>
                       <tbody>
@@ -442,14 +450,22 @@ export default async function DashboardPage({ searchParams }: DashboardProps) {
               {recent.length === 0 ? (
                 <p className="text-muted-foreground text-sm">No audit entries yet.</p>
               ) : (
-                <div className="overflow-hidden text-sm">
+                <div className="overflow-x-auto text-sm">
                   <table className="w-full">
                     <thead className="border-border bg-background text-label text-muted-foreground border-y text-left">
                       <tr>
-                        <th className="h-9 px-2 font-medium first:pl-3">When</th>
-                        <th className="h-9 px-2 font-medium first:pl-3">Actor</th>
-                        <th className="h-9 px-2 font-medium first:pl-3">Action</th>
-                        <th className="h-9 px-2 font-medium first:pl-3">Resource</th>
+                        <th scope="col" className="h-9 px-2 font-medium first:pl-3">
+                          When
+                        </th>
+                        <th scope="col" className="h-9 px-2 font-medium first:pl-3">
+                          Actor
+                        </th>
+                        <th scope="col" className="h-9 px-2 font-medium first:pl-3">
+                          Action
+                        </th>
+                        <th scope="col" className="h-9 px-2 font-medium first:pl-3">
+                          Resource
+                        </th>
                       </tr>
                     </thead>
                     <tbody>
@@ -680,10 +696,10 @@ function PdnsAttentionWidget({ counts }: { counts: { neverProbed: number; unreac
   return (
     <section
       className="border-warning-border bg-warning-muted rounded-md border p-4"
-      aria-label="PDNS backends needing attention"
+      aria-label="PowerDNS backends needing attention"
     >
       <header className="mb-2 flex items-center gap-2">
-        <h2 className="text-h3 text-foreground">PDNS backends needing attention</h2>
+        <h2 className="text-h3 text-foreground">PowerDNS backends needing attention</h2>
         <span className="text-muted-foreground text-xs">
           Live reachability across configured backends. Click a tile to jump to the list and Test.
         </span>
@@ -712,7 +728,7 @@ function PdnsAttentionWidget({ counts }: { counts: { neverProbed: number; unreac
  * either missing entirely (`Never probed`) or actively failing
  * (`Failing probe` - discovery_cache.ok=false). Hidden when both
  * counts are zero so healthy fleets see nothing. Tiles deep-link
- * to /admin/oidc-providers where each row's discovery badge
+ * to /admin/authentication where each row's discovery badge
  * carries the human-readable reason.
  */
 function hasOidcAttention(c: { neverProbed: number; failing: number }): boolean {
@@ -827,7 +843,7 @@ async function PdnsStatsSection() {
 
 function PdnsStatsSectionFallback() {
   return (
-    <section className="animate-pulse space-y-3">
+    <section className="space-y-3 motion-safe:animate-pulse">
       <header>
         <div className="bg-background h-6 w-56 rounded" />
         <div className="bg-background mt-2 h-4 w-96 rounded" />
@@ -1006,12 +1022,12 @@ function StatEmpty({ label }: { label: string }) {
 function DashboardTabStrip({ active }: { active: "admin" | "pdns" }) {
   return (
     <div className="border-border border-b">
-      <nav className="-mb-px flex gap-6 text-sm">
+      <nav aria-label="Dashboard views" className="-mb-px flex gap-6 text-sm">
         <DashboardTab href="/dashboard" active={active === "pdns"}>
           PowerDNS stats
         </DashboardTab>
         <DashboardTab href="/dashboard?tab=admin" active={active === "admin"}>
-          PDNS Auth Admin
+          PowerDNS-AuthAdmin
         </DashboardTab>
       </nav>
     </div>

@@ -29,7 +29,10 @@ import { Alert } from "@/components/ui/alert";
 
 type Step = "choose" | "backup" | "restore-upload" | "restore-confirm" | "restore-result";
 
-type RestoreCounts = Record<string, { attempted: number; inserted: number; skipped: number }>;
+type RestoreCounts = Record<
+  string,
+  { attempted: number; inserted: number; skipped: number; failed?: number }
+>;
 
 const CONFIRM_PHRASE = "RESTORE";
 
@@ -519,6 +522,7 @@ function RestoreConfirmStep({
           value={confirmPhrase}
           onChange={(e) => onConfirmPhraseChange(e.target.value)}
           placeholder={CONFIRM_PHRASE}
+          aria-label={`Type ${CONFIRM_PHRASE} to confirm`}
           disabled={readOnly}
           className={`w-full max-w-xs font-mono ${inputClass}`}
           autoComplete="off"
@@ -565,30 +569,50 @@ function RestoreResultStep({
         </Panel>
       ) : (
         <Panel title="Rows by table">
-          <table className="w-full text-sm">
-            <thead className="text-label text-muted-foreground">
-              <tr>
-                <th className="pb-2 text-left">Table</th>
-                <th className="pb-2 text-right">Attempted</th>
-                <th className="pb-2 text-right">Inserted</th>
-                <th className="pb-2 text-right">Skipped</th>
-              </tr>
-            </thead>
-            <tbody>
-              {tables.map(([name, c]) => (
-                <tr key={name} className="border-border border-b">
-                  <td className="py-1.5">
-                    <code className="font-mono text-xs">{name}</code>
-                  </td>
-                  <td className="py-1.5 text-right tabular-nums">{c.attempted}</td>
-                  <td className="text-success py-1.5 text-right tabular-nums">{c.inserted}</td>
-                  <td className="text-muted-foreground py-1.5 text-right tabular-nums">
-                    {c.skipped}
-                  </td>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="text-label text-muted-foreground">
+                <tr>
+                  <th scope="col" className="pb-2 text-left">
+                    Table
+                  </th>
+                  <th scope="col" className="pb-2 text-right">
+                    Attempted
+                  </th>
+                  <th scope="col" className="pb-2 text-right">
+                    Inserted
+                  </th>
+                  <th scope="col" className="pb-2 text-right">
+                    Skipped
+                  </th>
+                  <th scope="col" className="pb-2 text-right">
+                    Failed
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {tables.map(([name, c]) => (
+                  <tr key={name} className="border-border border-b">
+                    <td className="py-1.5">
+                      <code className="font-mono text-xs">{name}</code>
+                    </td>
+                    <td className="py-1.5 text-right tabular-nums">{c.attempted}</td>
+                    <td className="text-success py-1.5 text-right tabular-nums">{c.inserted}</td>
+                    <td className="text-muted-foreground py-1.5 text-right tabular-nums">
+                      {c.skipped}
+                    </td>
+                    <td
+                      className={`py-1.5 text-right tabular-nums ${
+                        (c.failed ?? 0) > 0 ? "text-destructive" : "text-muted-foreground"
+                      }`}
+                    >
+                      {c.failed ?? 0}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </Panel>
       )}
 

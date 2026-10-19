@@ -70,20 +70,32 @@ export function NameEdit({ initialName }: { initialName: string | null }) {
   }
 
   return (
-    <span className="flex items-center gap-2">
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        void handleSave();
+      }}
+      className="flex items-center gap-2"
+    >
       <input
         type="text"
         value={draft}
         onChange={(e) => setDraft(e.target.value.slice(0, 120))}
+        onKeyDown={(e) => {
+          if (e.key === "Escape") {
+            e.preventDefault();
+            handleCancel();
+          }
+        }}
         autoFocus
         disabled={busy}
+        aria-label="Display name"
         placeholder="Display name (leave empty to clear)"
         className={`min-w-0 flex-1 ${inputClass}`}
       />
       <button
         aria-busy={busy}
-        type="button"
-        onClick={handleSave}
+        type="submit"
         disabled={busy}
         className={buttonClass({ variant: "primary", size: "sm", className: "shrink-0" })}
       >
@@ -97,6 +109,6 @@ export function NameEdit({ initialName }: { initialName: string | null }) {
       >
         Cancel
       </button>
-    </span>
+    </form>
   );
 }

@@ -17,7 +17,7 @@ import type { PdnsWriteMode } from "@/lib/pdns/types";
 import { hostFromUrl } from "@/lib/net/host";
 import { SelectMenu } from "@/components/ui/select-menu";
 import { buttonClass } from "@/components/ui/button";
-import { inputClass as baseInputClass, textareaClass } from "@/components/ui/field";
+import { Field, inputClass, textareaClass } from "@/components/ui/field";
 
 interface ServerFormInitial {
   id: string;
@@ -228,7 +228,7 @@ export function ServerForm(props: ServerFormProps) {
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           placeholder="dev box in eu-west"
-          className={`mt-1.5 ${textareaClass} resize-y`}
+          className={`${textareaClass} resize-y`}
         />
       </Field>
 
@@ -236,7 +236,7 @@ export function ServerForm(props: ServerFormProps) {
         label="Base URL"
         id="baseUrl"
         errors={fieldErrors["baseUrl"]}
-        hint="Just the host + port - '/api/v1' is appended automatically. Provide a custom path only if your reverse proxy mounts PDNS under a prefix."
+        hint="Just the host + port - '/api/v1' is appended automatically. Provide a custom path only if your reverse proxy mounts PowerDNS under a prefix."
       >
         <input
           id="baseUrl"
@@ -252,7 +252,7 @@ export function ServerForm(props: ServerFormProps) {
         label="Server id"
         id="serverId"
         errors={fieldErrors["serverId"]}
-        hint='PDNS server-id (the path after /servers/). Usually "localhost".'
+        hint='PowerDNS server-id (the path after /servers/). Usually "localhost".'
       >
         <input
           id="serverId"
@@ -391,37 +391,6 @@ export function ServerForm(props: ServerFormProps) {
   );
 }
 
-const inputClass = `mt-1.5 ${baseInputClass}`;
-
-function Field({
-  id,
-  label,
-  hint,
-  errors,
-  children,
-}: {
-  id: string;
-  label: string;
-  hint?: string;
-  errors?: string[];
-  children: React.ReactNode;
-}) {
-  return (
-    <div>
-      <label htmlFor={id} className="block text-sm font-medium">
-        {label}
-      </label>
-      {children}
-      {hint ? <p className="text-muted-foreground mt-1 text-xs">{hint}</p> : null}
-      {errors && errors.length > 0 ? (
-        <p className="text-destructive mt-1 text-xs" role="alert">
-          {errors.join(" ")}
-        </p>
-      ) : null}
-    </div>
-  );
-}
-
 /**
  * Add/remove editor for the AXFR/DNS address overrides. An empty list means
  * "derive from the API host" - surfaced as the muted default note rather than a
@@ -455,6 +424,7 @@ function AddressList({
                 value={addr}
                 onChange={(e) => update(i, e.target.value)}
                 placeholder="192.0.2.10  ·  ns1.example.com  ·  [2001:db8::1]:53"
+                aria-label={`Address ${i + 1}`}
                 aria-invalid={invalid}
                 className={`bg-card focus:ring-ring block w-full rounded-md border px-3 py-2 font-mono text-sm focus:ring-2 focus:outline-none ${
                   invalid ? "border-destructive" : "border-border"

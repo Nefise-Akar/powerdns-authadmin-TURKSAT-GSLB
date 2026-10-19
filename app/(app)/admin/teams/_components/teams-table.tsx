@@ -90,6 +90,7 @@ export function TeamsTable({
       columns={columns}
       data={rows}
       searchPlaceholder="Search teams"
+      noDataMessage="No teams yet - use Add team to create the first one."
       initialSort={[{ id: "name", desc: false }]}
       sortParam="sort"
       pageSizeParam="pageSize"

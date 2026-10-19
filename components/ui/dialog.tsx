@@ -18,12 +18,18 @@
  *   - role="dialog", aria-modal, aria-labelledby / aria-describedby
  *   - Escape closes (resolves false for confirms)
  *   - Backdrop click closes (configurable per-call)
- *   - Focus moves into the dialog on open; first focusable element is the
- *     primary action. Restored to the prior activeElement on close.
- *   - Focus trap via Tab cycling among tabbable descendants.
+ *   - Focus moves into the dialog on open: the primary action for a plain
+ *     confirm, Cancel for a `danger` confirm (so Enter can't destroy by
+ *     reflex), the input for a prompt. Restored to the prior activeElement
+ *     on close.
+ *   - Focus trap via Tab cycling among tabbable descendants, and the app
+ *     root is made `inert` while any modal is open so nothing behind the
+ *     backdrop is reachable by pointer, keyboard or screen reader.
  *
- * Toasts are non-blocking and auto-dismiss after 4–8s depending on kind.
- * Stacked top-right, dismissible, paused on hover.
+ * Toasts are non-blocking. Success / info / warn auto-dismiss after 4–6 s,
+ * paused while hovered or focused; error toasts stay until dismissed, since
+ * they carry the failure text the operator needs to act on. Stacked
+ * top-right, always-mounted live region.
  */
 
 import {
@@ -41,11 +47,22 @@ import { Alert } from "@/components/ui/alert";
 import { buttonClass, iconButtonClass } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { inputClass } from "@/components/ui/field";
+import { createPortal } from "react-dom";
+
+/**
+ * The element `DialogProvider` wraps the page in. Modals are portaled to
+ * <body>, outside this element, so it can be made `inert` while one is open
+ * without disabling the modal itself.
+ */
+const APP_ROOT_ID = "pda-app-root";
 
 // =============================================================================
-// Shared body-scroll-lock - counter-based so stacked dialogs cooperate.
+// Shared page lock - counter-based so stacked dialogs cooperate.
 //
-// The bug this guards against: each Dialog effect used to save+restore
+// Two things happen while a modal is open: body scroll is suppressed and the
+// app root is made `inert`. Both are counted rather than toggled.
+//
+// The bug the counter guards against: each Dialog effect used to save+restore
 // `body.style.overflow` independently. When the editor flow opened a second
 // dialog (Review) on top of the first (Editor), the Review effect captured
 // the already-set `overflow: hidden` as its "previous" value. On close,
@@ -54,32 +71,52 @@ import { inputClass } from "@/components/ui/field";
 // `overflow: hidden` over the now-restored `""`, leaving the page scroll
 // permanently locked.
 //
-// Instead, every Dialog calls `lockBodyScroll()` on open and
-// `unlockBodyScroll()` on close. The first lock snapshots the original
-// value and applies `hidden`; subsequent locks just bump the counter. The
-// last unlock restores the snapshot. Order-independent.
+// Instead, every Dialog calls `lockPage()` on open and `unlockPage()` on
+// close. The first lock snapshots the original value and applies `hidden` +
+// `inert`; subsequent locks just bump the counter. The last unlock restores
+// both. Order-independent.
 // =============================================================================
 
 let activeDialogLocks = 0;
 let bodyOverflowBeforeLock: string | null = null;
 
-function lockBodyScroll(): void {
+function lockPage(): void {
   if (typeof document === "undefined") return;
   if (activeDialogLocks === 0) {
     bodyOverflowBeforeLock = document.body.style.overflow;
     document.body.style.overflow = "hidden";
+    document.getElementById(APP_ROOT_ID)?.setAttribute("inert", "");
   }
   activeDialogLocks++;
 }
 
-function unlockBodyScroll(): void {
+function unlockPage(): void {
   if (typeof document === "undefined") return;
   if (activeDialogLocks === 0) return;
   activeDialogLocks--;
-  if (activeDialogLocks === 0 && bodyOverflowBeforeLock !== null) {
-    document.body.style.overflow = bodyOverflowBeforeLock;
-    bodyOverflowBeforeLock = null;
+  if (activeDialogLocks === 0) {
+    if (bodyOverflowBeforeLock !== null) {
+      document.body.style.overflow = bodyOverflowBeforeLock;
+      bodyOverflowBeforeLock = null;
+    }
+    document.getElementById(APP_ROOT_ID)?.removeAttribute("inert");
   }
+}
+
+/**
+ * Restore focus to the element that opened a modal. Deferred one microtask
+ * so it runs after every effect cleanup of the closing modal, including the
+ * one that lifts `inert` from the app root - an inert element refuses focus.
+ */
+function restoreFocus(el: HTMLElement | null): void {
+  if (!el) return;
+  queueMicrotask(() => el.focus?.());
+}
+
+/** Modals render into <body> so they sit outside the inert app root. */
+function ModalPortal({ children }: { children: ReactNode }) {
+  if (typeof document === "undefined") return null;
+  return createPortal(children, document.body);
 }
 
 // =============================================================================
@@ -148,7 +185,10 @@ export interface ToastOptions {
   title?: string;
   description: string;
   kind?: ToastKind;
-  /** Duration in ms. Default depends on kind. */
+  /**
+   * Auto-dismiss delay in ms; `0` keeps the toast until dismissed. Defaults
+   * by kind: error stays (it carries the failure text), warn 6 s, else 4 s.
+   */
   durationMs?: number;
 }
 
@@ -196,6 +236,7 @@ interface PromptState extends PromptOptions {
 
 interface ToastState extends ToastOptions {
   id: number;
+  durationMs: number;
 }
 
 export function DialogProvider({ children }: { children: React.ReactNode }) {
@@ -246,13 +287,9 @@ export function DialogProvider({ children }: { children: React.ReactNode }) {
   const toast = useCallback((opts: ToastOptions) => {
     const id = nextId.current++;
     const durationMs =
-      opts.durationMs ?? (opts.kind === "error" ? 8000 : opts.kind === "warn" ? 6000 : 4000);
-    setToasts((current) => [...current, { ...opts, id }]);
-    if (durationMs > 0) {
-      window.setTimeout(() => {
-        setToasts((current) => current.filter((t) => t.id !== id));
-      }, durationMs);
-    }
+      opts.durationMs ?? (opts.kind === "error" ? 0 : opts.kind === "warn" ? 6000 : 4000);
+    // The card owns its own timer so it can pause while hovered / focused.
+    setToasts((current) => [...current, { ...opts, id, durationMs }]);
   }, []);
 
   const dismissToast = useCallback((id: number) => {
@@ -269,7 +306,12 @@ export function DialogProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <DialogContext.Provider value={api}>
-      {children}
+      {/* `display: contents` keeps the wrapper out of the layout: the shell's
+          `h-dvh flex` root still sits directly under <body> as far as CSS is
+          concerned, while the id gives the modals something to make inert. */}
+      <div id={APP_ROOT_ID} style={{ display: "contents" }}>
+        {children}
+      </div>
       {confirmStack.map((state, index) => (
         <ConfirmModal
           key={state.id}
@@ -316,19 +358,17 @@ function ConfirmModal({
   // Capture the element that triggered the dialog so we can restore focus.
   useEffect(() => {
     previouslyFocused.current = document.activeElement as HTMLElement | null;
-    return () => {
-      previouslyFocused.current?.focus?.();
-    };
+    return () => restoreFocus(previouslyFocused.current);
   }, []);
 
-  // Body scroll lock + initial focus + key handling, only on the topmost modal.
+  // Page lock + initial focus + key handling, only on the topmost modal.
   useEffect(() => {
     if (!isTopMost) return;
-    lockBodyScroll();
+    lockPage();
 
-    // Focus the primary action (last focusable element by render order) once
-    // the dialog mounts so destructive prompts don't open with focus on the
-    // confirm button - keyboard users have to deliberately move forward.
+    // Initial focus lands on the action marked `data-dialog-focus`: Confirm
+    // for an ordinary question, Cancel for a destructive one, so a reflexive
+    // Enter on a danger prompt backs out instead of deleting.
     const tabbables = getTabbables(dialogRef.current);
     const initial = tabbables.find((el) => el.dataset["dialogFocus"] === "true") ?? tabbables[0];
     initial?.focus();
@@ -356,7 +396,7 @@ function ConfirmModal({
     document.addEventListener("keydown", onKey);
     return () => {
       document.removeEventListener("keydown", onKey);
-      unlockBodyScroll();
+      unlockPage();
     };
   }, [isTopMost, cancel]);
 
@@ -369,55 +409,64 @@ function ConfirmModal({
     // Two-layer layout - see the matching comment in `Dialog` below for the
     // why. Outer is the scrollable viewport, inner flex centers the dialog
     // when there's room and lets it overflow + scroll when there isn't.
-    <div className="fixed inset-0 z-[100] !mt-0 overflow-y-auto" aria-hidden={!isTopMost}>
-      <div
-        className="absolute inset-0 bg-black/50"
-        onClick={() => dismissOnBackdrop && cancel()}
-        aria-hidden
-      />
-      <div className="relative flex min-h-full items-center justify-center p-4">
+    <ModalPortal>
+      <div className="fixed inset-0 z-[100] !mt-0 overflow-y-auto" aria-hidden={!isTopMost}>
         <div
-          ref={dialogRef}
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby={titleId}
-          aria-describedby={descriptionId}
-          className="border-border bg-card text-card-foreground relative w-full max-w-md rounded-md border p-6"
-        >
-          <h2 id={titleId} className="text-h2">
-            {state.title}
-          </h2>
-          {state.description ? (
-            <p id={descriptionId} className="text-body text-muted-foreground mt-1">
-              {state.description}
-            </p>
-          ) : null}
-          {state.checkbox ? (
-            <div className="mt-4">
-              <Checkbox checked={checked} onChange={setChecked} label={state.checkbox.label} />
-              {!checked && state.checkbox.warningWhenUnchecked ? (
-                <Alert live className="mt-3">
-                  {state.checkbox.warningWhenUnchecked}
-                </Alert>
-              ) : null}
+          className="absolute inset-0 bg-black/50"
+          onClick={() => dismissOnBackdrop && cancel()}
+          aria-hidden
+        />
+        <div className="relative flex min-h-full items-center justify-center p-4">
+          <div
+            ref={dialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={titleId}
+            aria-describedby={descriptionId}
+            className="border-border bg-card text-card-foreground relative w-full max-w-md rounded-md border p-6"
+          >
+            <h2 id={titleId} className="text-h2">
+              {state.title}
+            </h2>
+            {state.description ? (
+              <p id={descriptionId} className="text-body text-muted-foreground mt-1">
+                {state.description}
+              </p>
+            ) : null}
+            {state.checkbox ? (
+              <div className="mt-4">
+                <Checkbox checked={checked} onChange={setChecked} label={state.checkbox.label} />
+                {!checked && state.checkbox.warningWhenUnchecked ? (
+                  <Alert live className="mt-3">
+                    {state.checkbox.warningWhenUnchecked}
+                  </Alert>
+                ) : null}
+              </div>
+            ) : null}
+            <div className="mt-6 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                data-dialog-focus={variant === "danger" ? "true" : undefined}
+                onClick={cancel}
+                className={buttonClass()}
+              >
+                {state.cancelLabel ?? "Cancel"}
+              </button>
+              <button
+                type="button"
+                data-dialog-focus={variant === "danger" ? undefined : "true"}
+                onClick={() => onResolve({ confirmed: true, checked })}
+                className={buttonClass({
+                  variant: variant === "danger" ? "destructive" : "primary",
+                })}
+              >
+                {state.confirmLabel}
+              </button>
             </div>
-          ) : null}
-          <div className="mt-6 flex items-center justify-end gap-2">
-            <button type="button" onClick={cancel} className={buttonClass()}>
-              {state.cancelLabel ?? "Cancel"}
-            </button>
-            <button
-              type="button"
-              data-dialog-focus="true"
-              onClick={() => onResolve({ confirmed: true, checked })}
-              className={buttonClass({ variant: variant === "danger" ? "destructive" : "primary" })}
-            >
-              {state.confirmLabel}
-            </button>
           </div>
         </div>
       </div>
-    </div>
+    </ModalPortal>
   );
 }
 
@@ -442,14 +491,12 @@ function PromptModal({
 
   useEffect(() => {
     previouslyFocused.current = document.activeElement as HTMLElement | null;
-    return () => {
-      previouslyFocused.current?.focus?.();
-    };
+    return () => restoreFocus(previouslyFocused.current);
   }, []);
 
   useEffect(() => {
     if (!isTopMost) return;
-    lockBodyScroll();
+    lockPage();
 
     // Focus the input rather than the primary button - operator
     // starts typing immediately, the common case for a prompt.
@@ -479,7 +526,7 @@ function PromptModal({
     document.addEventListener("keydown", onKey);
     return () => {
       document.removeEventListener("keydown", onKey);
-      unlockBodyScroll();
+      unlockPage();
     };
   }, [isTopMost, onResolve]);
 
@@ -502,72 +549,74 @@ function PromptModal({
   const dismissOnBackdrop = state.dismissOnBackdrop !== false;
 
   return (
-    <div className="fixed inset-0 z-[100] !mt-0 overflow-y-auto" aria-hidden={!isTopMost}>
-      <div
-        className="absolute inset-0 bg-black/50"
-        onClick={() => dismissOnBackdrop && onResolve(null)}
-        aria-hidden
-      />
-      <div className="relative flex min-h-full items-center justify-center p-4">
-        <form
-          ref={dialogRef}
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby={titleId}
-          aria-describedby={descriptionId}
-          onSubmit={(e) => {
-            e.preventDefault();
-            submit();
-          }}
-          className="border-border bg-card text-card-foreground relative w-full max-w-md rounded-md border p-6"
-        >
-          <h2 id={titleId} className="text-h2">
-            {state.title}
-          </h2>
-          {state.description ? (
-            <p id={descriptionId} className="text-body text-muted-foreground mt-1">
-              {state.description}
-            </p>
-          ) : null}
-          <div className="mt-4 flex flex-col gap-1.5">
-            <label htmlFor={inputId} className="text-label">
-              {state.label ?? state.title}
-            </label>
-            <input
-              ref={inputRef}
-              id={inputId}
-              type="text"
-              value={value}
-              onChange={(e) => {
-                setValue(e.target.value);
-                if (error) setError(null);
-              }}
-              placeholder={state.placeholder}
-              aria-invalid={error ? "true" : "false"}
-              aria-describedby={errorId}
-              className={inputClass}
-            />
-            {error ? (
-              <p id={errorId} className="text-caption text-destructive" role="alert">
-                {error}
+    <ModalPortal>
+      <div className="fixed inset-0 z-[100] !mt-0 overflow-y-auto" aria-hidden={!isTopMost}>
+        <div
+          className="absolute inset-0 bg-black/50"
+          onClick={() => dismissOnBackdrop && onResolve(null)}
+          aria-hidden
+        />
+        <div className="relative flex min-h-full items-center justify-center p-4">
+          <form
+            ref={dialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={titleId}
+            aria-describedby={descriptionId}
+            onSubmit={(e) => {
+              e.preventDefault();
+              submit();
+            }}
+            className="border-border bg-card text-card-foreground relative w-full max-w-md rounded-md border p-6"
+          >
+            <h2 id={titleId} className="text-h2">
+              {state.title}
+            </h2>
+            {state.description ? (
+              <p id={descriptionId} className="text-body text-muted-foreground mt-1">
+                {state.description}
               </p>
             ) : null}
-          </div>
-          <div className="mt-6 flex items-center justify-end gap-2">
-            <button type="button" onClick={() => onResolve(null)} className={buttonClass()}>
-              {state.cancelLabel ?? "Cancel"}
-            </button>
-            <button
-              type="submit"
-              data-dialog-focus="true"
-              className={buttonClass({ variant: "primary" })}
-            >
-              {state.confirmLabel}
-            </button>
-          </div>
-        </form>
+            <div className="mt-4 flex flex-col gap-1.5">
+              <label htmlFor={inputId} className="text-label">
+                {state.label ?? state.title}
+              </label>
+              <input
+                ref={inputRef}
+                id={inputId}
+                type="text"
+                value={value}
+                onChange={(e) => {
+                  setValue(e.target.value);
+                  if (error) setError(null);
+                }}
+                placeholder={state.placeholder}
+                aria-invalid={error ? "true" : "false"}
+                aria-describedby={errorId}
+                className={inputClass}
+              />
+              {error ? (
+                <p id={errorId} className="text-caption text-destructive" role="alert">
+                  {error}
+                </p>
+              ) : null}
+            </div>
+            <div className="mt-6 flex items-center justify-end gap-2">
+              <button type="button" onClick={() => onResolve(null)} className={buttonClass()}>
+                {state.cancelLabel ?? "Cancel"}
+              </button>
+              <button
+                type="submit"
+                data-dialog-focus="true"
+                className={buttonClass({ variant: "primary" })}
+              >
+                {state.confirmLabel}
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
-    </div>
+    </ModalPortal>
   );
 }
 
@@ -629,7 +678,7 @@ export function Dialog({
   useEffect(() => {
     if (!open) return;
     previouslyFocused.current = document.activeElement as HTMLElement | null;
-    lockBodyScroll();
+    lockPage();
 
     const tabbables = getTabbables(dialogRef.current);
     const initial = tabbables.find((el) => el.dataset["dialogFocus"] === "true") ?? tabbables[0];
@@ -658,8 +707,8 @@ export function Dialog({
     document.addEventListener("keydown", onKey);
     return () => {
       document.removeEventListener("keydown", onKey);
-      unlockBodyScroll();
-      previouslyFocused.current?.focus?.();
+      unlockPage();
+      restoreFocus(previouslyFocused.current);
     };
   }, [open]);
 
@@ -675,33 +724,35 @@ export function Dialog({
     // approach (`fixed inset-0 flex items-center overflow-y-auto`) clipped
     // the top of any over-tall dialog above the scroll origin because
     // `items-center` centered content that was taller than the container.
-    <div className="fixed inset-0 z-[100] !mt-0 overflow-y-auto">
-      <div
-        className="absolute inset-0 bg-black/50"
-        onClick={() => dismissOnBackdrop && onClose()}
-        aria-hidden
-      />
-      <div className="relative flex min-h-full items-start justify-center p-4 sm:items-center">
+    <ModalPortal>
+      <div className="fixed inset-0 z-[100] !mt-0 overflow-y-auto">
         <div
-          ref={dialogRef}
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby={titleId.current}
-          aria-describedby={descriptionId.current}
-          className={`relative my-4 w-full ${maxWidthClass} border-border bg-card text-card-foreground rounded-md border p-6`}
-        >
-          <h2 id={titleId.current} className={hideTitle ? "sr-only" : "text-h2"}>
-            {title}
-          </h2>
-          {description ? (
-            <p id={descriptionId.current} className="text-body text-muted-foreground mt-1">
-              {description}
-            </p>
-          ) : null}
-          {children}
+          className="absolute inset-0 bg-black/50"
+          onClick={() => dismissOnBackdrop && onClose()}
+          aria-hidden
+        />
+        <div className="relative flex min-h-full items-start justify-center p-4 sm:items-center">
+          <div
+            ref={dialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={titleId.current}
+            aria-describedby={descriptionId.current}
+            className={`relative my-4 w-full ${maxWidthClass} border-border bg-card text-card-foreground rounded-md border p-6`}
+          >
+            <h2 id={titleId.current} className={hideTitle ? "sr-only" : "text-h2"}>
+              {title}
+            </h2>
+            {description ? (
+              <p id={descriptionId.current} className="text-body text-muted-foreground mt-1">
+                {description}
+              </p>
+            ) : null}
+            {children}
+          </div>
         </div>
       </div>
-    </div>
+    </ModalPortal>
   );
 }
 
@@ -717,7 +768,12 @@ function getTabbables(root: HTMLElement | null): HTMLElement[] {
       "[tabindex]:not([tabindex='-1'])",
     ].join(","),
   );
-  return Array.from(nodes).filter((el) => !el.hasAttribute("data-dialog-skip-tab"));
+  // `[hidden]` subtrees (collapsed wizard steps, inactive tabs) are not
+  // tabbable in the browser either; letting them into the trap would park
+  // focus on an invisible control.
+  return Array.from(nodes).filter(
+    (el) => !el.hasAttribute("data-dialog-skip-tab") && el.closest("[hidden]") === null,
+  );
 }
 
 // =============================================================================
@@ -731,7 +787,9 @@ function ToastViewport({
   toasts: ToastState[];
   onDismiss: (id: number) => void;
 }) {
-  if (toasts.length === 0) return null;
+  // Always mounted: a live region only announces changes to content that
+  // was already in the accessibility tree, so one that appears together
+  // with its first toast is often missed.
   return (
     <div
       aria-live="polite"
@@ -760,12 +818,51 @@ const TOAST_BORDER = {
   info: "border-border",
 } as const;
 
+/**
+ * Auto-dismiss timer that pauses while the pointer or keyboard focus is on
+ * the card, so the operator can finish reading or reach the dismiss button.
+ * Returns the hover/focus handlers to spread on the card.
+ */
+function useToastTimer(durationMs: number, onDismiss: () => void) {
+  const [paused, setPaused] = useState(false);
+  const remaining = useRef(durationMs);
+  const startedAt = useRef<number | null>(null);
+  const onDismissRef = useRef(onDismiss);
+  useEffect(() => {
+    onDismissRef.current = onDismiss;
+  }, [onDismiss]);
+
+  useEffect(() => {
+    if (durationMs <= 0 || paused || remaining.current <= 0) return;
+    startedAt.current = Date.now();
+    const handle = window.setTimeout(() => onDismissRef.current(), remaining.current);
+    return () => {
+      window.clearTimeout(handle);
+      if (startedAt.current !== null) {
+        remaining.current = Math.max(0, remaining.current - (Date.now() - startedAt.current));
+        startedAt.current = null;
+      }
+    };
+  }, [durationMs, paused]);
+
+  return {
+    onMouseEnter: () => setPaused(true),
+    onMouseLeave: () => setPaused(false),
+    onFocus: () => setPaused(true),
+    onBlur: (e: React.FocusEvent<HTMLElement>) => {
+      if (!e.currentTarget.contains(e.relatedTarget)) setPaused(false);
+    },
+  };
+}
+
 function ToastCard({ toast, onDismiss }: { toast: ToastState; onDismiss: () => void }) {
   const kind = toast.kind ?? "info";
+  const pauseHandlers = useToastTimer(toast.durationMs, onDismiss);
 
   return (
     <div
       role={kind === "error" ? "alert" : "status"}
+      {...pauseHandlers}
       className={`bg-card text-body text-card-foreground pointer-events-auto w-80 max-w-[90vw] rounded-md border px-4 py-3 ${TOAST_BORDER[kind]}`}
     >
       <div className="flex items-start gap-2">

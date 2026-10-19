@@ -31,11 +31,50 @@ half-migrated schema; fix the cause and restart.
 
 ## Verify
 
-- `GET /readyz` returns 200 once migrations match the expected version.
+- `GET /readyz` returns 200 (the server only starts listening after the
+  entrypoint has applied migrations, so a 200 means the new schema is in place
+  and the database is reachable).
 - Sign in; check **Admin → PowerDNS servers** shows backends **Reachable**, and
   the dashboard has no unexpected attention banners.
 
 ## Version-specific notes
+
+### Upgrading to 1.9.1 (from 1.9.0)
+
+No migration, no schema change, no config change - pull the new tag and
+recreate the container. The Zone name input on Create zone keeps focus while
+you type (it dropped it after the first character). See the
+[CHANGELOG](../CHANGELOG.md#191---2026-10-17).
+
+### Upgrading to 1.9.0 (from 1.8.4)
+
+No schema change, no migration. Pull the new tag and recreate the container.
+Three things to know:
+
+- **New: MCP server.** `POST /api/mcp` is live for any user with a personal
+  access token; it exposes only what the token's owner may already do. Nothing to
+  configure - see [Natural-language DNS with MCP](./14-MCP.md) for client setup.
+- **SQLite installs that upgraded through 1.1.0** may have lost data at that
+  upgrade: the `pdns_servers` table rebuild in migration 0003 cascaded into
+  `zone_grants` (per-zone permissions for users and teams), `metric_samples` and
+  `pdns_server_stats` (dashboard history), and detached `pdns_requests` rows from
+  their backend. Postgres installs are unaffected. The migration runner is fixed
+  so this cannot recur; the lost rows cannot be recovered by the app. Check
+  **Admin → Users** (and Teams) for per-zone grants you expect to see and
+  re-create any that are missing. Metrics history refills over the retention
+  window.
+- **Backup / restore now works.** `GET /api/admin/backup/export` returned 500 on
+  Postgres whenever the audit log had rows, and `POST /api/admin/backup/restore`
+  inserted nothing while reporting success. Backups taken with earlier versions
+  are empty or incomplete - take a fresh export after upgrading.
+
+Behaviour changes worth knowing: backends with `write_mode = read_only` now
+reject every write (previously only the pickers steered away from them);
+passwordless passkey sign-in requires user verification; a lost session bounces
+straight to the default OIDC/SAML provider instead of showing the local form
+(`/login?force-local=1` still does). New optional setting
+`PDNS_REQUEST_LOG_RETENTION_DAYS` (default 7). See the
+[CHANGELOG](../CHANGELOG.md#190---2026-10-09).
 
 ### Upgrading to 1.8.4 (from 1.8.3)
 
@@ -385,9 +424,8 @@ silently dropped (they're no longer in the master vocabulary).
 | `/admin/ldap-providers`      | `/admin/authentication/ldap`      |
 | `/admin/ldap-providers/<id>` | `/admin/authentication/ldap/<id>` |
 
-Every old URL keeps a server-side redirect to the new one, so external links,
-bookmarks, and audit-log references continue to resolve. Update your own docs
-and runbooks at your leisure. The internal API routes
+The old URLs are **not** redirected - they 404. Update bookmarks, runbooks and
+any external links to the new paths. The internal API routes
 (`/api/admin/oidc-providers/...` etc.) are **not** moved - they're a stable
 contract for external automation.
 
@@ -736,9 +774,9 @@ path.
 ## Multi-replica notes (Postgres)
 
 Several replicas can boot at once - the migration step takes a `pg_advisory_lock`
-so exactly one applies migrations while the others wait. Combined with `/readyz`
-gating, a rolling deploy won't send traffic to a replica until its schema is
-current. To run migrations as a separate pipeline step instead, set
+so exactly one applies migrations while the others wait. Because the server only
+starts listening after that step, a replica that passes `/readyz` already has the
+current schema. To run migrations as a separate pipeline step instead, set
 `MIGRATE_ON_BOOT=false` and run `npm run db:migrate` before rolling the app.
 
 For replicas > 1 you also need `REDIS_URL` set so auth rate limiting, reveal-once

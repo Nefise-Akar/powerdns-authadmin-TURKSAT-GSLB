@@ -25,7 +25,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown, ShieldCheck } from "lucide-react";
 import { apiFetch, mutate } from "@/lib/client/api-fetch";
-import { useDialog } from "@/components/ui/dialog";
+import { Dialog, useDialog } from "@/components/ui/dialog";
 import { SelectMenu, type SelectOption } from "@/components/ui/select-menu";
 import { Checkbox } from "@/components/ui/checkbox";
 import { buttonClass } from "@/components/ui/button";
@@ -145,20 +145,6 @@ export function TsigKeyWizard({
   const managed = secondaries.filter((s) => s.supportsTsigApi).length;
   const path = (suffix: string) =>
     key ? `/api/admin/pdns/tsig-keys/${encodeURIComponent(key.id)}/${suffix}` : "";
-
-  // Close on Escape + lock body scroll while open - matches the dialog system.
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
-    }
-    document.addEventListener("keydown", onKey);
-    const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.removeEventListener("keydown", onKey);
-      document.body.style.overflow = prevOverflow;
-    };
-  }, [onClose]);
 
   // Manual script is fetched lazily the first time the method switches to manual.
   useEffect(() => {
@@ -320,17 +306,17 @@ export function TsigKeyWizard({
   const modalWidth = step === "zones" ? "max-w-4xl" : "max-w-lg";
 
   return (
-    <div className="fixed inset-0 z-[100] overflow-y-auto">
-      <div className="absolute inset-0 bg-black/50" onClick={onClose} aria-hidden />
-      <div className="relative flex min-h-full items-center justify-center p-4">
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-label="Add TSIG key"
-          className={`relative w-full ${modalWidth} border-border bg-card rounded-md border p-6`}
-        >
+    // The shared <Dialog> brings the focus trap, initial focus, focus restore,
+    // Esc handling, page lock and backdrop; the wizard only owns its steps.
+    // The title is announced from the dialog's hidden <h2>; the visible
+    // heading row below pairs it with the step counter.
+    <Dialog open onClose={onClose} title={heading} hideTitle maxWidthClass={modalWidth}>
+      <div>
+        <div>
           <div className="flex items-baseline justify-between">
-            <h2 className="text-lg font-semibold">{heading}</h2>
+            <div className="text-lg font-semibold" aria-hidden>
+              {heading}
+            </div>
             <span className="text-muted-foreground text-xs">
               Step {existing ? stepNo - 1 : stepNo} of {existing ? totalSteps - 1 : totalSteps}
             </span>
@@ -374,8 +360,8 @@ export function TsigKeyWizard({
                   </div>
                 </div>
                 <p className="text-muted-foreground text-xs">
-                  PDNS generates the HMAC secret server-side. With the automatic install you never
-                  see it; choose manual to get a copy-paste script that includes it.
+                  PowerDNS generates the HMAC secret server-side. With the automatic install you
+                  never see it; choose manual to get a copy-paste script that includes it.
                 </p>
               </div>
             ) : null}
@@ -545,7 +531,7 @@ export function TsigKeyWizard({
           </div>
         </div>
       </div>
-    </div>
+    </Dialog>
   );
 }
 

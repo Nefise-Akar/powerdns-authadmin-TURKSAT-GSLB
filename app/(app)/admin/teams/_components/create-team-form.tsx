@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { apiFetch } from "@/lib/client/api-fetch";
 import { buttonClass } from "@/components/ui/button";
-import { inputClass as baseInputClass, textareaClass } from "@/components/ui/field";
+import { Field, inputClass, textareaClass } from "@/components/ui/field";
 
 export function CreateTeamForm() {
   const router = useRouter();
@@ -91,7 +91,7 @@ export function CreateTeamForm() {
           rows={2}
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          className={`mt-1.5 ${textareaClass}`}
+          className={textareaClass}
         />
       </Field>
       <Field id="contact" label="Contact (optional)" errors={fieldErrors["contact"]}>
@@ -132,39 +132,5 @@ export function CreateTeamForm() {
         </button>
       </div>
     </form>
-  );
-}
-
-const inputClass = `mt-1.5 ${baseInputClass}`;
-
-function Field({
-  id,
-  label,
-  required,
-  hint,
-  errors,
-  children,
-}: {
-  id: string;
-  label: string;
-  required?: boolean;
-  hint?: string;
-  errors?: string[];
-  children: React.ReactNode;
-}) {
-  return (
-    <div>
-      <label htmlFor={id} className="block text-sm font-medium">
-        {label}
-        {required ? <span className="text-destructive"> *</span> : null}
-      </label>
-      {children}
-      {hint ? <p className="text-muted-foreground mt-1 text-xs">{hint}</p> : null}
-      {errors && errors.length > 0 ? (
-        <p className="text-destructive mt-1 text-xs" role="alert">
-          {errors.join(" ")}
-        </p>
-      ) : null}
-    </div>
   );
 }

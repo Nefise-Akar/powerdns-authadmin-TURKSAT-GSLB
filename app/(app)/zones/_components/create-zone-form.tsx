@@ -30,7 +30,7 @@ import { TsigKeySelector } from "@/components/domain/tsig-key-selector";
 import { SelectMenu } from "@/components/ui/select-menu";
 import { Switch } from "@/components/ui/switch";
 import { buttonClass } from "@/components/ui/button";
-import { inputClass as baseInputClass } from "@/components/ui/field";
+import { Field, inputClass } from "@/components/ui/field";
 
 /**
  * Operator-facing backend option. A logical backend is either a
@@ -556,6 +556,7 @@ export function CreateZoneForm(props: Props) {
                   value={m}
                   onChange={(e) => setMaster(i, e.target.value)}
                   placeholder="192.0.2.53"
+                  aria-label={`Primary master ${i + 1}`}
                   className={`${inputClass} font-mono`}
                 />
                 <button
@@ -589,6 +590,7 @@ export function CreateZoneForm(props: Props) {
                     value={ns}
                     onChange={(e) => setNs(i, e.target.value)}
                     placeholder="ns1.example.com."
+                    aria-label={`Name server ${i + 1}`}
                     className={`${inputClass} font-mono`}
                   />
                   <button
@@ -655,8 +657,6 @@ export function CreateZoneForm(props: Props) {
   );
 }
 
-const inputClass = `mt-1.5 ${baseInputClass}`;
-
 function Section({
   title,
   subtitle,
@@ -700,31 +700,6 @@ function SecondariesList({ secondaries }: { secondaries: Array<{ slug: string; n
         </li>
       ))}
     </ul>
-  );
-}
-
-function Field({
-  label,
-  hint,
-  errors,
-  children,
-}: {
-  label: string;
-  hint?: string;
-  errors?: string[];
-  children: React.ReactNode;
-}) {
-  return (
-    <div>
-      <label className="text-label block">{label}</label>
-      {children}
-      {hint ? <p className="text-caption text-muted-foreground mt-1.5">{hint}</p> : null}
-      {errors && errors.length > 0 ? (
-        <p className="text-caption text-destructive mt-1.5" role="alert">
-          {errors.join(" ")}
-        </p>
-      ) : null}
-    </div>
   );
 }
 

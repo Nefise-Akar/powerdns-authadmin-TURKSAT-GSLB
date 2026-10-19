@@ -300,7 +300,7 @@ export function EditableRecordTable(props: EditableRecordTableProps) {
   useEffect(() => {
     if (!props.canCreate) return;
     function onKey(e: KeyboardEvent) {
-      if (e.key !== "n" || e.ctrlKey || e.metaKey || e.altKey) return;
+      if (e.key.toLowerCase() !== "n" || e.ctrlKey || e.metaKey || e.altKey) return;
       if (isTypingTarget(e.target)) return;
       if (document.querySelector("[role=dialog]")) return;
       e.preventDefault();
@@ -952,6 +952,9 @@ export function EditableRecordTable(props: EditableRecordTableProps) {
         onClose={() => setEditor(null)}
         title={editor?.mode === "edit" ? "Edit record" : "Add record"}
         maxWidthClass="max-w-xl"
+        // A stray click outside must not throw away a half-typed record;
+        // Cancel and Esc remain the deliberate ways out.
+        dismissOnBackdrop={false}
       >
         {editor ? (
           <form
@@ -1399,7 +1402,7 @@ function ShortcutLegend({ canCreate, canDelete }: { canCreate: boolean; canDelet
       </span>
       {canDelete ? (
         <span>
-          <Kbd>Del</Kbd> delete
+          <Kbd>Del</Kbd> / <Kbd>⌫</Kbd> delete
         </span>
       ) : null}
     </KeyHint>

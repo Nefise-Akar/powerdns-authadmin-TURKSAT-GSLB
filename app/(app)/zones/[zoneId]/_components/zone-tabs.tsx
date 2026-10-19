@@ -79,7 +79,10 @@ export function ZoneTabs({
     // collapse back to a single horizontally-scrollable row, matching the
     // dense desktop layout.
     <div className="border-border border-b sm:overflow-x-auto">
-      <nav className="flex flex-wrap gap-x-5 sm:w-max sm:flex-nowrap [&>a]:h-10">
+      <nav
+        aria-label="Zone sections"
+        className="flex flex-wrap gap-x-5 sm:w-max sm:flex-nowrap [&>a]:h-10"
+      >
         <TabLink href={detailHref} active={active === "records"}>
           Records
         </TabLink>

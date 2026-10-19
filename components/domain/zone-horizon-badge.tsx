@@ -33,6 +33,8 @@ export function ZoneHorizonBadge({
   return (
     <Tag className={className} title={TITLE}>
       internal
+      {/* The tooltip text, for keyboard and touch users who can't hover. */}
+      <span className="sr-only"> ({TITLE})</span>
     </Tag>
   );
 }

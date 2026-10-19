@@ -30,18 +30,20 @@ import { logger } from "@/lib/logger";
 import { redact } from "@/lib/errors/redact";
 import type { PdnsClient } from "./client";
 import type { PdnsZoneDetail, PdnsZoneSummary } from "./types";
+import { isTransferredKind } from "./zone-kinds";
 
 /** Mirror of `PdnsClient.createZone`'s parameter shape. Kept local so
  *  callers don't have to reach into the protocol module. */
 type CreateZoneParams = Parameters<PdnsClient["createZone"]>[0];
 
 /**
- * Kinds that benefit from an outbound NOTIFY. Native zones aren't
- * replicated, so PDNS rejects NOTIFY on them; sending one would just
- * generate a misleading log line.
+ * Kinds that benefit from an outbound NOTIFY: the ones PowerDNS transfers
+ * out (Master/Primary and the catalog Producer, whose Consumers are ordinary
+ * secondaries of it). Native zones aren't replicated, so PDNS rejects NOTIFY
+ * on them; sending one would just generate a misleading log line.
  */
 function isPrimaryKind(kind: string): boolean {
-  return kind === "Master" || kind === "Primary";
+  return isTransferredKind(kind);
 }
 
 /**
@@ -107,19 +109,17 @@ export async function notifyEveryZoneBestEffort(
   const primaries = zones.filter((z) => isPrimaryKind(z.kind));
   const skipped = zones.length - primaries.length;
 
-  // Notify in bounded-concurrency batches: a backend with thousands of
-  // primary zones shouldn't take thousands of serial round-trips, but we
-  // also don't want to open a socket per zone all at once.
-  const CONCURRENCY = 8;
+  // Sequential on purpose: `PUT …/notify` is a write, and writes to one
+  // backend serialise through the per-backend lock in lib/pdns/http.ts, so a
+  // concurrent batch here would only queue on that lock while looking
+  // parallel. One NOTIFY is a few milliseconds of PDNS work, so even a
+  // thousand-zone sweep stays well inside the provisioning window.
   let notified = 0;
   let failed = 0;
-  for (let i = 0; i < primaries.length; i += CONCURRENCY) {
-    const batch = primaries.slice(i, i + CONCURRENCY);
-    const results = await Promise.all(batch.map((z) => notifyZoneBestEffort(client, z.name)));
-    for (const r of results) {
-      if (r.ok) notified += 1;
-      else failed += 1;
-    }
+  for (const zone of primaries) {
+    const result = await notifyZoneBestEffort(client, zone.name);
+    if (result.ok) notified += 1;
+    else failed += 1;
   }
   return { notified, skipped, failed };
 }
