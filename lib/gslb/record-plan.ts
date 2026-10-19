@@ -226,7 +226,17 @@ export function gslbEligibility(
   if (atName.every((rr) => rr.records.length === 0)) {
     return { eligible: false, reason: "This name has no records." };
   }
-  return { eligible: true, kind: types.includes("CNAME") ? "cname" : "address", types };
+  // PowerGSLB 2.4.3 upserts the rrset on every record save, and its CNAME
+  // guard fires on that INSERT before the duplicate key turns it into an
+  // update - so a CNAME rrset can never get a second row (region + Public),
+  // and an existing one can't be rewritten. Lift this once PowerGSLB is fixed.
+  if (types.includes("CNAME")) {
+    return {
+      eligible: false,
+      reason: "CNAME records can't use GSLB yet (PowerGSLB 2.4.3 limitation). Use A/AAAA records.",
+    };
+  }
+  return { eligible: true, kind: "address", types };
 }
 
 // =============================================================================

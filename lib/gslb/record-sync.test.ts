@@ -471,7 +471,9 @@ describe("updateGslbRecord safety", () => {
     expect(persist).not.toHaveBeenCalled();
   });
 
-  it("changes a CNAME target in place - one record per view is never exceeded", async () => {
+  // Parked while gslbEligibility refuses CNAMEs (PowerGSLB 2.4.3 can't hold a
+  // second CNAME row); un-skip together with that check.
+  it.skip("changes a CNAME target in place - one record per view is never exceeded", async () => {
     const app = "app.example.com.";
     parent.rrsets.push({
       name: app,

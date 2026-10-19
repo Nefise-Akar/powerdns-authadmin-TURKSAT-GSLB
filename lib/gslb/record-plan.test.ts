@@ -79,16 +79,16 @@ describe("gslbEligibility", () => {
     });
   });
 
-  it("allows a lone CNAME", () => {
+  it("refuses a CNAME while PowerGSLB can't store more than one CNAME row", () => {
     expect(
       gslbEligibility(
         [rr("app.example.com.", "CNAME", ["lb.example.net."])],
         ZONE,
         "app.example.com.",
       ),
-    ).toMatchObject({
-      eligible: true,
-      kind: "cname",
+    ).toEqual({
+      eligible: false,
+      reason: "CNAME records can't use GSLB yet (PowerGSLB 2.4.3 limitation). Use A/AAAA records.",
     });
   });
 

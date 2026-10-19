@@ -88,7 +88,12 @@ and audit itself.
      rejects them), take HTTP(S) health checks only, and an "All clients" target must come first.
      Edits match CNAME rows by view, so a new target overwrites the view's row in place. The cost:
      cross-site fallback for a CNAME reaches only that single `Public` target, not every other
-     region's target. There is deliberately **no "last resort"
+     region's target. **Currently switched off:** PowerGSLB 2.4.3's admin save upserts the rrset
+     with `INSERT … ON DUPLICATE KEY UPDATE`, and the `rrsets_before_insert` CNAME guard fires
+     before the duplicate key is resolved, so a CNAME rrset can't get a second row (or be
+     rewritten). Found live on 2026-10-19; `gslbEligibility` refuses CNAME names with that reason
+     until PowerGSLB is fixed, and the CNAME code paths above stay for that day.
+     There is deliberately **no "last resort"
      option**: when every member is down PowerGSLB already serves all of them ("all down = all up"),
      so a name never goes empty. **Topology is not a method**: it is what regions already do. The
      method is per record, not per region. The method lives in the existing `mode` column
