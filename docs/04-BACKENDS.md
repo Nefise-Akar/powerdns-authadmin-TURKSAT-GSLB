@@ -374,6 +374,10 @@ permission (Super Admin only by default).
   `APP_GSLB_ALLOW_INSECURE_HTTP` (see [Configuration](./03-CONFIGURATION.md)).
 - **Test** signs in and counts domains, monitors, views and records; the list
   shows the last result and its latency.
+- **Editing while in use.** The nameserver host and addresses can't change while
+  any zone is delegated to them; the error names those zones. The base URL can
+  change, but only to reach the same PowerGSLB instance (new address or proxy):
+  the domains, records and views already set up stay there.
 
 ### Regions
 
@@ -411,21 +415,27 @@ with the reason. Switching needs `record.create`, `record.update` and
 
 - **First record in a zone** creates PowerGSLB domain `gslb.<zone>` (SOA + NS)
   and delegates it from the zone (`gslb NS <nameserver host>` plus glue when the
-  host is inside the subzone). The backend needs its nameserver host and
+  host is inside the subzone; then the host's own A/AAAA are also written into
+  the PowerGSLB domain so it answers for its own name, and a record whose GSLB
+  name would equal it is refused). The backend needs its nameserver host and
   addresses set. A new subzone can take up to ~5 minutes to answer (PowerDNS
   `zone-cache-refresh-interval` on the GSLB side).
 - **Switching on** writes the members to PowerGSLB - a member with a region gets
   a row in that region's view and one in `Public`, which is what makes
   cross-site failover work - then replaces the name's A/AAAA (or CNAME) with
   `CNAME <name>.gslb.<zone>.`. If the CNAME write fails, the rows are removed
-  again.
+  again. If saving the panel's own record fails after that, the name is put back
+  as it was and the rows removed; should that undo fail too, the error says
+  exactly which CNAME, original records and PowerGSLB rows to clean up.
 - **Regions are filled in for you.** Typing an IP selects the region whose CIDR
   rules contain it (longest prefix wins), marked _auto_; pick another to
   override. When the backend has regions and some servers have none, saving asks
   first - those servers answer every client, so nobody gets a nearby one.
 - **Health checks** come from presets (HTTP, HTTPS, TCP, TLS, ICMP; HTTP
-  `/health` by default) and are created as `authadmin:` monitors. The TTL
-  (default 30 s) is under _Advanced settings_.
+  `/health` by default; path up to 200 characters, status codes up to 64) and are
+  created as `authadmin:` monitors whose names end in a short hash of the check
+  (`authadmin:http:/health:200-399#…`). The TTL (default 30 s) is under
+  _Advanced settings_.
 - **Load balancing method** is chosen per record in the dialog:
   - _Global availability_ - the server list order is the priority (use the
     up/down buttons): the first healthy server answers, the next takes over when
@@ -436,10 +446,16 @@ with the reason. Switching needs `record.create`, `record.update` and
     its ratio (0-1000; 3:1 is about 75% / 25%).
   - _Persistence_ (Round robin only) - a client network keeps getting the same
     server (PowerGSLB `sticky-hash`, /24 and /64).
-  - CNAME names always return a single answer. **Regions** (topology) decide
-    which servers are preferred for a client's network and apply with every
-    method. There is no "last resort" setting: when every server is down,
-    PowerGSLB serves all of them, so a name never goes empty.
+  - **Regions** (topology) decide which servers are preferred for a client's
+    network and apply with every method. There is no "last resort" setting:
+    when every server is down, PowerGSLB serves all of them, so a name never
+    goes empty.
+- **CNAME names** have limits, because PowerGSLB allows one CNAME record per
+  view: they always use Global availability (the other methods are disabled),
+  HTTP(S) health checks only, **one target per region**, and a target for "All
+  clients" must be first. Only the first target is the fallback for everyone
+  else, so **cross-site fallback for a CNAME reaches just that one target**, not
+  the other regions' targets. Changing a target rewrites its row in place.
   - Records created before methods existed keep working: _Failover_ with equal
     weights shows as Round robin, with unequal weights as Global availability
     (ordered by weight), and _Distribute_ as Ratio.
@@ -455,7 +471,8 @@ with the reason. Switching needs `record.create`, `record.update` and
   records).
 - **Zones list.** With a GSLB backend enabled, the zones list has a **GSLB**
   column: `3 records · all up`, `1 record · 2 servers down` or
-  `status unavailable`. Health is read once per backend and cached for ~20 s.
+  `status unavailable`. Health is read once per backend and cached for ~20 s;
+  a zone's record table reads only that zone's `gslb.<zone>` status.
 - **Session expiry.** If your session ends while working in the GSLB screens,
   they say so and take you to sign-in, returning to the same page.
 
@@ -474,6 +491,10 @@ Everything GSLB adds can be removed from the UI, in this order:
 3. **Regions** - delete them on the backend page.
 4. **Backend** - deletable once nothing uses it; otherwise the error names the
    regions and zones that still do, and where to remove each.
+
+A PowerDNS server or cluster can't be deleted while any of its zones still has a
+GSLB setup; the error lists those zones. Remove GSLB from them (steps 1-2)
+first.
 
 Cloning a zone that has GSLB copies its GSLB-managed names as plain records
 (from their current members) and leaves the `gslb` delegation out; the result

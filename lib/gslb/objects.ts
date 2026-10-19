@@ -277,8 +277,10 @@ export async function readAllStatus(client: GslbClient): Promise<Map<string, Mem
 }
 
 /**
- * Live health per (owner label, content) for one domain, from PowerGSLB's
- * read-only `status` table. Keys are `<label>|<content>` lowercased.
+ * Live health of one domain's records, from PowerGSLB's read-only `status`
+ * table, keyed like {@link readAllStatus} (`<domain>|<label>|<content>`
+ * lowercased), so `statusKey` looks members up in either. The zone page reads
+ * only its own `gslb.<zone>` this way instead of the whole backend.
  *
  * @throws {GslbError}
  */
@@ -291,10 +293,13 @@ export async function readDomainStatus(
   });
   const states = new Map<string, MemberState>();
   for (const row of page.records) {
+    // The search is only a hint (see `GslbSearch`): filter again here.
     if (!sameText(row["domain"], domain)) continue;
-    const name = typeof row["name"] === "string" ? row["name"] : "";
-    const content = typeof row["content"] === "string" ? row["content"] : "";
-    const key = `${name}|${content}`.toLowerCase();
+    const text = (field: string): string => {
+      const value = row[field];
+      return typeof value === "string" ? value : "";
+    };
+    const key = `${text("domain")}|${text("name")}|${text("content")}`.toLowerCase();
     // A member has one row per view; it is up if any of them is.
     if (row["status"] === "On") states.set(key, "On");
     else if (!states.has(key)) states.set(key, "Off");

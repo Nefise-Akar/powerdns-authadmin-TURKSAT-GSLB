@@ -8,8 +8,11 @@
  *
  * Invariant: a parent CNAME never points at an empty GSLB name.
  *   enable : domain setup → monitor/routing → rows (+ read back) → parent
- *            CNAME → persist. A failed parent write deletes the rows again.
- *   update : rows only (diffed: update/insert before delete), parent untouched.
+ *            CNAME → persist. A failed parent write deletes the rows again; a
+ *            failed persist after the switch restores the parent RRsets and
+ *            deletes the rows, and says exactly what to clean if that fails.
+ *   update : rows only (diffed: update/insert before delete, + read back),
+ *            parent untouched.
  *   disable: parent restore (refused unless our CNAME is still there) → rows
  *            deleted → persist.
  *   remove domain: parent delegation removed → PowerGSLB domain deleted (a
@@ -51,8 +54,10 @@ import {
   planDelegation,
   planDelegationRemoval,
   planMemberRows,
+  planNameserverRows,
   planParentEnable,
   planParentRestore,
+  planParentRollback,
   planSubzoneApexRows,
   ROUTINGS,
   routingFor,
@@ -77,6 +82,17 @@ export class GslbPlanError extends Error {
   public constructor(message: string) {
     super(message);
     this.name = "GslbPlanError";
+  }
+}
+
+/**
+ * A write failed half-way and undoing it failed too: the message names what
+ * is left and how to remove it. Never a refusal - something did change.
+ */
+export class GslbCleanupRequiredError extends Error {
+  public constructor(message: string) {
+    super(message);
+    this.name = "GslbCleanupRequiredError";
   }
 }
 
@@ -179,6 +195,19 @@ export async function ensureGslbDomain(args: {
     }
   }
 
+  // An in-bailiwick nameserver must answer for its own name too.
+  const nsRows = planNameserverRows({
+    subzone: args.subzone,
+    nameserverHost,
+    nameserverAddresses,
+  });
+  if (nsRows) {
+    const existing = (await listRows(args.client, domain, nsRows.label)).filter((row) =>
+      ["A", "AAAA"].includes(row.name_type.toUpperCase()),
+    );
+    await applyRowDiff(args.client, diffRows(existing, nsRows.rows));
+  }
+
   if (delegation.changes.length > 0) await args.parent.apply(delegation.changes);
   return { delegationChanged: delegation.changes.length > 0 };
 }
@@ -239,6 +268,12 @@ export async function enableGslbRecord(
     const checkParent = parentChecker(args);
     const live = await args.parent.read();
     checkParent(live);
+    const nameserver = args.delegation.nameserverHost;
+    if (nameserver && canonicalName(nameserver) === canonicalName(targetName(args.target))) {
+      throw new GslbPlanError(
+        `${canonicalName(args.name)} would be served at ${targetName(args.target)}, which is the GSLB nameserver's own name. Use another name, or change the backend's nameserver host.`,
+      );
+    }
 
     const zone = await ensureGslbDomain({
       client: args.client,
@@ -260,8 +295,9 @@ export async function enableGslbRecord(
     // Leftovers can only be orphans - nothing CNAMEs here yet - so clear them.
     await deleteRowsAt(args.client, domain, label);
 
+    let switched: ReturnType<typeof planParentEnable> | null = null;
     try {
-      await applyRowDiff(args.client, diffRows([], rows));
+      await applyRowDiff(args.client, diffRows([], rows, args.kind));
       const written = await listRows(args.client, domain, label);
       if (written.length !== rows.length) {
         throw new GslbPlanError(
@@ -278,6 +314,7 @@ export async function enableGslbRecord(
         target: targetName(args.target),
         liveAtName: atName(fresh, args.name),
       });
+      switched = plan;
       await args.parent.apply(plan.changes);
 
       const result: EnableResult = {
@@ -290,28 +327,89 @@ export async function enableGslbRecord(
       await args.persistRecord(result);
       return result;
     } catch (err) {
-      // Roll the rows back only while nothing points at them yet. Once the
-      // parent CNAME is in place (persist failed) the rows must stay.
-      const parentSwitched = await args.parent
+      const parentState = await args.parent
         .read()
         .then((rrsets) =>
-          parentPointsAtGslb(atName(rrsets, args.name), args.name, targetName(args.target)),
+          parentPointsAtGslb(atName(rrsets, args.name), args.name, targetName(args.target))
+            ? ("switched" as const)
+            : ("untouched" as const),
         )
-        .catch(() => true);
-      if (!parentSwitched) {
+        .catch(() => "unknown" as const);
+      if (parentState === "untouched") {
+        // Nothing points at the rows yet, so they can go.
         await deleteRowsAt(args.client, domain, label).catch((cleanupError: unknown) => {
-          logger.error(
-            {
-              zone: args.zoneName,
-              name: args.name,
-              error: cleanupError instanceof Error ? cleanupError.message : "unknown",
-            },
-            "gslb.record.enable.rollback-failed",
-          );
+          logEnableFailure(args, "gslb.record.enable.rollback-failed", cleanupError);
         });
+        throw err;
       }
-      throw err;
+      // Nothing can be undone safely when the parent was never switched by us.
+      if (!switched) throw err;
+      await rollBackSwitch({
+        ...args,
+        domain,
+        label,
+        snapshot: switched.snapshot,
+        parentState,
+        err,
+      });
+      throw new GslbPlanError(
+        `Switching GSLB on for ${canonicalName(args.name)} failed after the name was switched over, so it was put back as it was. Nothing changed; try again.`,
+      );
     }
+  });
+}
+
+function logEnableFailure(
+  args: { zoneName: string; name: string },
+  event: string,
+  error: unknown,
+): void {
+  logger.error(
+    {
+      zone: args.zoneName,
+      name: args.name,
+      error: error instanceof Error ? error.message : "unknown",
+    },
+    event,
+  );
+}
+
+/**
+ * Undo a switch whose persist failed: parent RRsets back first (so nothing
+ * points at the rows any more), then the rows. A name left as an untracked
+ * CNAME into GSLB is the one outcome that must never be silent.
+ *
+ * @throws {GslbCleanupRequiredError} when the parent could not be restored.
+ */
+async function rollBackSwitch(args: {
+  client: GslbClient;
+  zoneName: string;
+  name: string;
+  target: GslbTarget;
+  parent: ParentZonePort;
+  domain: string;
+  label: string;
+  snapshot: readonly GslbRRsetSnapshot[];
+  parentState: "switched" | "unknown";
+  err: unknown;
+}): Promise<void> {
+  logEnableFailure(args, "gslb.record.enable.persist-failed", args.err);
+  const owner = canonicalName(args.name);
+  const original = args.snapshot
+    .map((s) => `${s.type} ${s.records.map((r) => r.content).join(", ")}`)
+    .join("; ");
+  try {
+    if (args.parentState === "unknown") throw new Error("the zone could not be read back");
+    await args.parent.apply(planParentRollback({ name: owner, snapshot: args.snapshot }));
+  } catch (rollbackError) {
+    logEnableFailure(args, "gslb.record.enable.parent-rollback-failed", rollbackError);
+    throw new GslbCleanupRequiredError(
+      `Switching GSLB on for ${owner} failed and could not be undone. ${owner} may still be a CNAME to ${targetName(args.target)} that the panel does not track. In the record table, replace it with the original records (${original}), then delete the PowerGSLB rows named "${args.label}" in domain ${args.domain}.`,
+    );
+  }
+  await deleteRowsAt(args.client, args.domain, args.label).catch((cleanupError: unknown) => {
+    // Nothing points at them any more; the next switch-on of this name clears them.
+    logEnableFailure(args, "gslb.record.enable.rollback-failed", cleanupError);
   });
 }
 
@@ -321,8 +419,13 @@ async function writeRows(client: GslbClient, input: RecordPlanInput): Promise<nu
   await ensureRowObjects(client, input);
   const domain = domainOf(input.target);
   const existing = await listRows(client, domain, input.target.label);
-  await applyRowDiff(client, diffRows(existing, rows));
+  await applyRowDiff(client, diffRows(existing, rows, input.kind));
   const written = await listRows(client, domain, input.target.label);
+  if (written.length !== rows.length) {
+    throw new GslbCleanupRequiredError(
+      `PowerGSLB holds ${written.length} rows for ${input.target.label} after saving, ${rows.length} expected. The record still answers, but check it in PowerGSLB and save again.`,
+    );
+  }
   return written.map((row) => row.recid);
 }
 

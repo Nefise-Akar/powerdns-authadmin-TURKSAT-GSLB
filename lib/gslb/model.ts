@@ -53,7 +53,7 @@ export interface GslbMember {
   content: string;
   /** Region slug on the record's backend, or null for "All clients". */
   region: string | null;
-  /** 0-1000. A tier under Failover, a share under Distribute. */
+  /** 0-1000. Derived from the order (global availability), equal (round robin) or the ratio. */
   weight: number;
 }
 
@@ -219,6 +219,48 @@ export function balancingError(
   }
   if (balancing.method === "ratio" && !members.some((m) => m.weight > 0)) {
     return "Give at least one server a ratio above 0.";
+  }
+  return null;
+}
+
+/**
+ * PowerGSLB allows one CNAME record per view, so a CNAME name gets one row per
+ * view: one target per region, one in `Public`. Only global availability works
+ * with that (round robin and ratio need several rows in the same view).
+ */
+export const GSLB_CNAME_METHOD: GslbMethod = "global-availability";
+
+export const GSLB_CNAME_METHOD_REASON =
+  "A CNAME answers with one target per region, so it always uses Global availability.";
+
+/** Health checks a CNAME member (a host name) can use; ICMP/TCP/TLS need an address. */
+export const GSLB_CNAME_MONITOR_TYPES: readonly GslbMonitorType[] = ["http", "https"];
+
+/**
+ * Why CNAME settings are not allowed, or null. The method must be global
+ * availability, each region has at most one target, and a target without a
+ * region must come first - it is the `Public` fallback, and `Public` holds the
+ * first target only.
+ */
+export function cnameSettingsError(
+  balancing: GslbBalancing,
+  members: ReadonlyArray<{ region: string | null }>,
+): string | null {
+  if (balancing.method !== GSLB_CNAME_METHOD || balancing.persistence) {
+    return GSLB_CNAME_METHOD_REASON;
+  }
+  const seen = new Set<string>();
+  for (const [index, member] of members.entries()) {
+    if (member.region === null) {
+      if (index > 0) {
+        return "A CNAME target for all clients must be first in the order: it is the fallback for everyone, and only one target can be the fallback.";
+      }
+      continue;
+    }
+    if (seen.has(member.region)) {
+      return "A CNAME can have only one target per region (PowerGSLB allows one CNAME record per view).";
+    }
+    seen.add(member.region);
   }
   return null;
 }

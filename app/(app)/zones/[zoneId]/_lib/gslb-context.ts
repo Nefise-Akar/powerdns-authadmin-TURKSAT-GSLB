@@ -7,7 +7,8 @@
  * for auto-region), last-used presets, the delegation RRsets to lock, and
  * whether the zone's GSLB setup can be removed (no GSLB records left).
  *
- * Health comes from one read of PowerGSLB's `status` table through the
+ * Health comes from one read of this zone's rows of PowerGSLB's `status`
+ * table (filtered to `gslb.<zone>`) through the
  * fast-fail probe client; if PowerGSLB is unreachable the page still renders
  * and members show "status unavailable". Returns `null` when GSLB can't apply
  * here (no enabled backend and no GSLB setup), so the column doesn't render.
@@ -32,10 +33,11 @@ import {
   type GslbRecordKind,
   type GslbRecordPreset,
 } from "@/lib/gslb/model";
-import { readAllStatus, type MemberState } from "@/lib/gslb/objects";
+import { readDomainStatus, type MemberState } from "@/lib/gslb/objects";
 import {
   canonicalName,
   delegationRRsetKeys,
+  gslbDomainFor,
   gslbEligibility,
   recordTarget,
   statusKey,
@@ -126,7 +128,10 @@ async function backendStates(
 ): Promise<{ states: Map<string, MemberState> | null; error: string | null }> {
   try {
     return {
-      states: await readAllStatus(getGslbClientForRow(backend, { probe: true })),
+      states: await readDomainStatus(
+        getGslbClientForRow(backend, { probe: true }),
+        gslbDomainFor(zoneName),
+      ),
       error: null,
     };
   } catch (err) {

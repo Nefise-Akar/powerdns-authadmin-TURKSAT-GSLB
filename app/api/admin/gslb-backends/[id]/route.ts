@@ -3,7 +3,8 @@
  *
  * GET    - one backend connection (gslb.manage), without the password.
  * PATCH  - update it (gslb.manage). The password rotates only when a
- *          non-blank value is sent.
+ *          non-blank value is sent. The nameserver host/addresses are frozen
+ *          while any zone is delegated to them (409 naming the zones).
  * DELETE - remove it (gslb.manage). Hard delete; the audit log keeps history.
  *          Refused while the backend still has regions: each one owns a view
  *          in PowerGSLB, and deleting the connection would strand those views
@@ -25,7 +26,7 @@ import {
 } from "@/lib/db/repositories/gslb-backends";
 import { listGslbRegions } from "@/lib/db/repositories/gslb-regions";
 import { listGslbZonesForBackend } from "@/lib/db/repositories/gslb-records";
-import { backendDeleteBlockers } from "@/lib/gslb/record-plan";
+import { backendDeleteBlockers, backendNameserverEditBlocker } from "@/lib/gslb/record-plan";
 import { GSLB_PASSWORD_USAGE } from "@/lib/gslb/registry";
 import { assertSafeGslbUrl } from "@/lib/gslb/url-safety";
 import { updateGslbBackendSchema } from "@/lib/validators/gslb-backends";
@@ -75,6 +76,20 @@ export async function PATCH(request: Request, context: RouteContext): Promise<Re
 
     if (input.baseUrl !== undefined && input.baseUrl !== existing.baseUrl) {
       await assertSafeGslbUrl(input.baseUrl);
+    }
+
+    if (input.nameserverHost !== undefined || input.nameserverAddresses !== undefined) {
+      const nameserverBlocker = backendNameserverEditBlocker({
+        before: existing,
+        after: {
+          ...(input.nameserverHost !== undefined ? { nameserverHost: input.nameserverHost } : {}),
+          ...(input.nameserverAddresses !== undefined
+            ? { nameserverAddresses: input.nameserverAddresses }
+            : {}),
+        },
+        zoneNames: (await listGslbZonesForBackend(id)).map((z) => z.zone.zoneName),
+      });
+      if (nameserverBlocker) throw new ConflictError(nameserverBlocker);
     }
 
     const patch: Parameters<typeof updateGslbBackend>[1] = {};

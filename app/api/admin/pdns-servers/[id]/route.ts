@@ -17,7 +17,7 @@ import { requireCsrf } from "@/lib/auth/csrf";
 import { encrypt } from "@/lib/crypto/encryption";
 import { appendAudit } from "@/lib/audit/log";
 import { getRequestContext } from "@/lib/client-ip";
-import { NotFoundError, ValidationError } from "@/lib/errors";
+import { ConflictError, NotFoundError, ValidationError } from "@/lib/errors";
 import { errorResponse } from "@/lib/http/error-response";
 import { db } from "@/lib/db";
 import {
@@ -30,6 +30,8 @@ import type { PdnsWriteMode } from "@/lib/pdns/types";
 import { invalidatePdnsClient } from "@/lib/pdns/registry";
 import { assertSafePdnsUrl } from "@/lib/pdns/url-safety";
 import { findClusterById } from "@/lib/db/repositories/pdns-clusters";
+import { listGslbZonesForScope } from "@/lib/db/repositories/gslb-records";
+import { pdnsDeleteGslbBlocker } from "@/lib/gslb/record-plan";
 import { invalidateBackendObservation, scheduleImmediatePoll } from "@/lib/realtime/zone-poller";
 import { forgetBackendStatus } from "@/lib/realtime/backend-status";
 
@@ -160,6 +162,17 @@ export async function DELETE(request: Request, context: RouteContext): Promise<R
 
     const existing = await findPdnsServerById(id);
     if (!existing) throw new NotFoundError("PowerDNS server not found.");
+
+    // GSLB zone rows would cascade away with the server, leaving PowerGSLB
+    // domains and parent CNAMEs nothing tracks - refuse until they're removed.
+    const gslbBlocker = pdnsDeleteGslbBlocker(
+      "server",
+      (await listGslbZonesForScope({ serverId: id })).map((z) => ({
+        zoneName: z.zone.zoneName,
+        records: z.records,
+      })),
+    );
+    if (gslbBlocker) throw new ConflictError(gslbBlocker);
 
     const hdrs = await headers();
     await db.transaction(async (tx) => {

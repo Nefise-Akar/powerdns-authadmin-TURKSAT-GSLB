@@ -166,11 +166,28 @@ describe("GslbClient", () => {
     });
   });
 
-  it("treats an update that changes nothing as success", async () => {
+  it("treats an update that changes nothing as success once the row is confirmed", async () => {
     // A sibling row of the same rrset already picked up the new ttl/policy.
-    fetchMock.mockResolvedValue(reply(200, { status: "error", message: "record not changed" }));
+    fetchMock
+      .mockResolvedValueOnce(reply(200, { status: "error", message: "record not changed" }))
+      .mockResolvedValueOnce(reply(200, { status: "success", record: { recid: 4 } }));
     const client = await newClient();
     await expect(client.saveRecord("records", 4, { name: "x" })).resolves.toBeUndefined();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(new URLSearchParams(sent(1).init.body).get("cmd")).toBe("get-record");
+  });
+
+  it("fails an update that changed nothing because the row was removed", async () => {
+    fetchMock
+      .mockResolvedValueOnce(reply(200, { status: "error", message: "record not changed" }))
+      .mockResolvedValueOnce(
+        reply(200, { status: "error", message: "get-record 'records' id 4 not found" }),
+      );
+    const client = await newClient();
+    await expect(client.saveRecord("records", 4, { name: "x" })).rejects.toMatchObject({
+      kind: "upstream",
+      message: expect.stringContaining("was removed in PowerGSLB") as unknown,
+    });
   });
 
   it("still throws other upstream errors on update", async () => {

@@ -7,6 +7,7 @@
 import { describe, expect, it } from "vitest";
 import {
   enableGslbRecordSchema,
+  gslbKindSettingsErrors,
   gslbMonitorSchema,
   updateGslbRecordSchema,
   validateGslbMembers,
@@ -155,5 +156,102 @@ describe("validateGslbMembers", () => {
       subzone,
     );
     expect(!cname.ok && cname.errors[0]).toMatch(/can't point back/);
+  });
+});
+
+describe("gslbKindSettingsErrors", () => {
+  const https = { type: "https" as const, path: "/", expectedStatus: "200", tlsVerify: true };
+  const ga = { method: "global-availability" as const, persistence: false };
+
+  it("has no extra rules for address records", () => {
+    expect(
+      gslbKindSettingsErrors("address", {
+        method: "ratio",
+        persistence: false,
+        monitor: { type: "icmp" },
+        members: [{ region: "a" }, { region: "a" }],
+      }),
+    ).toEqual([]);
+  });
+
+  it("accepts a CNAME with global availability, one target per region, fallback first", () => {
+    expect(
+      gslbKindSettingsErrors("cname", {
+        ...ga,
+        monitor: https,
+        members: [{ region: null }, { region: "a" }, { region: "b" }],
+      }),
+    ).toEqual([]);
+  });
+
+  it("rejects ICMP, TCP and TLS health checks for a CNAME", () => {
+    for (const monitor of [
+      { type: "icmp" as const },
+      { type: "tcp" as const, port: 443 },
+      { type: "tls" as const, port: 443, tlsVerify: true },
+    ]) {
+      expect(
+        gslbKindSettingsErrors("cname", { ...ga, monitor, members: [{ region: null }] }),
+      ).toEqual(["A CNAME target is a host name, so its health check must be HTTP or HTTPS."]);
+    }
+  });
+
+  it("rejects other methods and persistence for a CNAME", () => {
+    for (const balancing of [
+      { method: "round-robin" as const, persistence: false },
+      { method: "round-robin" as const, persistence: true },
+      { method: "ratio" as const, persistence: false },
+    ]) {
+      expect(
+        gslbKindSettingsErrors("cname", {
+          ...balancing,
+          monitor: https,
+          members: [{ region: null }],
+        }),
+      ).toEqual([expect.stringContaining("Global availability") as unknown]);
+    }
+  });
+
+  it("rejects two CNAME targets in one region and an all-clients target that isn't first", () => {
+    expect(
+      gslbKindSettingsErrors("cname", {
+        ...ga,
+        monitor: https,
+        members: [{ region: "a" }, { region: "a" }],
+      }),
+    ).toEqual([expect.stringContaining("one target per region") as unknown]);
+    expect(
+      gslbKindSettingsErrors("cname", {
+        ...ga,
+        monitor: https,
+        members: [{ region: "a" }, { region: null }],
+      }),
+    ).toEqual([expect.stringContaining("must be first") as unknown]);
+  });
+});
+
+describe("monitor length caps", () => {
+  it("caps the path at 200 and the expected status at 64 characters", () => {
+    expect(
+      gslbMonitorSchema.safeParse({
+        type: "http",
+        path: `/${"a".repeat(200)}`,
+        expectedStatus: "200",
+      }).success,
+    ).toBe(false);
+    expect(
+      gslbMonitorSchema.safeParse({
+        type: "http",
+        path: "/",
+        expectedStatus: `${"200,".repeat(16)}200`,
+      }).success,
+    ).toBe(false);
+    expect(
+      gslbMonitorSchema.safeParse({
+        type: "http",
+        path: `/${"a".repeat(199)}`,
+        expectedStatus: `${"200,".repeat(15)}200`,
+      }).success,
+    ).toBe(true);
   });
 });

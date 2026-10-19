@@ -211,3 +211,16 @@ export async function listGslbZonesForBackend(
     zones.map(async (zone) => ({ zone, records: (await listGslbRecordsForZone(zone.id)).length })),
   );
 }
+
+/**
+ * GSLB zones of one PowerDNS server (standalone) or cluster, with record
+ * counts - a server/cluster delete is refused while any exist.
+ */
+export async function listGslbZonesForScope(
+  scope: GslbZoneScope,
+): Promise<Array<{ zone: GslbZone; records: number }>> {
+  const zones = await db.select().from(gslbZones).where(scopeCondition(scope));
+  return Promise.all(
+    zones.map(async (zone) => ({ zone, records: (await listGslbRecordsForZone(zone.id)).length })),
+  );
+}

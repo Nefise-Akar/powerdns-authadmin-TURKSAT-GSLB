@@ -17,6 +17,10 @@ import {
   type GslbMember,
 } from "./model";
 import {
+  backendNameserverEditBlocker,
+  pdnsDeleteGslbBlocker,
+  planNameserverRows,
+  planParentRollback,
   delegationRRsetKeys,
   diffRows,
   gslbEligibility,
@@ -186,21 +190,51 @@ describe("normalizeMemberContent", () => {
   });
 });
 
+/** Monitor name without its `#<hash>` suffix. */
+function readable(name: string): string {
+  return name.split("#")[0]!;
+}
+
 describe("monitorFor", () => {
   it("derives deterministic names and PowerGSLB JSON", () => {
-    expect(monitorFor({ type: "icmp" }, 4)).toEqual({
-      name: "authadmin:icmp",
-      json: '{"type":"icmp","ip":"${content}"}',
-    });
-    expect(monitorFor({ type: "tcp", port: 443 }, 6).name).toBe("authadmin:tcp:443");
-    expect(monitorFor({ type: "tls", port: 8443, tlsVerify: false }, 4)).toEqual({
-      name: "authadmin:tls:8443:noverify",
-      json: '{"type":"tls","ip":"${content}","port":8443,"tls_verify":false}',
-    });
-    expect(monitorFor({ type: "http", path: "/health", expectedStatus: "200-399" }, 4)).toEqual({
-      name: "authadmin:http:/health:200-399",
-      json: '{"type":"http","url":"http://${content}/health","expected_status":"200-399"}',
-    });
+    const icmp = monitorFor({ type: "icmp" }, 4);
+    expect(readable(icmp.name)).toBe("authadmin:icmp");
+    expect(icmp.json).toBe('{"type":"icmp","ip":"${content}"}');
+    expect(readable(monitorFor({ type: "tcp", port: 443 }, 6).name)).toBe("authadmin:tcp:443");
+    const tls = monitorFor({ type: "tls", port: 8443, tlsVerify: false }, 4);
+    expect(readable(tls.name)).toBe("authadmin:tls:8443:noverify");
+    expect(tls.json).toBe('{"type":"tls","ip":"${content}","port":8443,"tls_verify":false}');
+    const http = monitorFor({ type: "http", path: "/health", expectedStatus: "200-399" }, 4);
+    expect(readable(http.name)).toBe("authadmin:http:/health:200-399");
+    expect(http.json).toBe(
+      '{"type":"http","url":"http://${content}/health","expected_status":"200-399"}',
+    );
+    expect(monitorFor({ type: "http", path: "/health", expectedStatus: "200-399" }, 4)).toEqual(
+      http,
+    );
+  });
+
+  it("suffixes a lowercase hash of the exact JSON so names stay distinct case-insensitively", () => {
+    const lower = monitorFor({ type: "http", path: "/health", expectedStatus: "200" }, 4);
+    const upper = monitorFor({ type: "http", path: "/Health", expectedStatus: "200" }, 4);
+    expect(lower.name).toMatch(/#[0-9a-f]{12}$/);
+    expect(lower.json).not.toBe(upper.json);
+    // PowerGSLB's monitors.monitor is UNIQUE under a _ci collation.
+    expect(lower.name.toLowerCase()).not.toBe(upper.name.toLowerCase());
+  });
+
+  it("keeps the longest possible name within PowerGSLB's 255-character column", () => {
+    const longest = monitorFor(
+      {
+        type: "https",
+        path: `/${"a".repeat(199)}`,
+        expectedStatus: `${"200,".repeat(15)}200`,
+        tlsVerify: false,
+      },
+      6,
+    );
+    expect(longest.name.length).toBeLessThanOrEqual(255);
+    expect(longest.name).toMatch(/^authadmin:https:\/a+.*#[0-9a-f]{12}$/);
   });
 
   it("brackets IPv6 in HTTP(S) URLs under a separate monitor", () => {
@@ -208,16 +242,16 @@ describe("monitorFor", () => {
       { type: "https", path: "/up", expectedStatus: "200", tlsVerify: true },
       6,
     );
-    expect(v6.name).toBe("authadmin:https:/up:200:verify:v6");
+    expect(readable(v6.name)).toBe("authadmin:https:/up:200:verify:v6");
     expect(JSON.parse(v6.json)).toEqual({
       type: "http",
       url: "https://[${content}]/up",
       expected_status: "200",
       tls_verify: true,
     });
-    expect(monitorFor({ type: "http", path: "/", expectedStatus: "200" }, "name").name).toBe(
-      "authadmin:http:/:200",
-    );
+    expect(
+      readable(monitorFor({ type: "http", path: "/", expectedStatus: "200" }, "name").name),
+    ).toBe("authadmin:http:/:200");
   });
 });
 
@@ -298,11 +332,11 @@ describe("planMemberRows", () => {
       rows.every((r) => r.domain === "gslb.example.com" && r.name === "www" && r.ttl === 30),
     ).toBe(true);
     expect(rows.every((r) => r.policy === "authadmin:weighted" && r.disabled === 0)).toBe(true);
-    expect(rows[2]!.monitor).toBe("authadmin:http:/health:200-399:v6");
+    expect(readable(rows[2]!.monitor)).toBe("authadmin:http:/health:200-399:v6");
   });
 
   it("lists one monitor per content family", () => {
-    expect(monitorsForMembers(input).map((m) => m.name)).toEqual([
+    expect(monitorsForMembers(input).map((m) => readable(m.name))).toEqual([
       "authadmin:http:/health:200-399",
       "authadmin:http:/health:200-399:v6",
     ]);
@@ -311,7 +345,7 @@ describe("planMemberRows", () => {
   it("writes CNAME members without the trailing dot under the single-answer policy", () => {
     const rows = planMemberRows({
       ...input,
-      method: "round-robin",
+      method: "global-availability",
       target: recordTarget("app.example.com.", ZONE),
       kind: "cname",
       members: [{ content: "edge-a.example.net.", region: "site-a", weight: 10 }],
@@ -319,6 +353,48 @@ describe("planMemberRows", () => {
     expect(rows.map((r) => [r.name_type, r.view, r.content, r.policy])).toEqual([
       ["CNAME", "authadmin:site-a", "edge-a.example.net", "authadmin:failover-single"],
       ["CNAME", "Public", "edge-a.example.net", "authadmin:failover-single"],
+    ]);
+  });
+});
+
+describe("planMemberRows for CNAME names (one record per view)", () => {
+  const cname = {
+    target: recordTarget("app.example.com.", ZONE),
+    kind: "cname" as const,
+    method: "global-availability" as const,
+    persistence: false,
+    monitor: { type: "https" as const, path: "/", expectedStatus: "200", tlsVerify: true },
+    ttl: 30,
+  };
+
+  it("gives each region its target and Public only the first target by priority", () => {
+    const rows = planMemberRows({
+      ...cname,
+      members: [
+        { content: "edge-a.example.net.", region: "site-a", weight: 0 },
+        { content: "edge-b.example.net.", region: "site-b", weight: 0 },
+      ],
+    });
+    expect(rows.map((r) => [r.view, r.content, r.weight])).toEqual([
+      ["authadmin:site-a", "edge-a.example.net", 20],
+      ["Public", "edge-a.example.net", 20],
+      ["authadmin:site-b", "edge-b.example.net", 10],
+    ]);
+    const perView = new Set(rows.map((r) => r.view));
+    expect(perView.size).toBe(rows.length);
+  });
+
+  it("uses a first target without a region as the Public fallback only", () => {
+    const rows = planMemberRows({
+      ...cname,
+      members: [
+        { content: "global.example.net.", region: null, weight: 0 },
+        { content: "edge-a.example.net.", region: "site-a", weight: 0 },
+      ],
+    });
+    expect(rows.map((r) => [r.view, r.content])).toEqual([
+      ["Public", "global.example.net"],
+      ["authadmin:site-a", "edge-a.example.net"],
     ]);
   });
 });
@@ -368,6 +444,177 @@ describe("diffRows", () => {
     expect(diff.update.map((u) => u.recid)).toEqual([2]);
     expect(diff.insert.map((r) => r.content)).toEqual(["192.0.2.4"]);
     expect(diff.remove).toEqual([3]);
+  });
+
+  it("matches CNAME rows by view so a new target is an in-place update", () => {
+    const cnameRow = (recid: number, view: string, content: string): RemoteRow => ({
+      ...remote(recid, view, content),
+      name_type: "CNAME",
+    });
+    const desired = (view: string, content: string) => ({
+      ...base,
+      name_type: "CNAME",
+      view,
+      content,
+    });
+    const diff = diffRows(
+      [cnameRow(1, "Public", "old.example.net"), cnameRow(2, "authadmin:site-a", "a.example.net")],
+      [desired("Public", "new.example.net"), desired("authadmin:site-a", "a.example.net")],
+      "cname",
+    );
+    expect(diff).toEqual({
+      update: [{ recid: 1, row: desired("Public", "new.example.net") }],
+      insert: [],
+      remove: [],
+    });
+  });
+
+  it("removes duplicate rows of one key instead of leaving them behind", () => {
+    const diff = diffRows(
+      [remote(1, "Public", "192.0.2.1"), remote(2, "Public", "192.0.2.1")],
+      [{ ...base, view: "Public", content: "192.0.2.1" }],
+    );
+    expect(diff).toEqual({ update: [], insert: [], remove: [2] });
+  });
+});
+
+describe("planNameserverRows", () => {
+  it("serves an in-bailiwick nameserver's own A/AAAA from Public with no health check", () => {
+    const plan = planNameserverRows({
+      subzone: "gslb.example.com.",
+      nameserverHost: "NS1.gslb.example.com",
+      nameserverAddresses: ["192.0.2.53", "2001:DB8::53"],
+    });
+    expect(plan?.label).toBe("ns1");
+    expect(plan?.rows.map((r) => [r.domain, r.name, r.name_type, r.content, r.view])).toEqual([
+      ["gslb.example.com", "ns1", "A", "192.0.2.53", "Public"],
+      ["gslb.example.com", "ns1", "AAAA", "2001:db8::53", "Public"],
+    ]);
+    expect(plan?.rows.every((r) => r.monitor === "authadmin:none" && r.ttl === 3600)).toBe(true);
+  });
+
+  it("returns nothing for an out-of-bailiwick nameserver and @ for the apex itself", () => {
+    expect(
+      planNameserverRows({
+        subzone: "gslb.example.com.",
+        nameserverHost: "ns1.gslb.example.org.",
+        nameserverAddresses: ["192.0.2.53"],
+      }),
+    ).toBeNull();
+    expect(
+      planNameserverRows({
+        subzone: "gslb.example.com.",
+        nameserverHost: "gslb.example.com.",
+        nameserverAddresses: ["192.0.2.53"],
+      })?.label,
+    ).toBe("@");
+  });
+});
+
+describe("planParentRollback", () => {
+  it("removes the CNAME and restores the captured address RRsets exactly", () => {
+    expect(
+      planParentRollback({
+        name: "WWW.example.com",
+        snapshot: [
+          {
+            name: "www.example.com.",
+            type: "A",
+            ttl: 300,
+            records: [{ content: "192.0.2.10" }, { content: "192.0.2.11", disabled: true }],
+            comments: [{ content: "keep", account: "ops" }],
+          },
+        ],
+      }),
+    ).toEqual([
+      { kind: "delete", name: "www.example.com.", type: "CNAME" },
+      {
+        kind: "upsert",
+        name: "www.example.com.",
+        type: "A",
+        ttl: 300,
+        records: [
+          { content: "192.0.2.10", disabled: false },
+          { content: "192.0.2.11", disabled: true },
+        ],
+        comments: [{ content: "keep", account: "ops" }],
+      },
+    ]);
+  });
+
+  it("overwrites the CNAME in place when the original was a CNAME", () => {
+    const changes = planParentRollback({
+      name: "app.example.com.",
+      snapshot: [
+        {
+          name: "app.example.com.",
+          type: "CNAME",
+          ttl: 60,
+          records: [{ content: "edge.example.net." }],
+          comments: [],
+        },
+      ],
+    });
+    expect(changes.map((c) => `${c.kind} ${c.type}`)).toEqual(["upsert CNAME"]);
+  });
+});
+
+describe("backendNameserverEditBlocker", () => {
+  const before = { nameserverHost: "ns1.gslb.example.com.", nameserverAddresses: ["192.0.2.53"] };
+
+  it("refuses a host or address change while zones use the backend, naming them", () => {
+    const zoneNames = ["example.com.", "example.org."];
+    expect(
+      backendNameserverEditBlocker({
+        before,
+        after: { nameserverHost: "ns2.gslb.example.com." },
+        zoneNames,
+      }),
+    ).toContain("example.com., example.org.");
+    expect(
+      backendNameserverEditBlocker({
+        before,
+        after: { nameserverAddresses: ["192.0.2.54"] },
+        zoneNames,
+      }),
+    ).not.toBeNull();
+    expect(
+      backendNameserverEditBlocker({ before, after: { nameserverHost: null }, zoneNames }),
+    ).not.toBeNull();
+  });
+
+  it("allows resending the same values (any case / dot / order) and any change when unused", () => {
+    expect(
+      backendNameserverEditBlocker({
+        before: { ...before, nameserverAddresses: ["192.0.2.53", "2001:db8::53"] },
+        after: {
+          nameserverHost: "NS1.gslb.example.com",
+          nameserverAddresses: ["2001:DB8:0::53", "192.0.2.53"],
+        },
+        zoneNames: ["example.com."],
+      }),
+    ).toBeNull();
+    expect(
+      backendNameserverEditBlocker({
+        before,
+        after: { nameserverHost: "ns9.example.net." },
+        zoneNames: [],
+      }),
+    ).toBeNull();
+  });
+});
+
+describe("pdnsDeleteGslbBlocker", () => {
+  it("names every zone with a GSLB setup and says to remove it first", () => {
+    expect(pdnsDeleteGslbBlocker("cluster", [])).toBeNull();
+    const message = pdnsDeleteGslbBlocker("server", [
+      { zoneName: "example.com.", records: 2 },
+      { zoneName: "example.org.", records: 0 },
+    ]);
+    expect(message).toContain("This server still has GSLB set up");
+    expect(message).toContain("example.com. (2 GSLB records)");
+    expect(message).toContain("example.org. (GSLB setup only)");
+    expect(message).toContain("Remove GSLB setup");
   });
 });
 

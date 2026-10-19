@@ -13,8 +13,9 @@
  *     `PageRequest.from_query`), so paging always sends both.
  *   - `save-record` with `recid=0` inserts and returns no id; with a real
  *     recid it overwrites the WHOLE row, so updates must resend every column.
- *   - An overwrite that leaves the row byte-identical is answered with
- *     `status: "error", message: "record not changed"` (zero affected rows).
+ *   - An overwrite that affects zero rows is answered with `status: "error",
+ *     message: "record not changed"` - both when the row is already
+ *     identical and when the recid no longer exists.
  */
 
 import "server-only";
@@ -126,7 +127,31 @@ export class GslbClient {
       // them for its siblings too, and the sibling's own update then changes
       // nothing. The row is already in the desired state, so that is success.
       // An insert that changes nothing is a real failure and still throws.
-      if (recid > 0 && isRecordNotChanged(err)) return;
+      // Zero affected rows also means the recid is gone, so confirm the row
+      // still exists before calling it success.
+      if (recid > 0 && isRecordNotChanged(err)) {
+        await this.assertRowExists(data, recid);
+        return;
+      }
+      throw err;
+    }
+  }
+
+  private async assertRowExists(data: GslbWritableTable, recid: number): Promise<void> {
+    try {
+      await this.getRecord(data, recid);
+    } catch (err) {
+      if (
+        err instanceof GslbError &&
+        err.kind === "upstream" &&
+        err.message.includes("not found")
+      ) {
+        throw new GslbError(
+          "upstream",
+          `PowerGSLB '${data}' row ${recid} was removed in PowerGSLB while the panel was updating it. Reload and save again.`,
+          { cause: err },
+        );
+      }
       throw err;
     }
   }

@@ -14,6 +14,7 @@
  *     trailing dot - the same shape as its own seed data.
  */
 
+import { createHash } from "node:crypto";
 import { normalizeIpAddress } from "@/lib/validators/gslb-region-rules";
 import {
   deriveWeights,
@@ -287,7 +288,28 @@ export const NONE_MONITOR: GslbObject = {
  */
 export type MemberFamily = 4 | 6 | "name";
 
+/** Room for `#` + the hash under PowerGSLB's 255-character `monitor` column. */
+const MONITOR_READABLE_MAX = 240;
+const MONITOR_HASH_LENGTH = 12;
+
+/**
+ * `monitors.monitor` is UNIQUE under a case-insensitive collation, so two
+ * monitors whose readable names differ only in case (`/Health` vs `/health`)
+ * would be one row in PowerGSLB and overwrite each other's JSON. A lowercase
+ * hex hash of the exact JSON keeps every distinct monitor distinct, and the
+ * readable part is cut so the name always fits the column.
+ */
+function ownedMonitor(readable: string, json: string): GslbObject {
+  const hash = createHash("sha256").update(json).digest("hex").slice(0, MONITOR_HASH_LENGTH);
+  return { name: `${readable.slice(0, MONITOR_READABLE_MAX)}#${hash}`, json };
+}
+
 export function monitorFor(config: GslbMonitorConfig, family: MemberFamily): GslbObject {
+  const object = readableMonitor(config, family);
+  return ownedMonitor(object.name, object.json);
+}
+
+function readableMonitor(config: GslbMonitorConfig, family: MemberFamily): GslbObject {
   const host = family === 6 ? "[${content}]" : "${content}";
   const v6Suffix = family === 6 ? ":v6" : "";
   const verifyLabel = (verify: boolean) => (verify ? "verify" : "noverify");
@@ -396,6 +418,10 @@ export interface RecordPlanInput extends GslbBalancing {
  * row is the catch-all tier PowerGSLB falls back to when the caller's site has
  * no live member - that is the cross-site failover. "All clients" members get
  * the Public row only.
+ *
+ * A CNAME rrset holds one record per view in PowerGSLB, so a cname record
+ * gets one row per region and a single `Public` row: the first member by
+ * priority (`cnameSettingsError` keeps the member list to that shape).
  */
 export function planMemberRows(input: RecordPlanInput): PlannedRow[] {
   const domain = stripDot(canonicalName(input.target.domain));
@@ -424,12 +450,18 @@ export function planMemberRows(input: RecordPlanInput): PlannedRow[] {
       weight: member.weight,
       disabled: 0,
     };
-    const views = member.region
-      ? [regionViewName(member.region), GSLB_PUBLIC_VIEW]
-      : [GSLB_PUBLIC_VIEW];
+    const views =
+      input.kind === "cname"
+        ? [
+            ...(member.region ? [regionViewName(member.region)] : []),
+            ...(member === members[0] ? [GSLB_PUBLIC_VIEW] : []),
+          ]
+        : member.region
+          ? [regionViewName(member.region), GSLB_PUBLIC_VIEW]
+          : [GSLB_PUBLIC_VIEW];
     for (const view of views) {
       const row = { ...base, view };
-      const key = rowKey(row);
+      const key = input.kind === "cname" ? viewKey(row) : rowKey(row);
       if (seen.has(key)) continue;
       seen.add(key);
       rows.push(row);
@@ -483,6 +515,42 @@ export function planSubzoneApexRows(args: {
   ];
 }
 
+/**
+ * A/AAAA rows for the GSLB nameserver itself when its host lies inside the
+ * domain it serves (`ns1.gslb.<zone>`): the parent's glue gets resolvers to
+ * it, but the nameserver must also answer authoritatively for its own name.
+ * Empty when the nameserver is out of bailiwick. Returns the owner label the
+ * rows live at, so callers can reconcile exactly those rows.
+ */
+export function planNameserverRows(args: {
+  subzone: string;
+  nameserverHost: string;
+  nameserverAddresses: readonly string[];
+}): { label: string; rows: PlannedRow[] } | null {
+  const subzone = canonicalName(args.subzone);
+  const ns = canonicalName(args.nameserverHost);
+  if (!isAtOrBelow(ns, subzone)) return null;
+  const label = ns === subzone ? "@" : ns.slice(0, -(subzone.length + 1));
+  const rows: PlannedRow[] = [];
+  for (const raw of args.nameserverAddresses) {
+    const ip = normalizeIpAddress(raw);
+    if (!ip) continue;
+    rows.push({
+      domain: stripDot(subzone),
+      name: label,
+      name_type: ip.family === 4 ? "A" : "AAAA",
+      ttl: DELEGATION_TTL,
+      policy: ROUTINGS.failover.name,
+      content: ip.address,
+      monitor: NONE_MONITOR.name,
+      view: GSLB_PUBLIC_VIEW,
+      weight: 0,
+      disabled: 0,
+    });
+  }
+  return { label, rows };
+}
+
 /** YYYYMMDD01 for `date` - a conventional starting SOA serial. */
 export function initialSerial(date: Date): number {
   const ymd = date.toISOString().slice(0, 10).replaceAll("-", "");
@@ -491,6 +559,11 @@ export function initialSerial(date: Date): number {
 
 export function rowKey(row: { name_type: string; view: string; content: string }): string {
   return `${row.name_type.toUpperCase()}|${row.view.toLowerCase()}|${stripDot(row.content).toLowerCase()}`;
+}
+
+/** A CNAME name has one row per view, so the view alone identifies it. */
+function viewKey(row: { name_type: string; view: string }): string {
+  return `${row.name_type.toUpperCase()}|${row.view.toLowerCase()}`;
 }
 
 /** A PowerGSLB `records` row as read back. */
@@ -516,12 +589,26 @@ export interface RowDiff {
  * Turn the name's current rows into the desired ones with the fewest writes,
  * matching on (type, view, content) - PowerGSLB's own unique key. Rows kept
  * in place are rewritten only when a setting changed.
+ *
+ * With `kind: "cname"` rows match on (type, view): PowerGSLB allows one CNAME
+ * per view, so a new target must overwrite the view's row in place - inserting
+ * it next to the old one is refused.
  */
-export function diffRows(existing: readonly RemoteRow[], desired: readonly PlannedRow[]): RowDiff {
-  const byKey = new Map(existing.map((row) => [rowKey(row), row]));
+export function diffRows(
+  existing: readonly RemoteRow[],
+  desired: readonly PlannedRow[],
+  kind: GslbRecordKind = "address",
+): RowDiff {
+  const keyOf = kind === "cname" ? viewKey : rowKey;
+  const byKey = new Map<string, RemoteRow>();
+  const duplicates: number[] = [];
+  for (const row of existing) {
+    if (byKey.has(keyOf(row))) duplicates.push(row.recid);
+    else byKey.set(keyOf(row), row);
+  }
   const diff: RowDiff = { update: [], insert: [], remove: [] };
   for (const row of desired) {
-    const key = rowKey(row);
+    const key = keyOf(row);
     const current = byKey.get(key);
     if (!current) {
       diff.insert.push(row);
@@ -529,6 +616,7 @@ export function diffRows(existing: readonly RemoteRow[], desired: readonly Plann
     }
     byKey.delete(key);
     const changed =
+      stripDot(current.content).toLowerCase() !== stripDot(row.content).toLowerCase() ||
       Number(current.ttl) !== row.ttl ||
       current.policy !== row.policy ||
       current.monitor !== row.monitor ||
@@ -536,7 +624,7 @@ export function diffRows(existing: readonly RemoteRow[], desired: readonly Plann
       Number(current.disabled) !== row.disabled;
     if (changed) diff.update.push({ recid: current.recid, row });
   }
-  diff.remove = [...byKey.values()].map((row) => row.recid);
+  diff.remove = [...duplicates, ...[...byKey.values()].map((row) => row.recid)];
   return diff;
 }
 
@@ -780,6 +868,33 @@ export function parentPointsAtGslb(
   );
 }
 
+/**
+ * Undo `planParentEnable` exactly: put the captured RRsets back (records,
+ * disabled flags, TTL, comments). Used when switching on fails after the
+ * parent CNAME was written, so the name is never left pointing at GSLB
+ * without the panel tracking it.
+ */
+export function planParentRollback(args: {
+  name: string;
+  snapshot: readonly GslbRRsetSnapshot[];
+}): ParentChange[] {
+  const owner = canonicalName(args.name);
+  const changes: ParentChange[] = args.snapshot.some((s) => s.type === "CNAME")
+    ? []
+    : [{ kind: "delete", name: owner, type: "CNAME" }];
+  for (const snap of args.snapshot) {
+    changes.push({
+      kind: "upsert",
+      name: owner,
+      type: snap.type,
+      ttl: snap.ttl,
+      records: snap.records.map((r) => ({ content: r.content, disabled: r.disabled === true })),
+      comments: snap.comments,
+    });
+  }
+  return changes;
+}
+
 export type RestorePlan = { ok: true; changes: ParentChange[] } | { ok: false; reason: string };
 
 /**
@@ -926,6 +1041,53 @@ export function backendDeleteBlockers(input: {
     );
   }
   return parts.length > 0 ? `This GSLB backend is still in use: ${parts.join("; ")}.` : null;
+}
+
+/**
+ * Why a GSLB backend's nameserver can't be changed, or null. Every zone with a
+ * GSLB setup on the backend is delegated to that nameserver (NS + glue in the
+ * parent, SOA/NS in PowerGSLB); changing it here would leave those
+ * delegations pointing at the old one.
+ */
+export function backendNameserverEditBlocker(input: {
+  before: { nameserverHost: string | null; nameserverAddresses: readonly string[] | null };
+  after: { nameserverHost?: string | null; nameserverAddresses?: readonly string[] | null };
+  zoneNames: readonly string[];
+}): string | null {
+  if (input.zoneNames.length === 0) return null;
+  const host = (h: string | null | undefined) => (h ? canonicalName(h) : null);
+  const addresses = (list: readonly string[] | null | undefined) =>
+    [...new Set((list ?? []).map((a) => normalizeIpAddress(a)?.address ?? a.trim()))]
+      .sort()
+      .join(" ");
+  const hostChanged =
+    input.after.nameserverHost !== undefined &&
+    host(input.after.nameserverHost) !== host(input.before.nameserverHost);
+  const addressesChanged =
+    input.after.nameserverAddresses !== undefined &&
+    addresses(input.after.nameserverAddresses) !== addresses(input.before.nameserverAddresses);
+  if (!hostChanged && !addressesChanged) return null;
+  return `The nameserver can't change while zones are delegated to it: ${input.zoneNames.join(", ")}. Remove GSLB from those zones first (switch their GSLB records off, then "Remove GSLB setup").`;
+}
+
+/**
+ * Why a PowerDNS server or cluster can't be deleted because of GSLB, or null.
+ * Its zones' GSLB setups would vanish from the panel with the server, leaving
+ * the PowerGSLB domains, rows and parent CNAMEs with nothing that tracks them.
+ */
+export function pdnsDeleteGslbBlocker(
+  target: "server" | "cluster",
+  zones: ReadonlyArray<{ zoneName: string; records: number }>,
+): string | null {
+  if (zones.length === 0) return null;
+  const list = zones
+    .map((z) =>
+      z.records > 0
+        ? `${z.zoneName} (${z.records} GSLB record${z.records === 1 ? "" : "s"})`
+        : `${z.zoneName} (GSLB setup only)`,
+    )
+    .join(", ");
+  return `This ${target} still has GSLB set up in zones ${list}. Remove GSLB setup first: in each zone's Records tab switch GSLB off for its records, then use "Remove GSLB setup".`;
 }
 
 /**

@@ -11,13 +11,17 @@ import "server-only";
 import { z } from "zod";
 import {
   balancingError,
+  cnameSettingsError,
+  GSLB_CNAME_MONITOR_TYPES,
   GSLB_MAX_MEMBERS,
   GSLB_METHODS,
   GSLB_MAX_TTL,
   GSLB_MAX_WEIGHT,
   GSLB_MIN_TTL,
+  type GslbBalancing,
   type GslbMember,
   type GslbMethod,
+  type GslbMonitorConfig,
   type GslbRecordKind,
 } from "@/lib/gslb/model";
 import { normalizeMemberContent } from "@/lib/gslb/record-plan";
@@ -40,6 +44,7 @@ const pathSchema = z
 const expectedStatusSchema = z
   .string()
   .trim()
+  .max(64, "Expected status must be 64 characters or fewer.")
   .regex(
     EXPECTED_STATUS_PATTERN,
     "Expected status must look like 200, 200-399 or 200,204,300-308.",
@@ -130,6 +135,29 @@ export const disableGslbRecordSchema = z.object(targetShape);
 
 export type EnableGslbRecordInput = z.infer<typeof enableGslbRecordSchema>;
 export type UpdateGslbRecordInput = z.infer<typeof updateGslbRecordSchema>;
+
+/**
+ * Settings rules that depend on the record kind, which only the route knows
+ * (from the live zone). A CNAME member is a host name, so ICMP/TCP/TLS checks
+ * (which need an address) are refused, and PowerGSLB's one-CNAME-per-view
+ * rule fixes the method and the member shape (`cnameSettingsError`).
+ */
+export function gslbKindSettingsErrors(
+  kind: GslbRecordKind,
+  settings: GslbBalancing & {
+    monitor: GslbMonitorConfig;
+    members: ReadonlyArray<{ region: string | null }>;
+  },
+): string[] {
+  if (kind !== "cname") return [];
+  const errors: string[] = [];
+  if (!GSLB_CNAME_MONITOR_TYPES.includes(settings.monitor.type)) {
+    errors.push("A CNAME target is a host name, so its health check must be HTTP or HTTPS.");
+  }
+  const shape = cnameSettingsError(settings, settings.members);
+  if (shape) errors.push(shape);
+  return errors;
+}
 
 /**
  * Check + canonicalize members against the record kind: IPv4/IPv6 for an

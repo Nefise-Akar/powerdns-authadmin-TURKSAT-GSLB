@@ -192,7 +192,11 @@ export function GslbBackendForm(props: GslbBackendFormProps) {
       <Field
         label="Base URL"
         error={fieldError("baseUrl")}
-        hint="The PowerGSLB admin server root, without a path - /admin/w2ui is appended automatically."
+        hint={
+          props.mode === "edit"
+            ? "The PowerGSLB admin server root, without a path. Change it only to reach the same PowerGSLB instance (new address or proxy) - its domains, records and views stay where they are and are not moved."
+            : "The PowerGSLB admin server root, without a path - /admin/w2ui is appended automatically."
+        }
       >
         <input
           required
@@ -242,7 +246,7 @@ export function GslbBackendForm(props: GslbBackendFormProps) {
       <Field
         label="Nameserver host (optional)"
         error={fieldError("nameserverHost")}
-        hint="FQDN of the GSLB nameserver that zones delegate their gslb subzone to, e.g. ns1.gslb.example.com."
+        hint="FQDN of the GSLB nameserver that zones delegate their gslb subzone to, e.g. ns1.gslb.example.com. Fixed while any zone uses GSLB on this backend."
       >
         <input
           value={nameserverHost}

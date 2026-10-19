@@ -22,7 +22,9 @@ import {
   updateCluster,
 } from "@/lib/db/repositories/pdns-clusters";
 import { updateClusterSchema } from "@/lib/validators/pdns-clusters";
-import { NotFoundError, ValidationError } from "@/lib/errors";
+import { ConflictError, NotFoundError, ValidationError } from "@/lib/errors";
+import { listGslbZonesForScope } from "@/lib/db/repositories/gslb-records";
+import { pdnsDeleteGslbBlocker } from "@/lib/gslb/record-plan";
 import { errorResponse } from "@/lib/http/error-response";
 
 interface RouteContext {
@@ -120,6 +122,17 @@ export async function DELETE(request: Request, ctx: RouteContext): Promise<Respo
 
     const existing = await findClusterById(id);
     if (!existing) throw new NotFoundError("Cluster not found.");
+
+    // GSLB zone rows would cascade away with the cluster, leaving PowerGSLB
+    // domains and parent CNAMEs nothing tracks - refuse until they're removed.
+    const gslbBlocker = pdnsDeleteGslbBlocker(
+      "cluster",
+      (await listGslbZonesForScope({ clusterId: id })).map((z) => ({
+        zoneName: z.zone.zoneName,
+        records: z.records,
+      })),
+    );
+    if (gslbBlocker) throw new ConflictError(gslbBlocker);
 
     const hdrs = await headers();
     await db.transaction(async (tx) => {

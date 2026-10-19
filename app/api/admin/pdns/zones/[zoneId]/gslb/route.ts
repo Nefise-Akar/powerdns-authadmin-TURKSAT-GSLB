@@ -54,6 +54,7 @@ import { getGslbClientForRow } from "@/lib/gslb/registry";
 import {
   disableGslbRecordSchema,
   enableGslbRecordSchema,
+  gslbKindSettingsErrors,
   updateGslbRecordSchema,
   validateGslbMembers,
 } from "@/lib/validators/gslb-records";
@@ -110,6 +111,32 @@ async function checkedMembers(
     );
   }
   return result.members;
+}
+
+/**
+ * Final settings for a record of `kind`: kind rules checked, members checked,
+ * weights as the method writes them (order / equal / ratio).
+ */
+async function checkedSettings(
+  backend: GslbBackend,
+  kind: GslbRecordKind,
+  input: Omit<GslbRecordSettings, "members"> & { members: GslbMember[] },
+  zoneName: string,
+): Promise<GslbRecordSettings> {
+  const errors = gslbKindSettingsErrors(kind, input);
+  if (errors.length > 0) {
+    throw new ValidationError("Invalid settings.", { fieldErrors: { settings: errors } });
+  }
+  return {
+    method: input.method,
+    persistence: input.persistence,
+    monitor: input.monitor,
+    ttl: input.ttl,
+    members: deriveWeights(
+      input.method,
+      await checkedMembers(backend, kind, input.members, zoneName),
+    ),
+  };
 }
 
 /** The zone's backend if GSLB is already on in it, else the operator's pick. */
@@ -191,17 +218,7 @@ export async function POST(request: Request, context: RouteContext): Promise<Res
       return zone.id;
     };
 
-    const settings: GslbRecordSettings = {
-      method: input.method,
-      persistence: input.persistence,
-      monitor: input.monitor,
-      ttl: input.ttl,
-      // Stored with the weights the method actually writes (order / equal / ratio).
-      members: deriveWeights(
-        input.method,
-        await checkedMembers(backend, kind, input.members, ctx.zoneName),
-      ),
-    };
+    const settings = await checkedSettings(backend, kind, input, ctx.zoneName);
     const zoneEnabled = existingZone !== null;
     const result = await enableGslbRecord({
       ...common,
@@ -301,16 +318,7 @@ export async function PATCH(request: Request, context: RouteContext): Promise<Re
     const { record, backend } = await loadManaged(ctx, name);
     if (!backend.enabled) throw new ConflictError(`GSLB backend "${backend.name}" is disabled.`);
 
-    const settings: GslbRecordSettings = {
-      method: input.method,
-      persistence: input.persistence,
-      monitor: input.monitor,
-      ttl: input.ttl,
-      members: deriveWeights(
-        input.method,
-        await checkedMembers(backend, record.kind, input.members, ctx.zoneName),
-      ),
-    };
+    const settings = await checkedSettings(backend, record.kind, input, ctx.zoneName);
 
     await updateGslbRecord({
       backendId: backend.id,

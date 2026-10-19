@@ -6,10 +6,11 @@
  * Switch GSLB on for a record, or edit it while on (ADR-0024 §3, §5).
  *
  * Progressive disclosure: the main body asks only for what most operators
- * change - backend (when there's a choice), health check, and members with
- * their region (pre-selected from the IP). Mode, per-member weight and TTL sit
- * in a collapsed "Advanced settings" section with defaults (Failover, 10,
- * 30 s); it opens by itself when the values in effect differ. Last-used
+ * change - backend (when there's a choice), health check, load-balancing
+ * method and members with their region (pre-selected from the IP). The TTL
+ * sits in a collapsed "Advanced settings" section (default 30 s); it opens by
+ * itself when the value in effect differs. A CNAME is fixed to Global
+ * availability (one target per region in PowerGSLB). Last-used
  * settings of a name are offered (never applied) when switching it on again.
  * The server validates and audits every field either way.
  */
@@ -23,7 +24,9 @@ import { Field } from "@/components/ui/field";
 import { SelectMenu } from "@/components/ui/select-menu";
 import {
   balancingError,
+  cnameSettingsError,
   decodeMode,
+  GSLB_CNAME_METHOD,
   GSLB_DEFAULT_METHOD,
   GSLB_DEFAULT_TTL,
   type GslbBalancing,
@@ -140,10 +143,18 @@ export function GslbRecordDialog({ target, context, zoneIdEncoded, serverSlug, o
   const [monitor, setMonitor] = useState<MonitorDraft>(() =>
     monitorDraftFrom(existing?.monitor ?? preset?.monitor ?? null, target.kind),
   );
-  const [balancing, setBalancing] = useState<GslbBalancing>({
-    method: existing?.method ?? preset?.method ?? GSLB_DEFAULT_METHOD,
-    persistence: existing?.persistence ?? preset?.persistence ?? false,
-  });
+  const defaultBalancing: GslbBalancing = {
+    method: target.kind === "cname" ? GSLB_CNAME_METHOD : GSLB_DEFAULT_METHOD,
+    persistence: false,
+  };
+  const [balancing, setBalancing] = useState<GslbBalancing>(() =>
+    target.kind === "cname"
+      ? defaultBalancing
+      : {
+          method: existing?.method ?? preset?.method ?? GSLB_DEFAULT_METHOD,
+          persistence: existing?.persistence ?? preset?.persistence ?? false,
+        },
+  );
   const [ttl, setTtl] = useState(existing?.ttl ?? preset?.ttl ?? GSLB_DEFAULT_TTL);
   const [presetLoaded, setPresetLoaded] = useState(preset !== null);
   const [saving, setSaving] = useState(false);
@@ -157,7 +168,7 @@ export function GslbRecordDialog({ target, context, zoneIdEncoded, serverSlug, o
   function resetToDefaults() {
     setMembers(membersFromCurrent(false));
     setMonitor(monitorDraftFrom(null, target.kind));
-    setBalancing({ method: GSLB_DEFAULT_METHOD, persistence: false });
+    setBalancing(defaultBalancing);
     setTtl(GSLB_DEFAULT_TTL);
     setBackendId(defaultBackend);
     setPresetLoaded(false);
@@ -176,10 +187,17 @@ export function GslbRecordDialog({ target, context, zoneIdEncoded, serverSlug, o
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const invalid = balancingError(
-      balancing,
-      members.map((m) => ({ weight: m.weight })),
-    );
+    const invalid =
+      balancingError(
+        balancing,
+        members.map((m) => ({ weight: m.weight })),
+      ) ??
+      (target.kind === "cname"
+        ? cnameSettingsError(
+            balancing,
+            members.map((m) => ({ region: m.region === "" ? null : m.region })),
+          )
+        : null);
     if (invalid) {
       setError(invalid);
       return;
@@ -290,7 +308,7 @@ export function GslbRecordDialog({ target, context, zoneIdEncoded, serverSlug, o
         ) : null}
 
         <MonitorFields kind={target.kind} value={monitor} onChange={setMonitor} />
-        <MethodFields value={balancing} onChange={setBalancing} />
+        <MethodFields kind={target.kind} value={balancing} onChange={setBalancing} />
         <MemberRows
           kind={target.kind}
           method={balancing.method}

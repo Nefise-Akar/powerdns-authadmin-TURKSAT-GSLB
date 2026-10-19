@@ -40,12 +40,20 @@ and audit itself.
 2. **Connection settings.** A `gslb_backends` table stores base URL, service-account user, the
    password as an AES-256-GCM envelope (`lib/crypto`), and the GSLB nameserver host + glue IPs used
    for delegation. Managed from the existing admin area, gated by a new `gslb.manage` permission.
+   The nameserver host and addresses are frozen (409 naming the zones) while any zone is delegated
+   to them; the base URL may change, but only to reach the same PowerGSLB instance.
 3. **Topology: one delegated subzone per parent zone, CNAME per record.** The first toggle in zone
    `Z` creates domain `gslb.Z` in PowerGSLB and writes `gslb NS <ns>` plus glue into `Z` through the
-   normal PDNS write path. Enabling a record `name` then:
+   normal PDNS write path. When the nameserver host lies inside `gslb.Z` (`ns1.gslb.Z`), its own
+   A/AAAA rows (no health check, `Public` view) are written into the PowerGSLB domain as well, so
+   it answers for its own name; they go with the domain on tear-down, and a record whose GSLB name
+   would be the nameserver's name is refused. Enabling a record `name` then:
    1. writes the GSLB rows for `name.gslb.Z` (one row per site: content, view, weight, monitor);
    2. replaces the parent RRset(s) at `name` with `CNAME name.gslb.Z.` under ADR-0010 optimistic
-      concurrency, rolling step 1 back if this fails.
+      concurrency, rolling step 1 back if this fails;
+   3. saves the app row. If that fails, the parent RRsets are restored exactly from the snapshot
+      and the GSLB rows deleted; if the restore itself fails the error names the untracked CNAME,
+      the original records and the PowerGSLB rows to remove - never a silent leftover.
       Disabling reverses the order: restore plain RRset(s) at the name, then delete the GSLB rows.
       The restored values are the members' current contents, not the snapshot taken at enable
       time, so servers added or changed while GSLB was on are not lost. The snapshot supplies TTLs
@@ -74,7 +82,13 @@ and audit itself.
    - **Persistence** (Round robin only) maps to `sticky-hash` (one answer, PowerGSLB's default
      /24 and /64 prefixes). Sticky-hash treats weight as a tier and global availability is already
      single-answer, so the combination is rejected server-side.
-     CNAME names always get a single-answer policy. There is deliberately **no "last resort"
+     **CNAME names** are limited by PowerGSLB's "one CNAME record per view" trigger: one target
+     per region, and `Public` holds only the first target by priority. They are therefore fixed to
+     global availability (the dialog disables the other methods with the reason; the server
+     rejects them), take HTTP(S) health checks only, and an "All clients" target must come first.
+     Edits match CNAME rows by view, so a new target overwrites the view's row in place. The cost:
+     cross-site fallback for a CNAME reaches only that single `Public` target, not every other
+     region's target. There is deliberately **no "last resort"
      option**: when every member is down PowerGSLB already serves all of them ("all down = all up"),
      so a name never goes empty. **Topology is not a method**: it is what regions already do. The
      method is per record, not per region. The method lives in the existing `mode` column
@@ -82,8 +96,12 @@ and audit itself.
      legacy `failover` (equal weights → round robin, unequal → global availability ordered by
      weight) and `distribute` (→ ratio) are still read, in records, presets and restored backups.
      Health checks are chosen from managed presets (ICMP, TCP, HTTP, HTTPS, TLS), with HTTP(S) as
-     the recommended default. All monitors and routings the panel creates are named `authadmin:*`
-     and derived from their settings, one object per distinct JSON (`failover` = round-robin,
+     the recommended default (path up to 200 characters, status list up to 64). All monitors and
+     routings the panel creates are named `authadmin:*` and derived from their settings. A
+     monitor name is readable settings plus `#` and 12 hex digits of a SHA-256 of its exact JSON,
+     capped at 253 characters: `monitors.monitor` is UNIQUE under a case-insensitive collation, so
+     `/Health` and `/health` must not share a name (monitors under the older names stay in
+     PowerGSLB, unused once a record is saved again). One routing object per distinct JSON (`failover` = round-robin,
      `failover-single`, `weighted`, `sticky`; the first three keep their historic names so rows
      written earlier stay valid); anything else in PowerGSLB is never touched.
 6. **State in the app DB.** `gslb_zones` binds a zone (server/cluster scope + name) to its backend
@@ -99,10 +117,12 @@ and audit itself.
    setup** on the zone (deletes the `gslb` NS and glue - keeping glue another delegation still
    names - then the PowerGSLB domain, then the app row; a PowerGSLB outage is reported, never
    blocks). Deleting a zone does the same clean-up. A backend can be deleted once nothing uses it;
-   the refusal names the remaining regions and zones and where to remove each. Cloning a zone
+   the refusal names the remaining regions and zones and where to remove each. Deleting a PowerDNS
+   server or cluster is refused (409, zones named) while any of its zones still has a GSLB setup:
+   the database cascade would drop the app rows but leave the PowerGSLB domain and parent CNAMEs. Cloning a zone
    copies its GSLB names as plain records from their current members and drops the delegation.
 8. **Status.** The panel reads PowerGSLB's read-only `status` table on demand: once per page for
-   a zone's records, and once per backend (cached ~20 s) for the zones list, which shows
+   a zone's records (filtered to its `gslb.<zone>` domain), and once per backend (cached ~20 s) for the zones list, which shows
    `3 records · all up`, `1 record · 2 servers down` or `status unavailable`. Record rows show
    per-member state. The panel is never on the DNS query path.
 9. **Permissions and audit.** Toggling and editing GSLB settings on a record require the same
@@ -113,6 +133,10 @@ and audit itself.
    `gslb.pool.*` remain in the vocabulary only so rows from the removed features still render.)
 10. **Write safety.** PowerGSLB updates resend the whole row and carry no version, so writes to one
     `(backend, rrset)` are serialised with the existing backend lock and re-read before every save.
+    PowerGSLB answers "record not changed" for any update that affects zero rows - an identical
+    row or a recid that no longer exists - so the client confirms the row with `get-record` and
+    fails when it is gone. Enable and edit both read the rows back and fail when PowerGSLB holds a
+    different number than was written.
 
 ## Rationale
 

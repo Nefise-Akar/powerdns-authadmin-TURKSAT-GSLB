@@ -10,7 +10,7 @@
 import type { GslbBackend, GslbRegion } from "@/lib/db/schema";
 import { GslbError, gslbFailureHint } from "@/lib/gslb/errors";
 import { GslbSetupError } from "@/lib/gslb/objects";
-import { GslbPlanError } from "@/lib/gslb/record-sync";
+import { GslbCleanupRequiredError, GslbPlanError } from "@/lib/gslb/record-sync";
 import { GslbRuleConflictError, GslbViewInUseError, ownedViewName } from "@/lib/gslb/views";
 import { findGslbBackendById } from "@/lib/db/repositories/gslb-backends";
 import { listGslbRegions } from "@/lib/db/repositories/gslb-regions";
@@ -75,6 +75,12 @@ export function gslbRouteErrorResponse(err: unknown, context: string): Response 
       ),
       context,
     );
+  }
+  if (err instanceof GslbCleanupRequiredError) {
+    // The message names what is left behind and how to remove it - the
+    // operator needs it verbatim; it carries no secrets or transport detail.
+    logger.error({ error: err.message }, context);
+    return Response.json({ error: err.message }, { status: 500 });
   }
   if (err instanceof GslbPlanError || err instanceof GslbSetupError) {
     return errorResponse(new ConflictError(err.message), context);

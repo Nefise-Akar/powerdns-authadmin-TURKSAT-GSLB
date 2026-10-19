@@ -21,6 +21,8 @@ import { Field, inputClass } from "@/components/ui/field";
 import { NumberInput } from "@/components/ui/number-input";
 import { SelectMenu } from "@/components/ui/select-menu";
 import {
+  GSLB_CNAME_METHOD_REASON,
+  GSLB_CNAME_MONITOR_TYPES,
   GSLB_DEFAULT_EXPECTED_STATUS,
   GSLB_DEFAULT_HTTP_PATH,
   GSLB_DEFAULT_TTL,
@@ -166,18 +168,23 @@ export function advancedDiffers(settings: { ttl: number }): boolean {
  * sticky-hash, which only makes sense with Round robin.
  */
 export function MethodFields({
+  kind,
   value,
   onChange,
 }: {
+  kind: GslbRecordKind;
   value: GslbBalancing;
   onChange: (next: GslbBalancing) => void;
 }) {
-  const persistenceAvailable = value.method === "round-robin";
+  // A CNAME has one row per view in PowerGSLB, which only Global availability fits.
+  const methodLocked = kind === "cname";
+  const persistenceAvailable = value.method === "round-robin" && !methodLocked;
   return (
     <fieldset className="space-y-3">
       <legend className="text-label text-foreground">Load balancing method</legend>
       <SelectMenu
         value={value.method}
+        disabled={methodLocked}
         onChange={(method) =>
           // Persistence has no meaning outside Round robin, so it never lingers.
           onChange({ method, persistence: method === "round-robin" ? value.persistence : false })
@@ -189,7 +196,10 @@ export function MethodFields({
           description: GSLB_METHOD_HELP[method],
         }))}
       />
-      <p className="text-muted-foreground text-xs">{GSLB_METHOD_HELP[value.method]}</p>
+      <p className="text-muted-foreground text-xs">
+        {GSLB_METHOD_HELP[value.method]}
+        {methodLocked ? ` ${GSLB_CNAME_METHOD_REASON}` : ""}
+      </p>
       <span
         className="inline-block"
         title={persistenceAvailable ? undefined : "Persistence is only available with Round robin."}
@@ -221,8 +231,8 @@ export function MonitorFields({
   value: MonitorDraft;
   onChange: (next: MonitorDraft) => void;
 }) {
-  const types: GslbMonitorType[] =
-    kind === "cname" ? ["http", "https"] : ["http", "https", "tcp", "tls", "icmp"];
+  const types: readonly GslbMonitorType[] =
+    kind === "cname" ? GSLB_CNAME_MONITOR_TYPES : ["http", "https", "tcp", "tls", "icmp"];
   const showPath = value.type === "http" || value.type === "https";
   const showPort = value.type === "tcp" || value.type === "tls";
   const showVerify = value.type === "https" || value.type === "tls";
@@ -326,7 +336,9 @@ export function MemberRows({
         {method === "global-availability"
           ? " The order below is the priority: first is preferred."
           : ""}
-        {kind === "cname" ? " Servers are host names (one answer at a time)." : ""}
+        {kind === "cname"
+          ? " Targets are host names, one per region; the first is also the fallback for everyone else, so cross-site fallback reaches only that one."
+          : ""}
       </p>
       {members.map((member, index) => (
         <div key={member.key} className="flex flex-col gap-2 sm:flex-row sm:items-center">
