@@ -1,0 +1,80 @@
+# Test stack: PowerDNS + panel (SQLite) + Keycloak + PowerGSLB on one host.
+# Not for production - see ../docker-compose.production.yml. Setup steps: README.md.
+#
+#   cp test-stack.env.example .env && chmod 600 .env   # fill in the secrets
+#   docker compose up -d
+#
+# Ports: panel :3000, PowerDNS DNS :5300, PowerGSLB DNS :5301 + admin :9443,
+# Keycloak :8080 / :8443.
+name: dns-kurulum
+
+services:
+  pdns:
+    image: powerdns/pdns-auth-49:latest
+    restart: unless-stopped
+    environment:
+      PDNS_AUTH_API_KEY: ${PDNS_API_KEY}
+    ports:
+      - "5300:53"
+      - "5300:53/udp"
+    volumes:
+      - pdns-data:/var/lib/powerdns
+
+  app:
+    # Built from the repository root: docker build -t powerdns-authadmin:local .
+    image: powerdns-authadmin:local
+    restart: unless-stopped
+    depends_on:
+      - pdns
+    env_file:
+      - .env
+    environment:
+      # The private test CA, so the panel trusts Keycloak's and PowerGSLB's certificates.
+      NODE_EXTRA_CA_CERTS: /certs/ca.crt
+    ports:
+      - "3000:3000"
+    volumes:
+      - app-data:/data
+      - ./certs/ca.crt:/certs/ca.crt:ro
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.2
+    restart: unless-stopped
+    command: ["start-dev"]
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+      KC_HTTPS_CERTIFICATE_FILE: /opt/keycloak/conf/certs/keycloak.crt
+      KC_HTTPS_CERTIFICATE_KEY_FILE: /opt/keycloak/conf/certs/keycloak.key
+    ports:
+      - "8080:8080"
+      - "8443:8443"
+    volumes:
+      - keycloak-data:/opt/keycloak/data
+      - ./certs/keycloak.crt:/opt/keycloak/conf/certs/keycloak.crt:ro
+      - ./certs/keycloak.key:/opt/keycloak/conf/certs/keycloak.key:ro
+
+  powergslb:
+    image: docker.io/acudovs/powergslb:2.4.3
+    restart: unless-stopped
+    hostname: powergslb
+    # The image runs systemd (MariaDB + PowerDNS + PowerGSLB in one container).
+    privileged: true
+    tty: true
+    tmpfs:
+      - /run
+      - /tmp
+    ports:
+      - "5301:53"
+      - "5301:53/udp"
+      - "9443:443"
+    volumes:
+      - powergslb-db:/var/lib/mysql
+      # Certificate + key in one file; must be root-owned and mode 600.
+      - ./certs/powergslb.pem:/etc/powergslb/powergslb.pem:ro
+
+volumes:
+  pdns-data:
+  app-data:
+  keycloak-data:
+  powergslb-db:
