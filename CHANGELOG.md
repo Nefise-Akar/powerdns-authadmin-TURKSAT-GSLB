@@ -38,6 +38,9 @@ thanks Ensar.
 - **"1 address(es)"** in the Reverse DNS drift finding, and in the backend form's AXFR / DNS
   addresses label, now reads properly.
   ([#184](https://github.com/PowerDNS-AuthAdmin/powerdns-authadmin/issues/184), [#186](https://github.com/PowerDNS-AuthAdmin/powerdns-authadmin/pull/186), thanks @Enard52)
+- **A zone re-check slower than its cooldown left no cooldown.** The 20-second limit on
+  re-checking one zone counted from when the check started, so a check that took longer (slow or
+  unreachable nameservers) could be repeated at once. It now also counts from when the check ends.
 - **The header status chip ran under the search button on a phone.** Below `sm` it shows only
   its connection and sync dots; the words stay for screen readers.
 

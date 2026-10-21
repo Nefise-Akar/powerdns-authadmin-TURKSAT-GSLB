@@ -605,6 +605,10 @@ export async function refreshZone(
     return false;
   state.perZoneRefreshAt.set(k, Date.now());
   await cycle({ immediate: true, only: [{ zone, server }] });
+  // Stamped again when the check ends: one that outlasts the interval (slow
+  // or unreachable nameservers) otherwise left no cooldown at all, and a
+  // repeat click probed the zone straight away.
+  state.perZoneRefreshAt.set(k, Date.now());
   return state.results.get(k) ?? null;
 }
 
