@@ -314,7 +314,7 @@ export function ServerForm(props: ServerFormProps) {
 
       <Field
         id="advertisedAddresses"
-        label="AXFR / DNS address(es) (optional)"
+        label="AXFR / DNS addresses (optional)"
         errors={fieldErrors["advertisedAddresses"]}
         hint="How peers reach this server for AXFR - what a secondary lists in its zone's masters[]. On a primary, used to match a secondary's masters[] back to this server (sync, drift, metrics). Defaults to the API host; override only when the DNS address differs."
       >

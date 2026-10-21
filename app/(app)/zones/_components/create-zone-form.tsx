@@ -30,6 +30,7 @@ import { TsigKeySelector } from "@/components/domain/tsig-key-selector";
 import { SelectMenu } from "@/components/ui/select-menu";
 import { Switch } from "@/components/ui/switch";
 import { Field, Section, inputClass } from "@/components/ui/form";
+import { isPrivateUseZoneName } from "@/lib/dns/zone-horizon";
 
 /**
  * Operator-facing backend option. A logical backend is either a
@@ -156,7 +157,9 @@ export function CreateZoneForm(props: Props) {
   const backendSelection = backendKey ? parseKey(backendKey) : null;
   const [name, setName] = useState("");
   const [kind, setKind] = useState<(typeof KINDS)[number]["value"]>("Native");
-  const [internal, setInternal] = useState(false);
+  // null until the operator touches the switch: it then follows the name, so
+  // a zone under a private-use name (example.internal.) shows as internal.
+  const [internalChoice, setInternalChoice] = useState<boolean | null>(null);
   const selectedBackend = backendSelection
     ? (props.backends.find(
         (b) => b.kind === backendSelection.kind && b.slug === backendSelection.slug,
@@ -299,6 +302,8 @@ export function CreateZoneForm(props: Props) {
     if (lower === "") return "";
     return lower.endsWith(".") ? lower : `${lower}.`;
   }, [name]);
+  const nameIsPrivateUse = canonicalName !== "" && isPrivateUseZoneName(canonicalName);
+  const internal = internalChoice ?? nameIsPrivateUse;
 
   const cleanNs = nameservers.map((n) => n.trim()).filter((n) => n !== "");
   const cleanMasters = masters.map((m) => m.trim()).filter((m) => m !== "");
@@ -347,9 +352,9 @@ export function CreateZoneForm(props: Props) {
         ? { clusterSlug: backendSelection.slug }
         : { serverSlug: backendSelection.slug }),
     };
-    // Only send a non-default horizon - the server treats "absent" as public,
-    // and this keeps the payload honest about what the operator actually chose.
-    if (internal) body["horizon"] = "internal";
+    // Only send a horizon the operator chose - absent, the server applies the
+    // name's default (internal under a private-use name, else public).
+    if (internalChoice !== null) body["horizon"] = internalChoice ? "internal" : "public";
     if (templateId) body["templateId"] = templateId;
     if (responsibleEmail) body["responsibleEmail"] = responsibleEmail;
     if (kind === "Primary" && selectedTsigKey) body["tsigKeyName"] = selectedTsigKey;
@@ -465,7 +470,7 @@ export function CreateZoneForm(props: Props) {
           <div className="mt-1 flex items-center gap-2">
             <Switch
               checked={internal}
-              onChange={setInternal}
+              onChange={setInternalChoice}
               ariaLabel="This is an internal zone"
             />
             <span className="text-sm">This is an internal zone.</span>
@@ -475,6 +480,13 @@ export function CreateZoneForm(props: Props) {
             separately from a public zone of the same name and carries an{" "}
             <span className="font-mono">INTERNAL</span> badge. AuthAdmin-side only - nothing is sent
             to PowerDNS. Changeable later from the zone&apos;s Zone settings tab.
+            {nameIsPrivateUse && internalChoice === null ? (
+              <>
+                {" "}
+                On by default here: this name is reserved for private use and can&apos;t be
+                delegated on the internet.
+              </>
+            ) : null}
           </p>
         </Field>
       </Section>

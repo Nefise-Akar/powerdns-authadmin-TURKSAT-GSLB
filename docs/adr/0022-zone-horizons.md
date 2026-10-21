@@ -32,10 +32,13 @@ operator sets, and key the amalgamated zone list on `(horizon, name)` instead of
 
 1. **Vocabulary.** `ZoneHorizon = "public" | "internal"`, in `lib/dns/zone-horizon.ts`. An open enum,
    not a boolean, so a third horizon (DMZ / partner view) needs no migration and no rewrite of every
-   `if (internal)`. `public` is the default.
+   `if (internal)`. `public` is the default, except under a name reserved for private use
+   (`.internal`, `home.arpa`, `.local`, and the RFC 6761 `.test`, `.invalid`, `.localhost`): such a
+   zone can never be delegated on the internet, so its default is `internal` (1.10.1, #181).
 2. **Storage.** A `zone_horizons` table in the app DB, keyed on `(server_id | cluster_id, zone_name)`
-   with exactly one scope set (CHECK-enforced). **Sparse**: only a deviation from the default is
-   stored, so clearing the flag deletes the row and no existing install needs a backfill.
+   with exactly one scope set (CHECK-enforced). **Sparse**: only a deviation from the zone's default
+   is stored, so clearing the flag deletes the row and no existing install needs a backfill. For a
+   private-use name the deviation is `public`, so that override is the row that is kept.
 3. **Scope is the backend, and for a cluster it is the CLUSTER.** A cluster zone's reads and writes
    resolve a peer per request via `choosePeer`, so a classification stored against one peer would
    appear and disappear as the strategy rotated.

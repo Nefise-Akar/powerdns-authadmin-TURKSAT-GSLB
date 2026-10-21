@@ -40,8 +40,8 @@ exotic - it's the handful of things worth getting right before you expose the ap
   private-network/`http://` backends (see [Backends](./04-BACKENDS.md#the-ssrf-guard)).
 - **Pin `METRICS_TOKEN`.** `/metrics` is enabled by default and always
   bearer-gated: if you don't set `METRICS_TOKEN` (≥16 chars) the app generates a
-  random one on every boot and prints it once in the boot log, which makes your
-  scrape config break on each restart. Pin a token, or set
+  random one on every boot and never shows it (the boot log has only a
+  fingerprint), so nothing can scrape. Pin a token, or set
   `METRICS_ENABLED=false` if you don't scrape at all.
 
 ## Authentication

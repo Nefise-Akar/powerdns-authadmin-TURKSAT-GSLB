@@ -384,7 +384,14 @@ export function SelectMenu<T extends string>({
         aria-label={ariaLabel}
         className="flex w-full items-center justify-between rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg)] px-3 py-2 text-left text-sm hover:border-[color:var(--color-fg-muted)] focus:ring-2 focus:ring-[color:var(--color-accent)] focus:outline-none disabled:opacity-60"
       >
-        <span className={current ? "truncate" : "truncate text-[color:var(--color-fg-muted)]"}>
+        {/* min-w-0: a flex child never shrinks below its text otherwise, so a
+            long label widened the menu past its container instead of
+            truncating (it covered the Reverse DNS status badge, #185). */}
+        <span
+          className={
+            current ? "min-w-0 truncate" : "min-w-0 truncate text-[color:var(--color-fg-muted)]"
+          }
+        >
           {current ? current.label : (placeholder ?? "Select…")}
         </span>
         <svg

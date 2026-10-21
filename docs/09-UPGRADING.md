@@ -39,6 +39,23 @@ half-migrated schema; fix the cause and restart.
 
 ## Version-specific notes
 
+### Upgrading to 1.10.1 (from 1.10.0)
+
+No migration, no schema change, no config change - pull the new tag and
+recreate the container. Two behaviour changes to know about:
+
+- A zone under a name reserved for private use (`.internal`, `home.arpa`,
+  `.local`, `.test`, `.invalid`, `.localhost`) that you never classified now
+  counts as **internal** rather than public. It moves to the Internal side of
+  the zones list, Reverse DNS matches it against internal reverse zones, and
+  Zone Monitoring stops reporting it as undelegated. If one of them really is
+  public, set **Public** on its Zone settings tab; that choice is kept.
+- With `METRICS_TOKEN` unset, the generated token is no longer printed to the
+  boot log, so nothing can scrape `/metrics` until you set `METRICS_TOKEN`
+  (or set `METRICS_ENABLED=false`).
+
+See the [CHANGELOG](../CHANGELOG.md#1101---2026-10-21).
+
 ### Upgrading to 1.10.0 (from 1.9.1)
 
 Pull the new tag and recreate the container. One small migration runs

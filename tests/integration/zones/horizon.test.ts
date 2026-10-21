@@ -134,6 +134,31 @@ describe("zone horizons", () => {
     expect(actions).not.toContain("zone.settings.update");
   }, 20_000);
 
+  it("defaults a private-use zone to internal and keeps an explicit public override (#181)", async () => {
+    const admin = await loginAsBootstrap();
+    const tag = Math.random().toString(36).slice(2, 8);
+    const zone = `lab-${Date.now()}-${tag}.example.internal.`;
+    await createZone(admin, {
+      serverSlug: "standalone",
+      name: zone,
+      kind: "Master",
+      nameservers: NS,
+    });
+    // Internal by name: nothing stored, the default already says so.
+    expect(await horizonRows(zone)).toHaveLength(0);
+
+    const settings = `/api/admin/pdns/zones/${encodeURIComponent(zone)}/settings`;
+    await admin.sendJson("PUT", settings, { serverSlug: "standalone", horizon: "public" });
+    // Public is the deviation here, so it is stored and stays.
+    const rows = await horizonRows(zone);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.horizon).toBe("public");
+
+    // Back to internal, the name's default: the row goes again.
+    await admin.sendJson("PUT", settings, { serverSlug: "standalone", horizon: "internal" });
+    expect(await horizonRows(zone)).toHaveLength(0);
+  }, 20_000);
+
   it("drops the classification when the zone is deleted", async () => {
     const admin = await loginAsBootstrap();
     const zone = randomZone("del-internal");

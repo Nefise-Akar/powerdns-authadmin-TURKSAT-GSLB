@@ -933,7 +933,8 @@ export function PtrReconciler() {
             onShowAll={() => setShowAll({ kind: "forward", rowId: row.original.lead.id })}
           />
         ),
-        meta: { className: "w-[19%]" },
+        // Narrower than xl the Status chip needs the room (see Status).
+        meta: { className: "w-[11%] xl:w-[17%]" },
       },
       {
         id: "currentPtr",
@@ -981,7 +982,7 @@ export function PtrReconciler() {
         header: "Horizon",
         accessorFn: (g) => g.lead.horizon,
         cell: ({ row }) => <HorizonChip horizon={row.original.lead.horizon} />,
-        meta: { className: "w-[9%]" },
+        meta: { className: "w-[7%]" },
       },
       {
         id: "status",
@@ -991,7 +992,10 @@ export function PtrReconciler() {
         sortingFn: (a, b) =>
           STATUS_ORDER.indexOf(a.original.lead.status) -
           STATUS_ORDER.indexOf(b.original.lead.status),
-        meta: { className: "w-[8%]" },
+        // Wide enough for the widest chip ("Ambiguous", "Not hosted"), which
+        // never wraps; at 8% it spilled into the actions column under the
+        // name picker (#185). Below xl the table is narrow, so it takes more.
+        meta: { className: "w-[18%] xl:w-[12%]" },
       },
       {
         id: "actions",
@@ -1941,15 +1945,18 @@ function RowActions({
   } else if (row.status === "ambiguous") {
     const names = forwardNames(row);
     const value = pick ?? row.suggestedTarget?.toLowerCase() ?? names[0] ?? "";
+    // min-w-0 on both: this sits in the cell's own flex row, and without it
+    // the picker keeps its full text width and spills over the status badge
+    // (#185) instead of truncating the name to the column.
     action = (
-      <span className="flex flex-wrap items-center justify-end gap-2">
+      <span className="flex min-w-0 flex-wrap items-center justify-end gap-2">
         <SelectMenu
           value={value}
           options={names.map((n) => ({ value: n, label: n }))}
           onChange={onPick}
           disabled={disabled}
           ariaLabel={`PTR target for ${row.ip}`}
-          className="max-w-full min-w-[12rem] text-xs"
+          className="w-full max-w-full min-w-0 text-xs"
         />
         <button
           type="button"

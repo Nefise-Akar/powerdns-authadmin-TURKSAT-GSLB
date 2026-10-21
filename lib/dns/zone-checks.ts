@@ -17,6 +17,7 @@
  * Pure: `lib/monitoring/zone-monitor.ts` gathers, this file judges.
  */
 
+import { plural } from "@/lib/text/plural";
 import type { DelegationResult } from "./delegation";
 import type { AxfrProbe, SoaRdata } from "./wire";
 import type { ZoneHorizon } from "./zone-horizon";
@@ -472,7 +473,7 @@ export function evaluateZone(data: ZoneProbeData): ZoneFinding[] {
       code: "reverse-dns.drift",
       severity: "warn",
       title: "Reverse DNS out of step",
-      detail: `${data.reverse.missing} address(es) without a PTR and ${data.reverse.mismatch} with a PTR naming something else, out of ${data.reverse.addresses} in hosted reverse zones. Fix them on the Reverse DNS page.`,
+      detail: `${plural(data.reverse.missing, "address")} without a PTR and ${plural(data.reverse.mismatch, "address")} with a PTR naming something else, out of ${plural(data.reverse.addresses, "address")} in hosted reverse zones. Fix them on the Reverse DNS page.`,
     });
   }
 
