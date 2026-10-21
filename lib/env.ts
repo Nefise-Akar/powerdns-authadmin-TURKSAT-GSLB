@@ -477,7 +477,7 @@ export const envSchema = z.object({
   /**
    * Bearer token required to scrape `/metrics`. Pin one in env for stable
    * scrape configs; if unset (and METRICS_ENABLED is true), the app
-   * generates a random 32-char token on every boot and logs it once so the
+   * generates a random 32-char token on every boot, never shown, so the
    * endpoint is never accidentally open on a shared LAN. To opt out of
    * /metrics entirely, set METRICS_ENABLED=false.
    */
@@ -821,10 +821,14 @@ function parseEnv(): Env {
   ) {
     const generated = randomBytes(24).toString("base64url"); // 32 url-safe chars
     parsed.METRICS_TOKEN = generated;
+    // The token itself never reaches the log: stdout is shipped to log
+    // collectors, and it is the /metrics bearer credential (#182). Nothing can
+    // scrape with it, so say so; the fingerprint only tells boots apart.
     const fingerprint = createHash("sha256").update(generated).digest("hex").slice(0, 8);
     console.log(
-      `[env] METRICS_TOKEN not provided; generated a token (fingerprint: ${fingerprint}).\n` +
-        "       Pin it via .env (or set METRICS_ENABLED=false to opt out of the /metrics endpoint).",
+      `[env] METRICS_TOKEN not set: /metrics is locked behind a random token (fingerprint ${fingerprint})\n` +
+        "       that is not shown and changes on every boot. To scrape it, set METRICS_TOKEN\n" +
+        "       (≥16 chars, e.g. `openssl rand -hex 32`) in .env; to drop it, set METRICS_ENABLED=false.",
     );
   }
 

@@ -1121,7 +1121,7 @@ vocabulary where a 1:1 mapping exists. Rows written before a rename keep the old
 - **What.**
   - **Logs.** Pino structured JSON; secret-field redaction via `lib/errors/redact.ts`.
   - **Metrics.** Prometheus `/metrics`, always bearer-gated: `METRICS_TOKEN` (≥ 16 chars) is
-    auto-generated and printed once in the boot log if unset. `METRICS_ENABLED=false`
+    auto-generated if unset, and never logged (only a fingerprint), so pin one to scrape. `METRICS_ENABLED=false`
     removes the endpoint. Exposition is hand-built (`lib/metrics/exposition.ts`, metric
     names prefixed `pdnsauthadmin_`).
   - **Health.** `/healthz` (liveness) + `/readyz` (readiness - 200 when the database is
