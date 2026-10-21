@@ -19,7 +19,7 @@
  */
 
 import "server-only";
-import { randomBytes } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { z } from "zod";
 
@@ -821,10 +821,10 @@ function parseEnv(): Env {
   ) {
     const generated = randomBytes(24).toString("base64url"); // 32 url-safe chars
     parsed.METRICS_TOKEN = generated;
+    const fingerprint = createHash("sha256").update(generated).digest("hex").slice(0, 8);
     console.log(
-      `[env] METRICS_TOKEN not provided, randomly generated instead: ${generated}\n` +
-        "       Scrape with: Authorization: Bearer <token>. Pin it via .env (or set\n" +
-        "       METRICS_ENABLED=false to opt out of the /metrics endpoint).",
+      `[env] METRICS_TOKEN not provided; generated a token (fingerprint: ${fingerprint}).\n` +
+        "       Pin it via .env (or set METRICS_ENABLED=false to opt out of the /metrics endpoint).",
     );
   }
 
