@@ -144,13 +144,18 @@ export function HeaderStatusChip() {
       title={title}
       className="inline-flex items-center gap-1.5 rounded-full border border-[color:var(--color-border)] bg-[color:var(--color-bg)] px-2 py-1 text-[0.625rem] font-medium tracking-wide text-[color:var(--color-fg-muted)] uppercase hover:bg-[color:var(--color-bg-subtle)]"
     >
-      <span className={`inline-block h-2 w-2 rounded-full ${dotClass}`} aria-hidden />
-      {connLabel}
+      {/* On a phone the header has no room for the words: the dots stay and
+          the labels remain for screen readers (the chip ran under the search
+          button at 393 px). */}
+      <span className={`inline-block h-2 w-2 shrink-0 rounded-full ${dotClass}`} aria-hidden />
+      <span className="sr-only sm:not-sr-only">{connLabel}</span>
       {syncLabel && mode.kind === "sync" ? (
         <>
-          <span className="text-[color:var(--color-fg-subtle)]">·</span>
+          <span className="hidden text-[color:var(--color-fg-subtle)] sm:inline" aria-hidden>
+            ·
+          </span>
           <SyncIndicator state={mode.inSync ? "synced" : "desynced"} size={14} />
-          <span>{syncLabel}</span>
+          <span className="sr-only sm:not-sr-only">{syncLabel}</span>
         </>
       ) : null}
     </button>
