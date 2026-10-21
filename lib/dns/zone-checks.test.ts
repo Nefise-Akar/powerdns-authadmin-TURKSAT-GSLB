@@ -369,6 +369,9 @@ describe("evaluateZone", () => {
     expect(codes(healthy({ reverse: { addresses: 4, missing: 1, mismatch: 1 } }))).toContain(
       "warn:reverse-dns.drift",
     );
+    const singular = evaluateZone(healthy({ reverse: { addresses: 1, missing: 1, mismatch: 0 } })).find((x) => x.code === "reverse-dns.drift");
+    expect(singular?.detail).toContain("1 address without a PTR");
+    expect(singular?.detail).not.toContain("1 addresses");
     expect(
       worstSeverity(evaluateZone(healthy({ reverse: { addresses: 4, missing: 1, mismatch: 0 } }))),
     ).toBe("warn");

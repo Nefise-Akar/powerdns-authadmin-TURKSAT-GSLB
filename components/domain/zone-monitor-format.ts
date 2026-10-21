@@ -15,6 +15,7 @@
 
 import type { FindingSeverity, ZoneFinding, ZoneFindingFix } from "@/lib/dns/zone-checks";
 import type { ZoneMonitorResult, ZoneMonitorState } from "@/lib/monitoring/zone-monitor";
+import { plural } from "@/lib/text/plural";
 import { orderChipsByCount } from "./chip-order";
 
 export type { FindingSeverity, ZoneFinding, ZoneFindingFix, ZoneMonitorResult, ZoneMonitorState };
@@ -92,12 +93,7 @@ export function resultKey(result: Pick<ZoneMonitorResult, "zone" | "server">): s
   return `${result.server}|${result.zone}`;
 }
 
-/** "1 zone", "3 zones", "3 addresses": sibilant endings take "es". */
-export function plural(n: number, word: string): string {
-  if (n === 1) return `${n} ${word}`;
-  const suffix = /(s|x|z|ch|sh)$/i.test(word) ? "es" : "s";
-  return `${n} ${word}${suffix}`;
-}
+export { plural };
 
 /** One-line text for a finding's suggested fix, shown under the finding. */
 export function describeFix(fix: ZoneFindingFix): string {
