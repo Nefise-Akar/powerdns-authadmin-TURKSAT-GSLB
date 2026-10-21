@@ -17,10 +17,10 @@
  * Pure: `lib/monitoring/zone-monitor.ts` gathers, this file judges.
  */
 
+import { plural } from "@/lib/text/plural";
 import type { DelegationResult } from "./delegation";
 import type { AxfrProbe, SoaRdata } from "./wire";
 import type { ZoneHorizon } from "./zone-horizon";
-import { plural } from "../text/plural";
 
 export type FindingSeverity = "error" | "warn" | "info";
 
