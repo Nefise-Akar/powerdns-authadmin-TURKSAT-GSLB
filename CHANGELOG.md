@@ -44,6 +44,14 @@ thanks Ensar.
 - **The header status chip ran under the search button on a phone.** Below `sm` it shows only
   its connection and sync dots; the words stay for screen readers.
 
+### Security
+
+- **`vite` 8.0.16 → 8.3.4** (development dependency, not in the image), fixing
+  [GHSA-587h-7wmj-h5pm](https://github.com/advisories/GHSA-587h-7wmj-h5pm) (high),
+  [GHSA-r825-w8mm-5pxw](https://github.com/advisories/GHSA-r825-w8mm-5pxw) and
+  [GHSA-698v-4r3x-3vcv](https://github.com/advisories/GHSA-698v-4r3x-3vcv) in its bundled
+  `launch-editor`. ([#192](https://github.com/PowerDNS-AuthAdmin/powerdns-authadmin/pull/192))
+
 ### Documentation
 
 - Every screenshot is retaken on the 1.10.0 look, with the new Change log page.
