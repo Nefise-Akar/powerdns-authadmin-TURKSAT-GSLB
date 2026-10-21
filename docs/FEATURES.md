@@ -544,7 +544,10 @@ the audit trail behave identically whichever door the user came through.
 - **How.** App-side classification (PowerDNS cannot tell the two apart), stored sparsely in
   `zone_horizons` and scoped to the backend - to the **cluster** for a cluster zone, so it doesn't
   flicker as peer selection rotates. Unclassified means `public`, so nothing changes for installs
-  that don't use it. A mirror of a managed primary inherits that primary's classification. Changes
+  that don't use it, except under a name reserved for private use (`.internal`, `home.arpa`,
+  `.local`, `.test`, `.invalid`, `.localhost`), which defaults to `internal` since it can never be
+  delegated on the internet; the create form's switch starts on for such a name, and an explicit
+  Public is kept. A mirror of a managed primary inherits that primary's classification. Changes
   are audited as `zone.horizon.update`; deleting a zone drops its classification.
 - **Scope.** Presentation and grouping only - it never changes what PowerDNS serves, and it is not
   PDNS 5.0 Views (which splits horizons _within_ one daemon; complementary, not superseded).

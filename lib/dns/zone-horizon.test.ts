@@ -22,6 +22,20 @@ describe("zone horizon vocabulary", () => {
     expect(defaultZoneHorizonForName("example.internal.")).toBe("internal");
     expect(defaultZoneHorizonForName("example.com.")).toBe("public");
   });
+
+  it("matches the reserved name itself and any case or trailing dot, but not lookalikes", () => {
+    expect(isPrivateUseZoneName("internal.")).toBe(true);
+    expect(isPrivateUseZoneName("home.arpa")).toBe(true);
+    expect(isPrivateUseZoneName("Corp.Example.INTERNAL")).toBe(true);
+    expect(isPrivateUseZoneName("lab.test.")).toBe(true);
+    // A label that merely ends in a reserved word is a public name.
+    expect(isPrivateUseZoneName("notinternal.")).toBe(false);
+    expect(isPrivateUseZoneName("mylocal.com.")).toBe(false);
+    expect(isPrivateUseZoneName("internal.example.com.")).toBe(false);
+    expect(isPrivateUseZoneName("arpa.")).toBe(false);
+    expect(isPrivateUseZoneName("2.0.192.in-addr.arpa.")).toBe(false);
+  });
+
   it("accepts only the known horizons", () => {
     expect(ZONE_HORIZONS).toEqual(["public", "internal"]);
     expect(isZoneHorizon("public")).toBe(true);

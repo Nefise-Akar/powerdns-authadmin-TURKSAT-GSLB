@@ -40,7 +40,7 @@ import {
   loadZoneHorizonIndex,
   type ZoneHorizonIndex,
 } from "@/lib/db/repositories/zone-horizons";
-import { DEFAULT_ZONE_HORIZON } from "@/lib/dns/zone-horizon";
+import { defaultZoneHorizonForName } from "@/lib/dns/zone-horizon";
 import { dedupeZonesByIdentity } from "@/lib/dns/zone-dedupe";
 import { isReadOnlyZoneKind } from "@/lib/pdns/writable-kind";
 import { latestEditTimestampsByZone } from "@/lib/db/repositories/audit-log";
@@ -464,12 +464,13 @@ function readOnlySecondaryRows(
   for (const z of cached.zones.values()) {
     const fold = foldLastEdit(z.serial, null);
     const own = horizonFrom(horizonIndex, { serverId: secondary.id }, z.name);
+    const nameDefault = defaultZoneHorizonForName(z.name);
     const horizon =
-      own !== DEFAULT_ZONE_HORIZON
+      own !== nameDefault
         ? own
         : parent
           ? horizonFrom(horizonIndex, horizonScopeFor(parent), z.name)
-          : DEFAULT_ZONE_HORIZON;
+          : nameDefault;
     rows.push({
       horizon,
       id: z.id,

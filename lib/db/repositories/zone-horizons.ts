@@ -122,9 +122,12 @@ export async function setZoneHorizon(input: {
   const { scope, zoneName, horizon, actorId } = input;
   const where = and(scopeCondition(scope), eq(zoneHorizons.zoneName, zoneName));
 
-  if (horizon === DEFAULT_ZONE_HORIZON) {
+  // Sparse: the row is dropped when the choice matches the name's default.
+  // Under a private-use name that default is internal, so an explicit
+  // "public" is stored and kept rather than snapping back.
+  if (horizon === defaultZoneHorizonForName(zoneName)) {
     await db.delete(zoneHorizons).where(where);
-    return DEFAULT_ZONE_HORIZON;
+    return horizon;
   }
 
   const updated = await db
