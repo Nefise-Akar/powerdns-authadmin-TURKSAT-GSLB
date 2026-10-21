@@ -6,6 +6,48 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [1.10.1] - 2026-10-21
+
+Fixes from running 1.10.0 in production. **No schema change, no migration.** Pull the new tag
+and recreate the container. Most of the fixes come from [@Enard52](https://github.com/Enard52) (#186 to #189),
+thanks Ensar.
+
+### Changed
+
+- **Zones under names reserved for private use default to the internal horizon.** A zone at or
+  under `.internal`, `home.arpa`, `.local`, `.test`, `.invalid` or `.localhost` can never be
+  delegated on the internet, yet with no classification it counted as public, so Zone Monitoring
+  reported it as undelegated, unreachable from public resolvers and served from a private
+  address. Unclassified, such a zone is now internal everywhere: the zones list, Reverse DNS and
+  Zone Monitoring. An explicit **Public** on its Zone settings tab is stored and kept, and the
+  Create zone form's Internal switch starts on for such a name.
+  ([#181](https://github.com/PowerDNS-AuthAdmin/powerdns-authadmin/issues/181), [#189](https://github.com/PowerDNS-AuthAdmin/powerdns-authadmin/pull/189), thanks @Enard52)
+
+### Fixed
+
+- **A generated `METRICS_TOKEN` was printed in full to the boot log.** With `METRICS_TOKEN`
+  unset, the app generates one at boot, and the `/metrics` bearer credential then reached every
+  log collector. The log now shows only a fingerprint and says how to pin a token; the
+  configuration and hardening guides are corrected.
+  ([#182](https://github.com/PowerDNS-AuthAdmin/powerdns-authadmin/issues/182), [#188](https://github.com/PowerDNS-AuthAdmin/powerdns-authadmin/pull/188), thanks @Enard52)
+- **Reverse DNS: the name picker on an Ambiguous row covered the status badge.** The picker kept
+  its full text width and the Status column was narrower than its chip. The picker now truncates
+  inside its column at every width (every select in the app truncates a long label now), and the
+  Status column fits its widest chip.
+  ([#185](https://github.com/PowerDNS-AuthAdmin/powerdns-authadmin/issues/185), [#187](https://github.com/PowerDNS-AuthAdmin/powerdns-authadmin/pull/187), thanks @Enard52)
+- **"1 address(es)"** in the Reverse DNS drift finding, and in the backend form's AXFR / DNS
+  addresses label, now reads properly.
+  ([#184](https://github.com/PowerDNS-AuthAdmin/powerdns-authadmin/issues/184), [#186](https://github.com/PowerDNS-AuthAdmin/powerdns-authadmin/pull/186), thanks @Enard52)
+- **The header status chip ran under the search button on a phone.** Below `sm` it shows only
+  its connection and sync dots; the words stay for screen readers.
+
+### Documentation
+
+- Every screenshot is retaken on the 1.10.0 look, with the new Change log page.
+  `npm run demo:seed:ptr` seeds the combined demo stack with a reverse zone covering every PTR
+  status, for the Reverse DNS and Zone Monitoring shots. ([#190](https://github.com/PowerDNS-AuthAdmin/powerdns-authadmin/pull/190))
+- The 1.10.0 entry below now matches its published release notes.
+
 ## [1.10.0] - 2026-10-21
 
 Feature release. The headline is **automatic PTR maintenance**: saving or deleting an A/AAAA
@@ -109,14 +151,21 @@ setting and does not need either variable.
   ([#175](https://github.com/PowerDNS-AuthAdmin/powerdns-authadmin/pull/175))
 - **Filter chips show their counts at a glance.** A chip whose count is 0 renders neutral
   instead of in its status colour, on the Reverse DNS, Zone Monitoring and Notifications
-  filters. The Reverse DNS status chips are ordered by count, highest first; "Not hosted"
-  always follows Missing, Mismatch, Ambiguous and OK when those have a count, and empty
-  statuses come last. The zones list's scope and horizon filters use the same chips, and its Reverse
-  DNS, Add record and Add zone actions are compact bordered buttons like the page toolbars.
+  filters, and so does a chip whose count is still loading. The Reverse DNS status chips are
+  ordered by count, highest first; "Not hosted" always follows Missing, Mismatch, Ambiguous and
+  OK when those have a count, and empty statuses come last. Zone Monitoring's verdict chips
+  follow the same rule (Info never ahead of Error, Warning or OK). Until the first counts land,
+  both pages show placeholder pills instead of chips that jump into place. The zones list's scope
+  and horizon filters use the same chips.
+- **One compact button size.** Every button in the app has the compact size of the page
+  toolbars, keeping its own colour; Add zone and Add record stay green.
 - **Search covers zones, records and config by default.** The request log and the audit log are
   searched only from their own tabs, which sit apart after a "Logs" divider and are never
   remembered as the opening tab, so the everyday search does not scan the logs. The MCP
-  `search` tool follows the same rule (`scope: requests` / `scope: audit`).
+  `search` tool follows the same rule (`scope: requests` / `scope: audit`). Zone and record
+  results show where they live and their state: backend, cluster or standalone, internal or
+  public, plus a zone's kind, DNSSEC, serial and RRset count, or a record's zone, TTL, value
+  count and disabled values.
 - **Accept single-nameserver zones per backend.** A standalone backend's settings have **Don't
   warn about single-nameserver zones on this backend**; zone monitoring then reports
   `nameserver.count` as accepted information, kept on the page and out of the notification bell.
@@ -139,10 +188,19 @@ setting and does not need either variable.
 - **The app takes the project website's look.** The colour palette (light and dark), the Inter
   and JetBrains Mono typefaces (self-hosted, no font CDN; the CSP is unchanged), softer corner
   radii, a translucent top bar and matching chart colours. The search pill sits centred in the
-  top bar, wider, names what it searches, and keeps your recent searches (in this browser
-  only); its focus ring no longer draws a doubled border in Safari.
+  top bar and scales with the window, names what it searches, and keeps your recent searches
+  (in this browser only); its focus ring no longer draws a doubled border in Safari.
 
 ### Fixed
+
+- **A focus ring outlined the whole page in Safari after saving with Enter.** Regions the app
+  focuses by script (the main area, dialogs, search results) are never tab stops and no longer
+  draw the ring; real controls keep theirs.
+- **The notifications panel and user menu opened behind dashboard cards.** The top bar now
+  sits on its own layer, under the mobile navigation drawer.
+- **A new zone could take up to 15 s to appear in search.** A zone change no longer waits
+  behind a slower rebuild queued for request-log churn, and rebuilds start at most once per
+  5 s so a burst of changes does not trigger back-to-back fleet scans.
 
 - **Zone Monitoring showed "Next run: N seconds ago" while checks were running.** Opening the
   page right after a start begins a catch-up check of zones not seen yet; the first scheduled
@@ -2249,7 +2307,8 @@ First production release.
 - **Distribution** - multi-arch (`linux/amd64` + `linux/arm64`) image published to Docker Hub as
   `jseifeddine/powerdns-authadmin`, plus a one-command minimal-demo stack.
 
-[Unreleased]: https://github.com/PowerDNS-AuthAdmin/powerdns-authadmin/compare/v1.10.0...HEAD
+[Unreleased]: https://github.com/PowerDNS-AuthAdmin/powerdns-authadmin/compare/v1.10.1...HEAD
+[1.10.1]: https://github.com/PowerDNS-AuthAdmin/powerdns-authadmin/compare/v1.10.0...v1.10.1
 [1.10.0]: https://github.com/PowerDNS-AuthAdmin/powerdns-authadmin/compare/v1.9.1...v1.10.0
 [1.5.6]: https://github.com/PowerDNS-AuthAdmin/powerdns-authadmin/compare/v1.5.5...v1.5.6
 [1.5.5]: https://github.com/PowerDNS-AuthAdmin/powerdns-authadmin/compare/v1.5.4...v1.5.5
