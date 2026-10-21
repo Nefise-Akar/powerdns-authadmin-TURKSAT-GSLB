@@ -33,6 +33,25 @@ export const ZONE_HORIZONS = ["public", "internal"] as const satisfies readonly 
  */
 export const DEFAULT_ZONE_HORIZON: ZoneHorizon = "public";
 
+const PRIVATE_USE_ZONE_SUFFIXES = [
+  ".internal.",
+  ".home.arpa.",
+  ".local.",
+  ".test.",
+  ".invalid.",
+  ".localhost.",
+] as const;
+
+/** Whether an unclassified zone name is reserved for private/local use. */
+export function isPrivateUseZoneName(zoneName: string): boolean {
+  const normalized = `${zoneName.trim().toLowerCase().replace(/\.+$/, "")}.`;
+  return PRIVATE_USE_ZONE_SUFFIXES.some((suffix) => normalized.endsWith(suffix));
+}
+
+/** Default horizon for a zone name when no operator classification exists. */
+export function defaultZoneHorizonForName(zoneName: string): ZoneHorizon {
+  return isPrivateUseZoneName(zoneName) ? "internal" : DEFAULT_ZONE_HORIZON;
+}
 export function isZoneHorizon(value: unknown): value is ZoneHorizon {
   return value === "public" || value === "internal";
 }

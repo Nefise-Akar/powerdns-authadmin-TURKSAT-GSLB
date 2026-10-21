@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   DEFAULT_ZONE_HORIZON,
+  defaultZoneHorizonForName,
   ZONE_HORIZONS,
+  isPrivateUseZoneName,
   isZoneHorizon,
   toZoneHorizon,
   zoneHorizonLabel,
@@ -12,6 +14,14 @@ describe("zone horizon vocabulary", () => {
     expect(DEFAULT_ZONE_HORIZON).toBe("public");
   });
 
+  it("recognizes reserved private-use zone names", () => {
+    expect(isPrivateUseZoneName("example.internal.")).toBe(true);
+    expect(isPrivateUseZoneName("service.home.arpa")).toBe(true);
+    expect(isPrivateUseZoneName("printer.local.")).toBe(true);
+    expect(isPrivateUseZoneName("example.com.")).toBe(false);
+    expect(defaultZoneHorizonForName("example.internal.")).toBe("internal");
+    expect(defaultZoneHorizonForName("example.com.")).toBe("public");
+  });
   it("accepts only the known horizons", () => {
     expect(ZONE_HORIZONS).toEqual(["public", "internal"]);
     expect(isZoneHorizon("public")).toBe(true);

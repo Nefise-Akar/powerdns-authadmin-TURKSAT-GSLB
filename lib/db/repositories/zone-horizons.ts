@@ -22,7 +22,7 @@ import "server-only";
 import { and, eq, isNull } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { zoneHorizons } from "@/lib/db/schema";
-import { DEFAULT_ZONE_HORIZON, type ZoneHorizon } from "@/lib/dns/zone-horizon";
+import { defaultZoneHorizonForName, type ZoneHorizon } from "@/lib/dns/zone-horizon";
 
 /** Which backend a classification belongs to. Exactly one of the two. */
 export type HorizonScope = { serverId: string } | { clusterId: string };
@@ -84,7 +84,7 @@ export function horizonFrom(
   scope: HorizonScope,
   zoneName: string,
 ): ZoneHorizon {
-  return index.get(horizonKey(scope, zoneName)) ?? DEFAULT_ZONE_HORIZON;
+  return index.get(horizonKey(scope, zoneName)) ?? defaultZoneHorizonForName(zoneName);
 }
 
 function scopeCondition(scope: HorizonScope) {
@@ -100,7 +100,7 @@ export async function getZoneHorizon(scope: HorizonScope, zoneName: string): Pro
     .from(zoneHorizons)
     .where(and(scopeCondition(scope), eq(zoneHorizons.zoneName, zoneName)))
     .limit(1);
-  return row?.horizon ?? DEFAULT_ZONE_HORIZON;
+  return row?.horizon ?? defaultZoneHorizonForName(zoneName);
 }
 
 /**
