@@ -1949,7 +1949,7 @@ function RowActions({
           onChange={onPick}
           disabled={disabled}
           ariaLabel={`PTR target for ${row.ip}`}
-          className="max-w-full min-w-[12rem] text-xs"
+          className="w-full min-w-0 max-w-full text-xs"
         />
         <button
           type="button"
