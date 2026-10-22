@@ -34,9 +34,10 @@ import { PdnsError } from "@/lib/pdns/errors";
 import { redact } from "@/lib/errors/redact";
 import { logger } from "@/lib/logger";
 import { publishZoneEvent } from "@/lib/realtime/event-bus";
+import { invalidateFleetScan } from "@/app/api/admin/pdns/auto-ptr/_scan";
 import { scheduleImmediatePoll } from "@/lib/realtime/zone-poller";
 import { horizonScopeFor, setZoneHorizon } from "@/lib/db/repositories/zone-horizons";
-import { DEFAULT_ZONE_HORIZON, ZONE_HORIZONS } from "@/lib/dns/zone-horizon";
+import { defaultZoneHorizonForName, ZONE_HORIZONS } from "@/lib/dns/zone-horizon";
 import { canonicalZoneName } from "@/lib/dns/zone-name";
 import { ConflictError, ForbiddenError, ValidationError } from "@/lib/errors";
 import { errorResponse } from "@/lib/http/error-response";
@@ -351,8 +352,8 @@ export async function POST(request: Request): Promise<Response> {
     // created, so a failure here must not fail (or roll back) the create - the
     // operator can reclassify from the zone's settings tab. Cluster zones
     // classify against the cluster, not the peer `choosePeer` happened to pick.
-    const horizon = input.horizon ?? DEFAULT_ZONE_HORIZON;
-    if (horizon !== DEFAULT_ZONE_HORIZON) {
+    const horizon = input.horizon ?? defaultZoneHorizonForName(zoneName);
+    if (horizon !== defaultZoneHorizonForName(zoneName)) {
       try {
         await setZoneHorizon({
           scope: horizonScopeFor(server),
@@ -460,6 +461,8 @@ export async function POST(request: Request): Promise<Response> {
       actor: user.email,
       at: new Date().toISOString(),
     });
+    // Search, the record wizard and the reverse report read the fleet scan.
+    invalidateFleetScan();
     scheduleImmediatePoll();
 
     return Response.json(

@@ -17,9 +17,13 @@
  * Live updates: subscribes to `pdns.request.appended` events on the
  * shared RealtimeProvider. Each event triggers a debounced
  * `router.refresh()` so new rows appear without manual reloads.
+ *
+ * Each row's raw HTTP exchange opens beneath it through the shared row
+ * disclosure (one row at a time), keyed by the row id so a live refresh
+ * that rebuilds the rows keeps the same request open.
  */
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { type ColumnDef } from "@tanstack/react-table";
@@ -27,7 +31,12 @@ import { DataTable } from "@/components/ui/data-table";
 import { DateTimePicker } from "@/components/ui/datetime-picker";
 import { SelectMenu } from "@/components/ui/select-menu";
 import { LocalTime } from "@/components/ui/local-time";
-import { Disclosure } from "@/components/ui/disclosure";
+import {
+  DisclosureChevron,
+  RowDisclosurePanel,
+  rowDetailId,
+  useRowDisclosure,
+} from "@/components/ui/row-disclosure";
 import { useRealtimeEvent } from "@/components/realtime/realtime-provider";
 import { PdnsHttpLog } from "@/app/(app)/zones/[zoneId]/_components/pdns-http-log";
 import { buttonClass } from "@/components/ui/button";
@@ -70,6 +79,8 @@ interface Props {
 
 export function PdnsRequestsTable(props: Props) {
   const router = useRouter();
+  const details = useRowDisclosure();
+  const panelPrefix = useId();
 
   // Local form state - controlled inputs. Apply (or auto-debounce)
   // pushes them to the URL via router.replace, which re-runs the
@@ -145,13 +156,24 @@ export function PdnsRequestsTable(props: Props) {
       {
         accessorKey: "ts",
         header: "When",
-        cell: (ctx) => (
-          <LocalTime
-            ts={ctx.getValue<string>()}
-            className="text-muted-foreground text-mono-xs font-mono whitespace-nowrap"
-          />
-        ),
-        meta: { className: "w-44" },
+        cell: (ctx) => {
+          const row = ctx.row.original;
+          return (
+            <span className="inline-flex items-center gap-2">
+              <DisclosureChevron
+                open={details.isOpen(row.id)}
+                onToggle={() => details.toggle(row.id)}
+                label={describeRequest(row)}
+                controls={rowDetailId(panelPrefix, row.id)}
+              />
+              <LocalTime
+                ts={row.ts}
+                className="text-muted-foreground text-mono-xs font-mono whitespace-nowrap"
+              />
+            </span>
+          );
+        },
+        meta: { className: "w-52" },
       },
       {
         id: "server",
@@ -208,58 +230,8 @@ export function PdnsRequestsTable(props: Props) {
         },
         meta: { className: "w-20" },
       },
-      {
-        id: "detail",
-        header: "Detail",
-        enableSorting: false,
-        cell: (ctx) => {
-          const row = ctx.row.original;
-          return (
-            <div className="space-y-1 text-xs">
-              <Disclosure
-                label="POWERDNS HTTP REQUESTS (1)"
-                className="space-y-1"
-                summaryClassName="text-body-sm"
-                bodyClassName="mt-1"
-              >
-                <PdnsHttpLog
-                  collapsible={false}
-                  entries={[
-                    {
-                      id: row.id,
-                      ts: row.ts,
-                      serverSlug: row.serverSlug,
-                      serverName: row.serverName,
-                      serverDbId: row.serverDbId,
-                      op: row.op,
-                      method: row.method,
-                      url: row.url,
-                      requestHeaders: row.requestHeaders,
-                      requestBody: row.requestBody,
-                      responseStatus: row.responseStatus,
-                      error: row.error,
-                    },
-                  ]}
-                />
-              </Disclosure>
-              {row.requestId ? (
-                <div className="text-muted-foreground">
-                  req:{" "}
-                  <Link
-                    href={`/admin/requests?${new URLSearchParams({ requestId: row.requestId }).toString()}`}
-                    className="text-primary hover:text-primary-hover font-mono hover:underline"
-                    title="Filter to all rows from this request"
-                  >
-                    {row.requestId}
-                  </Link>
-                </div>
-              ) : null}
-            </div>
-          );
-        },
-      },
     ],
-    [],
+    [details, panelPrefix],
   );
 
   return (
@@ -349,9 +321,37 @@ export function PdnsRequestsTable(props: Props) {
         noDataMessage="No PowerDNS HTTP traffic recorded yet."
         sortParam="sort"
         pageSizeParam="pageSize"
+        renderRowDetail={(row) =>
+          details.isOpen(row.id) ? (
+            <RowDisclosurePanel
+              id={rowDetailId(panelPrefix, row.id)}
+              label={`Details for ${describeRequest(row)}`}
+              className="space-y-2 text-xs"
+            >
+              <PdnsHttpLog collapsible={false} entries={[row]} />
+              {row.requestId ? (
+                <div className="text-muted-foreground">
+                  req:{" "}
+                  <Link
+                    href={`/admin/requests?${new URLSearchParams({ requestId: row.requestId }).toString()}`}
+                    className="text-primary hover:text-primary-hover font-mono hover:underline"
+                    title="Filter to all rows from this request"
+                  >
+                    {row.requestId}
+                  </Link>
+                </div>
+              ) : null}
+            </RowDisclosurePanel>
+          ) : null
+        }
       />
     </div>
   );
+}
+
+/** The request as the chevron's accessible name says it: "GET /api/v1/servers/…". */
+function describeRequest(row: PdnsRequestRowClient): string {
+  return `${row.method} ${shortenUrl(row.url)}`;
 }
 
 function shortenUrl(u: string): string {

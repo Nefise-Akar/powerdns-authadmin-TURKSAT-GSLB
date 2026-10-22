@@ -49,9 +49,18 @@ import { tabClass, tabListClass } from "@/components/ui/tabs";
 
 export type NavGroupKey = "dashboard" | "zones" | "powerdns" | "access" | "audit";
 
+export interface NavBadge {
+  /** Things needing attention behind the link; 0 hides the badge. */
+  count: number;
+  tone: "error" | "warn";
+  /** Spoken alternative, e.g. "3 zones with findings". */
+  label: string;
+}
+
 export interface NavItem {
   href: string;
   label: string;
+  badge?: NavBadge;
 }
 
 export interface NavGroup {
@@ -69,6 +78,20 @@ const ICONS: Record<NavGroupKey, LucideIcon> = {
   audit: FileText,
 };
 
+/**
+ * The item a pathname belongs to: the longest matching href, so
+ * `/zones/monitoring` selects Zone Monitoring rather than its parent Zones.
+ */
+export function activeItemHref(pathname: string | null, items: readonly NavItem[]): string | null {
+  let best: string | null = null;
+  for (const item of items) {
+    if (isActivePath(pathname, item.href) && (best === null || item.href.length > best.length)) {
+      best = item.href;
+    }
+  }
+  return best;
+}
+
 /** `/dashboard` matches exactly; everything else also matches deeper segments. */
 export function isActivePath(pathname: string | null, href: string): boolean {
   if (!pathname) return false;
@@ -83,6 +106,7 @@ export function AppShell({
   mark,
   brand,
   headerControls,
+  headerCenter,
   children,
 }: {
   nav: NavGroup[];
@@ -91,6 +115,8 @@ export function AppShell({
   /** Wordmark for the top bar's brand block (links home). */
   brand: ReactNode;
   headerControls: ReactNode;
+  /** The global search, between the brand and the controls. */
+  headerCenter?: ReactNode;
   children: ReactNode;
 }) {
   const [open, setOpen] = useState(false);
@@ -196,8 +222,16 @@ export function AppShell({
           {/* The wordmark is unreadable once squeezed below `sm`; phones get
               the square mark instead. */}
           <div className="flex sm:hidden">{mark}</div>
-          <div className="hidden w-46 min-w-0 items-center sm:flex">{brand}</div>
-          <div className="ml-auto flex items-center gap-1">{headerControls}</div>
+          <div className="hidden w-46 min-w-0 shrink-0 items-center sm:flex">{brand}</div>
+          {/* The search takes the room between the brand and the controls,
+              centred and capped so it stays a search box on wide screens; on
+              phones it collapses to its icon at the right. */}
+          <div className="flex min-w-0 flex-1 justify-end md:justify-center">
+            <div className="flex justify-end md:w-full md:max-w-md md:justify-center">
+              {headerCenter}
+            </div>
+          </div>
+          <div className="flex shrink-0 items-center gap-1">{headerControls}</div>
         </header>
 
         {/* `min-h-0` is the canonical flexbox-clipping fix: a `flex-1` child
@@ -243,9 +277,42 @@ export function AppShell({
   );
 }
 
+/**
+ * Count badge for a nav entry, in the status colours: error for findings that
+ * break resolution, warning for the rest.
+ */
+function NavCountBadge({ badge, className = "" }: { badge: NavBadge; className?: string }) {
+  const tone =
+    badge.tone === "error"
+      ? "bg-destructive-muted text-destructive"
+      : "bg-warning-muted text-warning";
+  return (
+    <span
+      role="img"
+      aria-label={badge.label}
+      title={badge.label}
+      className={`text-mono-xs inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-sm px-1 font-mono font-medium tabular-nums ${tone} ${className}`.trim()}
+    >
+      {badge.count > 999 ? "999+" : badge.count}
+    </span>
+  );
+}
+
+/** The rail shows one badge per area: the sum of its pages' counts. */
+function groupBadge(group: NavGroup): NavBadge | null {
+  const badges = group.items.flatMap((i) => (i.badge && i.badge.count > 0 ? [i.badge] : []));
+  if (badges.length === 0) return null;
+  return {
+    count: badges.reduce((n, b) => n + b.count, 0),
+    tone: badges.some((b) => b.tone === "error") ? "error" : "warn",
+    label: badges.map((b) => b.label).join(", "),
+  };
+}
+
 function RailLink({ group, active }: { group: NavGroup; active: boolean }) {
   const Icon = ICONS[group.key];
   const href = group.items[0]?.href ?? "/dashboard";
+  const badge = groupBadge(group);
   return (
     <Link
       href={href}
@@ -253,13 +320,16 @@ function RailLink({ group, active }: { group: NavGroup; active: boolean }) {
       className="group focus-visible:shadow-focus-ring flex flex-col items-center gap-1 rounded-md px-0.5 py-1.5 text-center focus-visible:outline-hidden"
     >
       <span
-        className={`flex h-6 w-9 items-center justify-center rounded-md ${
+        className={`relative flex h-6 w-9 items-center justify-center rounded-md ${
           active
             ? "bg-rail-active text-rail-active-foreground"
             : "text-rail-foreground group-hover:bg-muted group-hover:text-foreground"
         }`}
       >
         <Icon aria-hidden size={20} strokeWidth={1.75} />
+        {badge ? (
+          <NavCountBadge badge={badge} className="absolute -top-1.5 left-6 h-4 px-0.5" />
+        ) : null}
       </span>
       <span
         className={`text-rail-label ${
@@ -273,10 +343,11 @@ function RailLink({ group, active }: { group: NavGroup; active: boolean }) {
 }
 
 function SectionTabs({ group, pathname }: { group: NavGroup; pathname: string | null }) {
+  const activeHref = activeItemHref(pathname, group.items);
   return (
     <nav aria-label={`${group.label} pages`} className={`${tabListClass} px-5`}>
       {group.items.map((item) => {
-        const active = isActivePath(pathname, item.href);
+        const active = item.href === activeHref;
         return (
           <Link
             key={item.href}
@@ -285,6 +356,7 @@ function SectionTabs({ group, pathname }: { group: NavGroup; pathname: string | 
             className={tabClass(active)}
           >
             {item.label}
+            {item.badge && item.badge.count > 0 ? <NavCountBadge badge={item.badge} /> : null}
           </Link>
         );
       })}
@@ -301,7 +373,11 @@ function DrawerNav({ nav, pathname }: { nav: NavGroup[]; pathname: string | null
         return (
           <li key={group.key} className="pb-3">
             {single ? (
-              <DrawerLink item={group.items[0]!} pathname={pathname} icon={<Icon />} />
+              <DrawerLink
+                item={group.items[0]!}
+                active={activeItemHref(pathname, group.items) === group.items[0]!.href}
+                icon={<Icon />}
+              />
             ) : (
               <>
                 <div className="text-label text-muted-foreground flex h-8 items-center gap-2 px-2">
@@ -311,7 +387,11 @@ function DrawerNav({ nav, pathname }: { nav: NavGroup[]; pathname: string | null
                 <ul>
                   {group.items.map((item) => (
                     <li key={item.href}>
-                      <DrawerLink item={item} pathname={pathname} indent />
+                      <DrawerLink
+                        item={item}
+                        active={activeItemHref(pathname, group.items) === item.href}
+                        indent
+                      />
                     </li>
                   ))}
                 </ul>
@@ -326,16 +406,15 @@ function DrawerNav({ nav, pathname }: { nav: NavGroup[]; pathname: string | null
 
 function DrawerLink({
   item,
-  pathname,
+  active,
   icon,
   indent = false,
 }: {
   item: NavItem;
-  pathname: string | null;
+  active: boolean;
   icon?: ReactNode;
   indent?: boolean;
 }) {
-  const active = isActivePath(pathname, item.href);
   return (
     <Link
       href={item.href}
@@ -349,7 +428,8 @@ function DrawerLink({
       }`}
     >
       {icon ? <span aria-hidden>{icon}</span> : null}
-      {item.label}
+      <span className="min-w-0 flex-1 truncate">{item.label}</span>
+      {item.badge && item.badge.count > 0 ? <NavCountBadge badge={item.badge} /> : null}
     </Link>
   );
 }

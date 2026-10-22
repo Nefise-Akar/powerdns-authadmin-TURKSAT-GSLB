@@ -18,6 +18,10 @@
  * but it needs foreign-key enforcement OFF around drizzle's transaction - see
  * `lib/db/migrate-sqlite.ts` for why.
  *
+ * Both dialects follow drizzle's pass with the out-of-order backfill
+ * (`outOfOrderPending` in lib/db/migration-status.ts): journal entries drizzle's
+ * high-water-mark migrator skips by design are applied in a second transaction.
+ *
  * Logging is deliberately loud: a list of pending migrations before the
  * run, a list of applied migrations after, an explicit "0 pending - DB is
  * up to date" when there's nothing to do. A silent migrate hid a missing
@@ -27,7 +31,12 @@
 
 import { dialectFromUrl } from "@/lib/db/_dialect";
 import { logger } from "@/lib/logger";
-import { diffByOrdinal, readJournal } from "@/lib/db/migration-status";
+import {
+  diffByWhen,
+  outOfOrderPending,
+  readJournal,
+  type JournalEntry,
+} from "@/lib/db/migration-status";
 
 const MIGRATIONS_DIR_PG = "./drizzle";
 const MIGRATIONS_DIR_SQLITE = "./drizzle-sqlite";
@@ -69,11 +78,11 @@ async function migratePostgres(databaseUrl: string): Promise<void> {
       await client.query("SELECT pg_advisory_lock($1)", [PG_MIGRATE_ADVISORY_KEY.toString()]);
       logger.info({ dir: MIGRATIONS_DIR_PG }, "migrate.pg.lock-acquired");
 
-      // Snapshot the applied count BEFORE running so we can log the delta.
-      const beforeCount = await readAppliedCountPg(client);
-      const beforeStatus = diffByOrdinal(journal, beforeCount);
+      // Snapshot the ledger BEFORE running so we can log the delta.
+      const before = await readAppliedWhensPg(client);
+      const beforeStatus = diffByWhen(journal, before);
       if (beforeStatus.pending.length === 0) {
-        logger.info({ applied: beforeCount, total: journal.length }, "migrate.pg.up-to-date");
+        logger.info({ applied: before.size, total: journal.length }, "migrate.pg.up-to-date");
       } else {
         logger.info(
           { pending: beforeStatus.pending, count: beforeStatus.pending.length },
@@ -83,21 +92,25 @@ async function migratePostgres(databaseUrl: string): Promise<void> {
 
       const db = drizzle(client);
       await migrate(db, { migrationsFolder: MIGRATIONS_DIR_PG });
+      const skipped = outOfOrderPending(journal, await readAppliedWhensPg(client));
+      if (skipped.length > 0) await applyOutOfOrderPg(client, skipped);
 
       // Re-read to confirm Drizzle actually applied what we expected.
-      const afterCount = await readAppliedCountPg(client);
-      const justApplied = journal.slice(beforeCount, afterCount).map((e) => e.tag);
+      const after = await readAppliedWhensPg(client);
+      const justApplied = journal
+        .filter((e) => after.has(e.when) && !before.has(e.when))
+        .map((e) => e.tag);
       logger.info(
         {
           applied: justApplied,
           appliedCount: justApplied.length,
-          totalApplied: afterCount,
+          totalApplied: journal.filter((e) => after.has(e.when)).length,
           totalExpected: journal.length,
         },
         "migrate.pg.complete",
       );
 
-      const finalStatus = diffByOrdinal(journal, afterCount);
+      const finalStatus = diffByWhen(journal, after);
       if (finalStatus.pending.length > 0) {
         // This should never happen - Drizzle's migrate is supposed to apply
         // everything pending. Loud warning so an operator notices.
@@ -118,17 +131,48 @@ async function migratePostgres(databaseUrl: string): Promise<void> {
   }
 }
 
-async function readAppliedCountPg(client: {
-  query: (sql: string) => Promise<{ rows: Array<Record<string, unknown>> }>;
-}): Promise<number> {
+interface PgQueryClient {
+  query: (sql: string, params?: unknown[]) => Promise<{ rows: Array<Record<string, unknown>> }>;
+}
+
+/** The ledger's `created_at` values - drizzle stores each entry's journal `when` there. */
+async function readAppliedWhensPg(client: PgQueryClient): Promise<Set<number>> {
   try {
-    const result = await client.query(
-      "SELECT COUNT(*)::int AS n FROM drizzle.__drizzle_migrations",
-    );
-    const n = result.rows[0]?.["n"];
-    return typeof n === "number" ? n : 0;
+    const result = await client.query("SELECT created_at FROM drizzle.__drizzle_migrations");
+    return new Set(result.rows.map((r) => Number(r["created_at"])));
   } catch {
-    return 0;
+    return new Set();
+  }
+}
+
+/**
+ * Apply journal entries drizzle skipped, the way drizzle would: every
+ * statement, then a ledger row with the entry's `when`, in one transaction.
+ */
+async function applyOutOfOrderPg(
+  client: PgQueryClient,
+  entries: readonly JournalEntry[],
+): Promise<void> {
+  const { readMigrationFiles } = await import("drizzle-orm/migrator");
+  const files = new Map(
+    readMigrationFiles({ migrationsFolder: MIGRATIONS_DIR_PG }).map((m) => [m.folderMillis, m]),
+  );
+  logger.info({ tags: entries.map((e) => e.tag) }, "migrate.pg.out-of-order");
+  await client.query("BEGIN");
+  try {
+    for (const entry of entries) {
+      const file = files.get(entry.when);
+      if (!file) throw new Error(`migrate.pg: no migration file for journal entry ${entry.tag}`);
+      for (const statement of file.sql) await client.query(statement);
+      await client.query(
+        'INSERT INTO drizzle.__drizzle_migrations ("hash", "created_at") VALUES ($1, $2)',
+        [file.hash, entry.when],
+      );
+    }
+    await client.query("COMMIT");
+  } catch (err) {
+    await client.query("ROLLBACK");
+    throw err;
   }
 }
 

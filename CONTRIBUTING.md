@@ -354,7 +354,9 @@ because the inline backticks terminate the template.
 - **Dependencies are managed by Renovate.** Weekly PRs, batched, with security advisories auto-merging
   if CI passes.
 - **`npm audit --omit=dev` runs in CI** and blocks high/critical findings.
-- **Auth code requires two reviewers**, one of whom is a maintainer.
+- **Every change needs an approving review from a code owner other than its author**
+  (`.github/CODEOWNERS`), and branch protection applies to admins too. Auth, RBAC, the PDNS
+  client and the workflows get that review with the threat-model paragraph below in hand.
 - **Threat-modeling is mandatory** for any change to auth, RBAC, session handling, the PDNS client,
   or the public API surface. Write a short paragraph in the PR description: what could go wrong, what
   prevents it.
@@ -373,7 +375,7 @@ because the inline backticks terminate the template.
   layer or string catalogue in the codebase today. Keep user-visible copy in the component (not
   in shared constants scattered across `lib/`) so a future extraction pass has one place to look.
 - **Accessible primitives are hand-rolled** in `components/ui/` (dialog, select-menu, data-table,
-  disclosure, switch) - there is no `react-aria` or Radix dependency. Reuse those primitives rather
+  disclosure, row-disclosure, toggle-chip, switch) - there is no `react-aria` or Radix dependency. Reuse those primitives rather
   than adding a new focus-management implementation; if one of them is missing a behaviour, fix it
   there so every consumer gets it.
 

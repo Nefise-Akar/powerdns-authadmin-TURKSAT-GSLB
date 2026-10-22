@@ -3,10 +3,12 @@
 /**
  * components/domain/health-bell.tsx
  *
- * Top-bar notification bell for backend health advisories (ADR-0015). The
- * server passes the confirmed advisory set (already debounced + permission-
- * scoped); this renders the count badge + a dropdown. Acknowledging POSTs to
- * the ack route then refreshes so the list reflects the new state.
+ * Top-bar notification bell (ADR-0015): backend health and zone monitoring.
+ * The server passes a short preview (the most pressing few, already filtered
+ * to what this user may see) and the counts, not the whole list, so a fleet
+ * with hundreds of findings costs every page render nothing extra. "Show all"
+ * opens the Notifications page. Dismissing POSTs to the dismiss route, which
+ * re-checks visibility, then refreshes in place.
  *
  * Presentational only - no lib/db / lib/pdns imports (three-layer boundary).
  */
@@ -14,39 +16,28 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Bell } from "lucide-react";
+import { ArrowRight, Bell, CheckCircle2 } from "lucide-react";
+import type { AppNotification, NotificationSummary } from "@/lib/health/notifications";
 import { apiFetch } from "@/lib/client/api-fetch";
 import { useDialog } from "@/components/ui/dialog";
+import { LocalTime } from "@/components/ui/local-time";
 import { useRealtimeEvent } from "@/components/realtime/realtime-provider";
 import { buttonClass, iconButtonClass } from "@/components/ui/button";
+import {
+  badgeCount,
+  bellLabel,
+  severityDotClass,
+  severityWord,
+  summaryLine,
+} from "@/components/domain/notification-format";
 
-export interface BellAdvisory {
-  id: string;
-  backendId: string;
-  backendName: string;
-  /** "error" | "warn" | "info". */
-  severity: string;
-  title: string;
-  detail: string;
-  acknowledged: boolean;
-}
-
-// Severity is a status, so it gets a status color - but always next to the
-// advisory's title, never as the only signal.
-function dotClass(severity: string): string {
-  if (severity === "error") return "bg-destructive";
-  if (severity === "warn") return "bg-warning";
-  return "bg-info";
-}
-
-/** The dot's colour, spelled out for people who can't see it. */
-function severityWord(severity: string): string {
-  if (severity === "error") return "Error";
-  if (severity === "warn") return "Warning";
-  return "Info";
-}
-
-export function HealthBell({ advisories }: { advisories: BellAdvisory[] }) {
+export function HealthBell({
+  preview,
+  summary,
+}: {
+  preview: AppNotification[];
+  summary: NotificationSummary;
+}) {
   const router = useRouter();
   const { toast } = useDialog();
   const [open, setOpen] = useState(false);
@@ -55,12 +46,11 @@ export function HealthBell({ advisories }: { advisories: BellAdvisory[] }) {
   const bellRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
 
-  // Live-update over the SSE bus (ADR-0015): the poller publishes `health.updated`
-  // only when the visible advisory set moves, so we refresh the server-rendered
-  // props in place rather than only on navigation. Debounced against a burst.
+  // The poller publishes `health.updated` only when the visible set moves;
+  // refresh the server-rendered props in place. Debounced against a burst.
   const lastRefreshAt = useRef<number>(0);
   useRealtimeEvent(
-    (event) => event.type === "health.updated",
+    (event) => event.type === "health.updated" || event.type === "realtime.reconnected",
     () => {
       const now = Date.now();
       if (now - lastRefreshAt.current < 500) return;
@@ -90,18 +80,18 @@ export function HealthBell({ advisories }: { advisories: BellAdvisory[] }) {
     };
   }, [open]);
 
-  // Move focus into the panel on open so the list is the next thing read.
   useEffect(() => {
     if (open) panelRef.current?.focus();
   }, [open]);
 
-  const unacked = advisories.filter((a) => !a.acknowledged);
-  const count = unacked.length;
+  const count = summary.active;
+  const total = summary.active + summary.dismissed;
+  const summaryText = summaryLine(summary);
 
-  async function acknowledge(id: string) {
-    setBusy(id);
+  async function dismiss(n: AppNotification) {
+    setBusy(n.id);
     try {
-      const res = await apiFetch(`/api/admin/backend-advisories/${id}/ack`, { method: "POST" });
+      const res = await apiFetch(`/api/admin/backend-advisories/${n.id}/ack`, { method: "POST" });
       if (res.ok) {
         router.refresh();
         return;
@@ -109,14 +99,14 @@ export function HealthBell({ advisories }: { advisories: BellAdvisory[] }) {
       const data = (await res.json().catch(() => null)) as { error?: string } | null;
       toast({
         kind: "error",
-        title: "Could not dismiss advisory",
+        title: "Could not dismiss the notification",
         description: data?.error ?? `The server answered ${res.status}.`,
       });
     } catch {
       toast({
         kind: "error",
-        title: "Could not dismiss advisory",
-        description: "Network error - the advisory is still active.",
+        title: "Could not dismiss the notification",
+        description: "Network error - it is still active.",
       });
     } finally {
       setBusy(null);
@@ -129,7 +119,7 @@ export function HealthBell({ advisories }: { advisories: BellAdvisory[] }) {
         ref={bellRef}
         type="button"
         onClick={() => setOpen((v) => !v)}
-        aria-label={`Backend health, ${count} active ${count === 1 ? "issue" : "issues"}`}
+        aria-label={bellLabel(summary)}
         aria-expanded={open}
         aria-haspopup="dialog"
         className={iconButtonClass("lg", "relative")}
@@ -140,81 +130,110 @@ export function HealthBell({ advisories }: { advisories: BellAdvisory[] }) {
           // 1.5px card-colored ring separates it from the bell glyph.
           <span
             aria-hidden
-            className="bg-primary text-mono-meta text-primary-foreground ring-card absolute top-1 right-1 flex h-4 min-w-4 items-center justify-center rounded-sm px-1 font-mono font-medium tabular-nums ring-[1.5px]"
+            className={`text-mono-meta ring-card absolute top-1 right-1 flex h-4 min-w-4 items-center justify-center rounded-sm px-1 font-mono font-medium tabular-nums ring-[1.5px] ${
+              summary.error > 0
+                ? "bg-destructive text-destructive-foreground"
+                : "bg-primary text-primary-foreground"
+            }`}
           >
-            {count}
+            {badgeCount(count)}
           </span>
         ) : null}
       </button>
 
       {open ? (
-        <div>
-          {/* Mobile: fixed to the viewport with small gutters so the dropdown
-              can't overflow the right edge (the bell sits near it). sm+: back
-              to absolute-anchored under the bell at a fixed 24rem width. */}
-          <div
-            ref={panelRef}
-            role="dialog"
-            aria-label="Backend health"
-            tabIndex={-1}
-            className="border-border bg-popover text-popover-foreground fixed inset-x-3 top-14 z-20 mt-1 overflow-hidden rounded-md border outline-none sm:absolute sm:inset-x-auto sm:top-auto sm:right-0 sm:w-96"
-          >
-            <div className="border-border text-h3 border-b px-3 py-2">Backend health</div>
-            {advisories.length === 0 ? (
-              <p className="text-body text-muted-foreground px-3 py-6 text-center">
-                All backends are healthy.
+        // Mobile: pinned to the viewport with small gutters (the bell sits near
+        // the right edge). sm+: anchored under the bell, wider again on lg.
+        <div
+          ref={panelRef}
+          role="dialog"
+          aria-label="Notifications"
+          tabIndex={-1}
+          className="border-border bg-popover text-popover-foreground fixed inset-x-3 top-14 z-20 mt-1 overflow-hidden rounded-md border outline-none sm:absolute sm:inset-x-auto sm:top-auto sm:right-0 sm:w-[26rem] lg:w-[30rem]"
+        >
+          <div className="border-border flex items-center justify-between gap-3 border-b px-3 py-2">
+            <div className="min-w-0">
+              <p className="text-h3">Notifications</p>
+              <p className="text-meta text-muted-foreground truncate">
+                {summaryText || "Nothing needs attention"}
               </p>
-            ) : (
-              <ul className="divide-border max-h-[60vh] divide-y overflow-y-auto">
-                {advisories.map((a) => (
-                  <li key={a.id} className="text-body px-3 py-2.5">
-                    <div className="flex items-start gap-2">
-                      <span
-                        aria-hidden
-                        className={`mt-[7px] size-1.5 shrink-0 rounded-full ${dotClass(a.severity)}`}
-                      />
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-baseline justify-between gap-2">
-                          <span
-                            className={
-                              a.acknowledged ? "text-muted-foreground" : "text-body-strong"
-                            }
-                          >
-                            <span className="sr-only">{severityWord(a.severity)}: </span>
-                            {a.title}
-                          </span>
-                          <Link
-                            href={`/admin/servers/${a.backendId}`}
-                            className="text-meta text-primary hover:text-primary-hover shrink-0 hover:underline"
-                            onClick={() => setOpen(false)}
-                          >
-                            {a.backendName}
-                          </Link>
-                        </div>
-                        <p className="text-body-sm text-muted-foreground mt-0.5">{a.detail}</p>
-                        {!a.acknowledged ? (
-                          <button
-                            type="button"
-                            onClick={() => acknowledge(a.id)}
-                            disabled={busy === a.id}
-                            aria-busy={busy === a.id}
-                            className={buttonClass({ variant: "link", size: "xs" })}
-                          >
-                            Dismiss
-                            <span className="sr-only"> {a.title}</span>
-                          </button>
-                        ) : (
-                          <span className="text-meta text-muted-foreground mt-1 inline-block">
-                            Dismissed
-                          </span>
-                        )}
+            </div>
+            {total > 0 ? (
+              <Link
+                href="/notifications"
+                onClick={() => setOpen(false)}
+                className="text-meta text-primary hover:text-primary-hover shrink-0 hover:underline"
+              >
+                View all
+              </Link>
+            ) : null}
+          </div>
+
+          {preview.length === 0 ? (
+            <div className="flex flex-col items-center gap-2 px-3 py-6 text-center">
+              <CheckCircle2 aria-hidden strokeWidth={1.75} className="text-success size-5" />
+              <p className="text-body-medium">You&apos;re all caught up</p>
+              {summary.dismissed > 0 ? (
+                <p className="text-meta text-muted-foreground">{summary.dismissed} dismissed</p>
+              ) : null}
+            </div>
+          ) : (
+            <ul className="divide-border max-h-[60vh] divide-y overflow-y-auto">
+              {preview.map((n) => (
+                <li key={n.id} className="text-body px-3 py-2.5">
+                  <div className="flex items-start gap-2">
+                    <span
+                      aria-hidden
+                      className={`mt-[7px] size-1.5 shrink-0 rounded-full ${severityDotClass(n.severity)}`}
+                    />
+                    <div className="min-w-0 flex-1">
+                      <Link
+                        href={n.href}
+                        onClick={() => setOpen(false)}
+                        className="text-body-strong line-clamp-2 break-words hover:underline"
+                      >
+                        <span className="sr-only">{severityWord(n.severity)}: </span>
+                        {n.title}
+                      </Link>
+                      <p className="text-body-sm text-muted-foreground mt-0.5 line-clamp-2 break-words">
+                        {n.detail}
+                      </p>
+                      <div className="text-meta text-muted-foreground mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
+                        <span>{n.source === "zone" ? "Zone monitoring" : "Backend health"}</span>
+                        <span className="font-mono">{n.backendName}</span>
+                        <LocalTime ts={n.lastSeenAt} style="relative" />
+                        <button
+                          type="button"
+                          onClick={() => void dismiss(n)}
+                          disabled={busy === n.id}
+                          aria-busy={busy === n.id}
+                          className={buttonClass({
+                            variant: "link",
+                            size: "xs",
+                            className: "ml-auto",
+                          })}
+                        >
+                          {busy === n.id ? "Dismissing…" : "Dismiss"}
+                          <span className="sr-only"> {n.title}</span>
+                        </button>
                       </div>
                     </div>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {total > 0 ? (
+            <Link
+              href="/notifications"
+              onClick={() => setOpen(false)}
+              className="border-border text-body-medium text-primary hover:bg-muted focus-visible:shadow-focus-ring flex items-center justify-center gap-1.5 border-t px-3 py-2 focus-visible:outline-hidden"
+            >
+              Show all {total} notification{total === 1 ? "" : "s"}
+              <ArrowRight aria-hidden strokeWidth={1.75} className="size-4" />
+            </Link>
+          ) : null}
         </div>
       ) : null}
     </div>

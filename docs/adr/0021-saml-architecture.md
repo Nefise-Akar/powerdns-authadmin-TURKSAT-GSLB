@@ -1,4 +1,4 @@
-# ADR-0021: SAML 2.0 service-provider architecture
+# ADR 0021 - SAML 2.0 service-provider architecture
 
 - **Status:** Accepted
 - **Date:** 2026-05-28

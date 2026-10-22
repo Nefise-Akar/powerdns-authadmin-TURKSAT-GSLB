@@ -4,6 +4,9 @@ Practical, task-oriented guides for installing, configuring, and operating
 PowerDNS-AuthAdmin - a self-hosted DNS administration UI for PowerDNS
 Authoritative.
 
+These guides are also published at https://powerdns-authadmin.org/docs/ (searchable, synced from
+this folder on every release).
+
 New here? Start with the **[Quickstart](./01-QUICKSTART.md)** - a running stack with
 demo zones in about two minutes - then come back for the production guides.
 

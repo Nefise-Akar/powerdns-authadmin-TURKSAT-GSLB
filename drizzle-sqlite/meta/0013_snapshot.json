@@ -1,8 +1,8 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "999cf79f-7ae9-4757-84dd-1f2b5b540776",
-  "prevId": "ff2391f1-0886-4301-96b9-24b6d5b3d2b0",
+  "id": "ff2391f1-0886-4301-96b9-24b6d5b3d2b0",
+  "prevId": "0829d7d0-6ed8-43da-94d0-270b792c0de5",
   "tables": {
     "users": {
       "name": "users",
@@ -1186,6 +1186,14 @@
         },
         "is_default": {
           "name": "is_default",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": false
+        },
+        "monitor_accept_single_ns": {
+          "name": "monitor_accept_single_ns",
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
@@ -2915,35 +2923,6 @@
           "notNull": false,
           "autoincrement": false
         },
-        "pool_zone_server_id": {
-          "name": "pool_zone_server_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "pool_zone_cluster_id": {
-          "name": "pool_zone_cluster_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "pool_zone_name": {
-          "name": "pool_zone_name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "pool_label": {
-          "name": "pool_label",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "'gslb-pools'"
-        },
         "created_by": {
           "name": "created_by",
           "type": "text",
@@ -2976,32 +2955,6 @@
         }
       },
       "foreignKeys": {
-        "gslb_backends_pool_zone_server_id_pdns_servers_id_fk": {
-          "name": "gslb_backends_pool_zone_server_id_pdns_servers_id_fk",
-          "tableFrom": "gslb_backends",
-          "tableTo": "pdns_servers",
-          "columnsFrom": [
-            "pool_zone_server_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
-          "onUpdate": "no action"
-        },
-        "gslb_backends_pool_zone_cluster_id_pdns_clusters_id_fk": {
-          "name": "gslb_backends_pool_zone_cluster_id_pdns_clusters_id_fk",
-          "tableFrom": "gslb_backends",
-          "tableTo": "pdns_clusters",
-          "columnsFrom": [
-            "pool_zone_cluster_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
-          "onUpdate": "no action"
-        },
         "gslb_backends_created_by_users_id_fk": {
           "name": "gslb_backends_created_by_users_id_fk",
           "tableFrom": "gslb_backends",
@@ -3174,14 +3127,6 @@
           "notNull": true,
           "autoincrement": false
         },
-        "delegated": {
-          "name": "delegated",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": true
-        },
         "created_by": {
           "name": "created_by",
           "type": "text",
@@ -3318,13 +3263,6 @@
           "notNull": true,
           "autoincrement": false
         },
-        "pool_id": {
-          "name": "pool_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
         "name": {
           "name": "name",
           "type": "text",
@@ -3440,19 +3378,6 @@
           "tableTo": "gslb_backends",
           "columnsFrom": [
             "backend_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        },
-        "gslb_records_pool_id_gslb_pools_id_fk": {
-          "name": "gslb_records_pool_id_gslb_pools_id_fk",
-          "tableFrom": "gslb_records",
-          "tableTo": "gslb_pools",
-          "columnsFrom": [
-            "pool_id"
           ],
           "columnsTo": [
             "id"
@@ -3616,143 +3541,6 @@
           "value": "(\"gslb_record_presets\".\"server_id\" IS NULL) <> (\"gslb_record_presets\".\"cluster_id\" IS NULL)"
         }
       }
-    },
-    "gslb_pools": {
-      "name": "gslb_pools",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "text",
-          "primaryKey": true,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "backend_id": {
-          "name": "backend_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "slug": {
-          "name": "slug",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "name": {
-          "name": "name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "description": {
-          "name": "description",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "kind": {
-          "name": "kind",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "mode": {
-          "name": "mode",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "monitor": {
-          "name": "monitor",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "ttl": {
-          "name": "ttl",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "members": {
-          "name": "members",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "created_by": {
-          "name": "created_by",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        }
-      },
-      "indexes": {
-        "gslb_pools_backend_slug_idx": {
-          "name": "gslb_pools_backend_slug_idx",
-          "columns": [
-            "backend_id",
-            "slug"
-          ],
-          "isUnique": true
-        }
-      },
-      "foreignKeys": {
-        "gslb_pools_backend_id_gslb_backends_id_fk": {
-          "name": "gslb_pools_backend_id_gslb_backends_id_fk",
-          "tableFrom": "gslb_pools",
-          "tableTo": "gslb_backends",
-          "columnsFrom": [
-            "backend_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        },
-        "gslb_pools_created_by_users_id_fk": {
-          "name": "gslb_pools_created_by_users_id_fk",
-          "tableFrom": "gslb_pools",
-          "tableTo": "users",
-          "columnsFrom": [
-            "created_by"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "checkConstraints": {}
     }
   },
   "views": {},

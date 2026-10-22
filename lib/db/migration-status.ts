@@ -142,3 +142,55 @@ export function diffByOrdinal(expected: JournalEntry[], appliedCount: number): M
   );
   return buildStatus(expected, pseudoApplied);
 }
+
+/**
+ * Diff the journal against the `created_at` values in `__drizzle_migrations`.
+ * Drizzle writes each migration's journal `when` there verbatim, so - unlike
+ * the row count - this names the right pending entries even when the journal
+ * holds an entry out of `when` order (see `outOfOrderPending`).
+ */
+export function diffByWhen(
+  expected: JournalEntry[],
+  appliedWhens: ReadonlySet<number>,
+): MigrationStatus {
+  const byWhen = new Map(expected.map((e) => [e.when, e.tag]));
+  return buildStatus(
+    expected,
+    [...appliedWhens].map((when) => byWhen.get(when) ?? `when-${when}`),
+  );
+}
+
+/**
+ * Journal entries drizzle's migrator will never apply on this database although
+ * the ledger has no row for them.
+ *
+ * Drizzle 0.45 is a high-water-mark migrator: it reads the newest ledger
+ * `created_at` and applies only entries whose `when` is greater. An entry
+ * whose `when` is LOWER than an entry before it in the journal is skipped on
+ * any database that already recorded that earlier entry. The journal holds
+ * such entries on purpose: this fork's GSLB migrations (0009-0015) were
+ * generated before upstream's 0008 but sit after it, keeping their original
+ * `when` so databases that already applied them under their old numbers
+ * (0008-0014) recognise them. A database coming from plain upstream (0008
+ * applied, none of ours) would silently skip them - the runner applies what
+ * this returns after drizzle has run. See docs/09-UPGRADING.md.
+ *
+ * Only out-of-order entries qualify: an in-order entry below the high-water
+ * mark without a ledger row is history (a squashed or renamed migration), not
+ * something to run again.
+ */
+export function outOfOrderPending(
+  expected: JournalEntry[],
+  appliedWhens: ReadonlySet<number>,
+): JournalEntry[] {
+  let highWater = Number.NEGATIVE_INFINITY;
+  for (const when of appliedWhens) highWater = Math.max(highWater, when);
+  const out: JournalEntry[] = [];
+  let maxBefore = Number.NEGATIVE_INFINITY;
+  for (const entry of expected) {
+    const outOfOrder = entry.when < maxBefore;
+    maxBefore = Math.max(maxBefore, entry.when);
+    if (outOfOrder && entry.when <= highWater && !appliedWhens.has(entry.when)) out.push(entry);
+  }
+  return out;
+}

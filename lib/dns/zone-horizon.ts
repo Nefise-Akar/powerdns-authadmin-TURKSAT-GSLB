@@ -33,6 +33,38 @@ export const ZONE_HORIZONS = ["public", "internal"] as const satisfies readonly 
  */
 export const DEFAULT_ZONE_HORIZON: ZoneHorizon = "public";
 
+/**
+ * Names that can never be delegated on the internet: ICANN's `.internal`
+ * (reserved for private use), `home.arpa` (RFC 8375), `.local` (mDNS, RFC
+ * 6762) and the RFC 6761 special-use names. A zone at or under one of them
+ * can only be an internal zone, so judging it as public (Zone Monitoring
+ * walking a delegation from the root, matching it against public reverse
+ * zones) only produces false errors (#181).
+ */
+const PRIVATE_USE_NAMES = [
+  "internal.",
+  "home.arpa.",
+  "local.",
+  "test.",
+  "invalid.",
+  "localhost.",
+] as const;
+
+/** Whether a zone is at or under a name reserved for private or local use. */
+export function isPrivateUseZoneName(zoneName: string): boolean {
+  const normalized = `${zoneName.trim().toLowerCase().replace(/\.+$/, "")}.`;
+  return PRIVATE_USE_NAMES.some((name) => normalized === name || normalized.endsWith(`.${name}`));
+}
+
+/**
+ * The horizon a zone has when the operator hasn't classified it: internal
+ * under a private-use name, else {@link DEFAULT_ZONE_HORIZON}. Every fallback
+ * goes through this, so the list, Reverse DNS and Zone Monitoring agree.
+ */
+export function defaultZoneHorizonForName(zoneName: string): ZoneHorizon {
+  return isPrivateUseZoneName(zoneName) ? "internal" : DEFAULT_ZONE_HORIZON;
+}
+
 export function isZoneHorizon(value: unknown): value is ZoneHorizon {
   return value === "public" || value === "internal";
 }

@@ -66,6 +66,29 @@ automatically.
 
 ---
 
+## Notifications
+
+Every notification the bell can show - backend health and zone monitoring
+findings - with status, severity and source filters, search, an expandable
+detail row, and per-row or bulk dismissal. Each row is visible only to users
+who can read what it is about.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="./dark/notifications.png" />
+  <img src="./light/notifications.png" alt="Notifications" />
+</picture>
+
+<p align="center">
+  <picture>
+  <source media="(prefers-color-scheme: dark)" srcset="./dark/notifications-mobile.png" />
+  <img src="./light/notifications-mobile.png" alt="Notifications on mobile" width="300" />
+  </picture>
+</p>
+
+→ [The bell and the sidebar](../docs/FEATURES.md#205-the-bell-and-the-sidebar)
+
+---
+
 ## Zones - amalgamated list
 
 Every backend's zones merged into one searchable list, with kind, serial,
@@ -90,13 +113,85 @@ view. Live-updates over SSE; sort/filter/paginate client-side.
 
 ---
 
+## Reverse DNS
+
+Every A/AAAA record across the fleet compared with its PTR - ok, missing,
+mismatch, ambiguous, orphan, not hosted - scoped by horizon, with rows that
+report the same finding grouped, and per-row, selected or all-fixable
+rectification through the same audited path as auto-PTR. Opt-in with
+`REVERSE_DNS_ENABLED=true`.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="./dark/reverse-dns.png" />
+  <img src="./light/reverse-dns.png" alt="Reverse DNS" />
+</picture>
+
+<p align="center">
+  <picture>
+  <source media="(prefers-color-scheme: dark)" srcset="./dark/reverse-dns-mobile.png" />
+  <img src="./light/reverse-dns-mobile.png" alt="Reverse DNS on mobile" width="300" />
+  </picture>
+</p>
+
+→ [Automatic PTR maintenance](../docs/FEATURES.md#48-automatic-ptr-maintenance-auto-ptr)
+
+---
+
+## Zone Monitoring
+
+Every hosted zone checked from the outside on a schedule: the delegation
+walked from the root servers, each nameserver's answers and serial, open
+AXFR, the DNSSEC chain and what resolvers see. Findings carry stable codes
+and severities and feed the bell; expand a row for the detail. Opt-in with
+`ZONE_MONITOR_ENABLED=true` (the demo's `.demo` zones are not delegated, hence
+the errors).
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="./dark/zone-monitoring.png" />
+  <img src="./light/zone-monitoring.png" alt="Zone Monitoring" />
+</picture>
+
+<p align="center">
+  <picture>
+  <source media="(prefers-color-scheme: dark)" srcset="./dark/zone-monitoring-mobile.png" />
+  <img src="./light/zone-monitoring-mobile.png" alt="Zone Monitoring on mobile" width="300" />
+  </picture>
+</p>
+
+→ [Zone monitoring](../docs/FEATURES.md#20-zone-monitoring)
+
+---
+
+## Add record wizard
+
+Add one record to any zone you may edit: pick the horizon and the zone with
+a type-ahead across every backend, enter the record with a live "already
+exists / available" check, review the diff, then watch it reach every
+secondary or cluster peer.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="./dark/add-record.png" />
+  <img src="./light/add-record.png" alt="Add record wizard" />
+</picture>
+
+<p align="center">
+  <picture>
+  <source media="(prefers-color-scheme: dark)" srcset="./dark/add-record-mobile.png" />
+  <img src="./light/add-record-mobile.png" alt="Add record wizard on mobile" width="300" />
+  </picture>
+</p>
+
+→ [Add record wizard](../docs/FEATURES.md#49-add-record-wizard)
+
+---
+
 ## Zone detail
 
 Per-zone landing: kind / serial / DNSSEC status; last-edit attribution;
 backend (with cluster + RRset count); Clone-zone button; tabs for
 **Records**, **SOA**, **Zone settings**, **DNSSEC**, **Metadata & TSIG**,
 **Sync** and **Statistics** (with `PDNS_BACKGROUND_POLLING=true`), **Access**,
-**Change history** - each shown only to users holding its read permission.
+**Change log** - each shown only to users holding its read permission.
 The records table groups records by RRset and surfaces type / TTL /
 value / comment in a per-row editor.
 
@@ -164,26 +259,50 @@ lands in [Audit log](#audit-log)).
 
 ---
 
-## Zone change history
+## Zone change log
 
-The audit log filtered to a single zone, with before / after diffs, the
-acting user, and a request-id deep-link to every related audit row
-(NOTIFY, PDNS HTTP traffic, etc.). Filters: search, action, actor,
-date range; click any row to reveal the full diff in place.
+A zone's Change log tab: the audit log filtered to that zone, with before /
+after diffs, the acting user, and a request-id deep-link to every related
+audit row (NOTIFY, PDNS HTTP traffic, etc.). Filters: search, action, actor,
+date range; click any row to reveal the full diff in place. **Show all
+changes** opens the fleet-wide Change log.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="./dark/zone-change-history.png" />
-  <img src="./light/zone-change-history.png" alt="Zone change history" />
+  <img src="./light/zone-change-history.png" alt="Zone change log" />
 </picture>
 
 <p align="center">
   <picture>
   <source media="(prefers-color-scheme: dark)" srcset="./dark/zone-change-history-mobile.png" />
-  <img src="./light/zone-change-history-mobile.png" alt="Zone change history on mobile" width="300" />
+  <img src="./light/zone-change-history-mobile.png" alt="Zone change log on mobile" width="300" />
   </picture>
 </p>
 
-→ [Zone change history](../docs/FEATURES.md#45-zone-change-history)
+→ [Zone change log](../docs/FEATURES.md#45-zone-change-log)
+
+---
+
+## Change log
+
+What people changed, everywhere: records, zones, DNSSEC, users and access, and
+configuration, in the zone page's own layout plus a Zone column and a Category
+filter. Under **Logs** in the sidebar, beside the Request log and Audit log;
+needs global `audit.read`.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="./dark/change-log.png" />
+  <img src="./light/change-log.png" alt="Change log" />
+</picture>
+
+<p align="center">
+  <picture>
+  <source media="(prefers-color-scheme: dark)" srcset="./dark/change-log-mobile.png" />
+  <img src="./light/change-log-mobile.png" alt="Change log on mobile" width="300" />
+  </picture>
+</p>
+
+→ [Change log](../docs/FEATURES.md#92-change-log)
 
 ---
 

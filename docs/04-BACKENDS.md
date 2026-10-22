@@ -35,14 +35,15 @@ Two ways, both equivalent - they write the same `pdns_servers` row:
 - **Admin UI** → **Admin → PowerDNS servers → Add server**.
 - **Provisioning** → the `pdns_servers:` block (see [Provisioning](./06-PROVISIONING.md)).
 
-| Field               | Notes                                                                                                                                         |
-| ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Name** / **slug** | Display name and URL-safe identifier.                                                                                                         |
-| **Base URL**        | The API root, ending in `/api/v1`. `https://` required in production unless `APP_PDNS_ALLOW_INSECURE_HTTP=true`.                              |
-| **Server ID**       | The PDNS server-id path segment - almost always `localhost`.                                                                                  |
-| **API key**         | The `X-API-Key`. Encrypted at rest with `APP_ENCRYPTION_KEY`; never sent back to the browser.                                                 |
-| **Cluster**         | The group this backend belongs to - a multi-primary cluster, or a primary with its secondaries (`cluster_slug`).                              |
-| **Read-only**       | **Never write to this backend** (`write_mode: read_only`) - see [hidden primary](#hidden-primary--read-only-public-nameservers-native-zones). |
+| Field                 | Notes                                                                                                                                                                                                                                            |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Name** / **slug**   | Display name and URL-safe identifier.                                                                                                                                                                                                            |
+| **Base URL**          | The API root, ending in `/api/v1`. `https://` required in production unless `APP_PDNS_ALLOW_INSECURE_HTTP=true`.                                                                                                                                 |
+| **Server ID**         | The PDNS server-id path segment - almost always `localhost`.                                                                                                                                                                                     |
+| **API key**           | The `X-API-Key`. Encrypted at rest with `APP_ENCRYPTION_KEY`; never sent back to the browser.                                                                                                                                                    |
+| **Cluster**           | The group this backend belongs to - a multi-primary cluster, or a primary with its secondaries (`cluster_slug`).                                                                                                                                 |
+| **Read-only**         | **Never write to this backend** (`write_mode: read_only`) - see [hidden primary](#hidden-primary--read-only-public-nameservers-native-zones).                                                                                                    |
+| **Single nameserver** | **Don't warn about single-nameserver zones on this backend** (`monitor_accept_single_ns`). Shown only for a backend outside any group. Zone monitoring then reports `nameserver.count` as accepted information instead of a warning in the bell. |
 
 There is no role field. Whether a backend is a primary or a secondary is
 **observed** from its `/config` (`primary`, `secondary`, `autosecondary` - see
@@ -286,6 +287,12 @@ on the primary so ALIASes are transferred expanded (and signed). Their
 addresses then only refresh on the next transfer. Enabling DNSSEC returns a
 warning when the zone holds either type.
 
+PowerDNS 5.1 makes LUA records immutable unless `enable-lua-record-updates=yes`.
+That covers AXFR/IXFR as well as the API, so a 5.1 secondary left at the
+default refuses to take LUA records from its primary. Set it on every 5.1
+daemon whose zones carry LUA records, the primary for edits through
+AuthAdmin and each secondary for transfers.
+
 ### Rolling out safely
 
 1. **Sign.** Enable DNSSEC on the zone.
@@ -513,6 +520,28 @@ Cloning a zone that has GSLB copies its GSLB-managed names as plain records
 says how many names were converted. GSLB tables are included in the app backup
 (`Admin → Settings → Backup`); the service-account password is exported as
 ciphertext, like PowerDNS API keys.
+
+### Interplay with zone monitoring, reverse DNS and the Add record wizard
+
+Checked when the upstream 1.10/1.11 features were merged (2026-10):
+
+- **Add record wizard, MCP, inline edit.** All of them write through the same
+  RRset route, so a GSLB-managed name or the `gslb` delegation (NS + glue) is
+  refused with the usual "managed by GSLB" conflict. The wizard's existence
+  check only reads.
+- **Automatic PTR maintenance and the Reverse DNS page.** They only ever write
+  `PTR` RRsets in reverse zones; forward records are never touched. GSLB's own
+  writes (switching a name on or off, the delegation) don't run auto-PTR, so:
+  switching a name on leaves the PTR of its old address in place (the Reverse
+  DNS page may later list it as an orphan; removing it is the operator's
+  choice), switching it off restores the A/AAAA without creating a PTR, and the
+  glue A/AAAA of an in-zone GSLB nameserver (`ns1.gslb.<zone>`) shows up as an
+  address without a PTR. Rectifying any of these only writes a PTR and doesn't
+  affect GSLB.
+- **Zone monitoring.** The checks look at a hosted zone's apex (SOA, apex NS
+  and their glue, DNSKEY/DS). The `gslb.<zone>` subzone is served by
+  PowerGSLB, not hosted in PowerDNS, so it is never probed, flagged as lame or
+  offered a fix. The SOA MNAME fix only rewrites the parent zone's SOA.
 
 ---
 

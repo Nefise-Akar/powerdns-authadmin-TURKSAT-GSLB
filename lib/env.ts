@@ -19,7 +19,7 @@
  */
 
 import "server-only";
-import { randomBytes } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { z } from "zod";
 
@@ -341,6 +341,41 @@ export const envSchema = z.object({
     .pipe(z.boolean())
     .optional(),
 
+  // --- Optional fleet checks. Both are OFF unless set to "true": they add
+  // background load (a periodic read of every zone on every backend) and, for
+  // zone monitoring, outbound DNS (root servers, public resolvers, an unsigned
+  // AXFR probe to each zone's own nameservers). When off, their pages, sidebar
+  // entries, buttons, API routes and MCP tools do not exist.
+  //
+  // Zone monitoring: delegation, nameserver, DNSSEC chain, resolver view,
+  // open-AXFR and SOA checks (Zones → Zone Monitoring, bell notifications).
+  ZONE_MONITOR_ENABLED: z
+    .string()
+    .optional()
+    .transform((s) => s?.toLowerCase() === "true")
+    .pipe(z.boolean()),
+  // Reverse DNS checks: the fleet-wide A/AAAA vs PTR report (Zones → Reverse
+  // DNS), the PTR chips on record tables, and upstream PTR lookups for
+  // addresses no hosted reverse zone covers. Automatic PTR maintenance on save
+  // is separate and controlled by the `auto_ptr` setting.
+  REVERSE_DNS_ENABLED: z
+    .string()
+    .optional()
+    .transform((s) => s?.toLowerCase() === "true")
+    .pipe(z.boolean()),
+  // Seconds between full monitoring cycles; each zone is checked once per cycle,
+  // spread across the window so the fleet is never probed in one burst.
+  ZONE_MONITOR_INTERVAL_SECONDS: z.coerce.number().int().min(60).max(86400).default(900),
+  // Recursive resolvers that represent "the internet's view" of public zones,
+  // and (optionally) the internal resolvers that serve internal zones. Comma
+  // separated IP literals. Internal defaults to none: internal zones are then
+  // checked against their nameservers only.
+  ZONE_MONITOR_PUBLIC_RESOLVERS: z.string().default("1.1.1.1,8.8.8.8,9.9.9.9"),
+  ZONE_MONITOR_INTERNAL_RESOLVERS: z.string().default(""),
+  // Seconds between scattered external PTR lookups for addresses the Reverse
+  // DNS page cannot host (what the rest of the world answers for them).
+  EXTERNAL_PTR_INTERVAL_SECONDS: z.coerce.number().int().min(60).max(86400).default(300),
+
   // --- LDAP transport relaxations (mirrors the PDNS / OIDC pair) ---
   // LDAP traffic is admin-configured but it carries the user's password on
   // re-bind, so we default to strict TLS. The two opt-outs below are loud:
@@ -462,7 +497,7 @@ export const envSchema = z.object({
   /**
    * Bearer token required to scrape `/metrics`. Pin one in env for stable
    * scrape configs; if unset (and METRICS_ENABLED is true), the app
-   * generates a random 32-char token on every boot and logs it once so the
+   * generates a random 32-char token on every boot, never shown, so the
    * endpoint is never accidentally open on a shared LAN. To opt out of
    * /metrics entirely, set METRICS_ENABLED=false.
    */
@@ -599,6 +634,12 @@ export const ENV_KEYS = [
   "APP_PDNS_ALLOW_PRIVATE_NETWORKS",
   "APP_PDNS_ALLOW_INSECURE_HTTP",
   "PDNS_BACKGROUND_POLLING",
+  "ZONE_MONITOR_ENABLED",
+  "REVERSE_DNS_ENABLED",
+  "ZONE_MONITOR_INTERVAL_SECONDS",
+  "ZONE_MONITOR_PUBLIC_RESOLVERS",
+  "ZONE_MONITOR_INTERNAL_RESOLVERS",
+  "EXTERNAL_PTR_INTERVAL_SECONDS",
   "APP_OIDC_ALLOW_PRIVATE_NETWORKS",
   "APP_OIDC_ALLOW_INSECURE_HTTP",
   "APP_GSLB_ALLOW_PRIVATE_NETWORKS",
@@ -802,10 +843,14 @@ function parseEnv(): Env {
   ) {
     const generated = randomBytes(24).toString("base64url"); // 32 url-safe chars
     parsed.METRICS_TOKEN = generated;
+    // The token itself never reaches the log: stdout is shipped to log
+    // collectors, and it is the /metrics bearer credential (#182). Nothing can
+    // scrape with it, so say so; the fingerprint only tells boots apart.
+    const fingerprint = createHash("sha256").update(generated).digest("hex").slice(0, 8);
     console.log(
-      `[env] METRICS_TOKEN not provided, randomly generated instead: ${generated}\n` +
-        "       Scrape with: Authorization: Bearer <token>. Pin it via .env (or set\n" +
-        "       METRICS_ENABLED=false to opt out of the /metrics endpoint).",
+      `[env] METRICS_TOKEN not set: /metrics is locked behind a random token (fingerprint ${fingerprint})\n` +
+        "       that is not shown and changes on every boot. To scrape it, set METRICS_TOKEN\n" +
+        "       (≥16 chars, e.g. `openssl rand -hex 32`) in .env; to drop it, set METRICS_ENABLED=false.",
     );
   }
 
@@ -857,3 +902,29 @@ export const cookieDomain: string | undefined = env.COOKIE_DOMAIN ?? new URL(env
  * docstring above for full feature matrix.
  */
 export const pdnsBackgroundPollingEnabled: boolean = env.PDNS_BACKGROUND_POLLING === true;
+
+/** A comma-separated resolver list from the environment, IP literals only. */
+function resolverList(raw: string): string[] {
+  return raw
+    .split(",")
+    .map((v) => v.trim())
+    .filter((v) => v !== "" && /^[0-9a-fA-F.:]+$/.test(v));
+}
+
+/**
+ * The opt-in fleet checks (both off by default). Pages, routes, nav entries
+ * and MCP tools consult this so a disabled feature leaves no trace in the UI.
+ */
+export const optionalFeatures = {
+  zoneMonitoring: env.ZONE_MONITOR_ENABLED,
+  reverseDns: env.REVERSE_DNS_ENABLED,
+} as const;
+
+/** Zone monitoring knobs - see `ZONE_MONITOR_*` above. */
+export const zoneMonitorConfig = {
+  enabled: env.ZONE_MONITOR_ENABLED,
+  intervalMs: env.ZONE_MONITOR_INTERVAL_SECONDS * 1000,
+  publicResolvers: resolverList(env.ZONE_MONITOR_PUBLIC_RESOLVERS),
+  internalResolvers: resolverList(env.ZONE_MONITOR_INTERNAL_RESOLVERS),
+  externalPtrIntervalMs: env.EXTERNAL_PTR_INTERVAL_SECONDS * 1000,
+} as const;

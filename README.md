@@ -14,9 +14,10 @@
 [![CI](https://github.com/PowerDNS-AuthAdmin/powerdns-authadmin/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/PowerDNS-AuthAdmin/powerdns-authadmin/actions/workflows/ci.yml?query=branch%3Amain)
 [![Release](https://img.shields.io/github/v/release/PowerDNS-AuthAdmin/powerdns-authadmin)](https://github.com/PowerDNS-AuthAdmin/powerdns-authadmin/releases/latest)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/PowerDNS-AuthAdmin/powerdns-authadmin/badge)](https://scorecard.dev/viewer/?uri=github.com/PowerDNS-AuthAdmin/powerdns-authadmin)
+[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/12974/badge)](https://www.bestpractices.dev/projects/12974)
 
 [![Container: GHCR](https://img.shields.io/badge/ghcr.io-powerdns--authadmin-2496ED?logo=docker&logoColor=white)](https://github.com/PowerDNS-AuthAdmin/powerdns-authadmin/pkgs/container/powerdns-authadmin)
-[![GHCR version](https://ghcr-badge.ngn.au/powerdns-authadmin/powerdns-authadmin/latest_tag?ignore=latest,edge,*sha*&label=ghcr.io&color=%232ea44f)](https://github.com/PowerDNS-AuthAdmin/powerdns-authadmin/pkgs/container/powerdns-authadmin)
+[![GHCR version](https://ghcr-badge.ngn.au/powerdns-authadmin/powerdns-authadmin/latest_tag?ignore=latest,edge,%2Asha%2A,%5B0-9%5D,%5B0-9%5D.%5B0-9%5D,%5B0-9%5D.%5B0-9%5D%5B0-9%5D&label=ghcr.io&color=%232ea44f)](https://github.com/PowerDNS-AuthAdmin/powerdns-authadmin/pkgs/container/powerdns-authadmin)
 [![GHCR pulls](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fghcr-badge.elias.eu.org%2Fapi%2Fpowerdns-authadmin%2Fpowerdns-authadmin&query=%24.downloadCount&label=ghcr%20pulls&logo=docker&logoColor=white&color=2496ED)](https://github.com/PowerDNS-AuthAdmin/powerdns-authadmin/pkgs/container/powerdns-authadmin)
 [![GHCR image size](https://ghcr-badge.ngn.au/powerdns-authadmin/powerdns-authadmin/size?tag=latest&label=image%20size&color=%232ea44f)](https://github.com/PowerDNS-AuthAdmin/powerdns-authadmin/pkgs/container/powerdns-authadmin)
 
@@ -25,6 +26,7 @@
 [![TypeScript strict](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white)](tsconfig.json)
 
 **[Website](https://powerdns-authadmin.org/)**  
+**[Docs](https://powerdns-authadmin.org/docs/)**  
 **[Live demo](https://demo.powerdns-authadmin.org/)** (sign in with `admin@example.com` / `change-me-now`)
 
 PowerDNS-AuthAdmin manages one or many PowerDNS Authoritative backends from a single web app. It
@@ -40,6 +42,7 @@ ready-to-use install without a single click.
 [![PowerDNS 4.8](https://github.com/PowerDNS-AuthAdmin/powerdns-authadmin/actions/workflows/pdns-compat-48.yml/badge.svg)](https://github.com/PowerDNS-AuthAdmin/powerdns-authadmin/actions/workflows/pdns-compat-48.yml)
 [![PowerDNS 4.9](https://github.com/PowerDNS-AuthAdmin/powerdns-authadmin/actions/workflows/pdns-compat-49.yml/badge.svg)](https://github.com/PowerDNS-AuthAdmin/powerdns-authadmin/actions/workflows/pdns-compat-49.yml)
 [![PowerDNS 5.0](https://github.com/PowerDNS-AuthAdmin/powerdns-authadmin/actions/workflows/pdns-compat-50.yml/badge.svg)](https://github.com/PowerDNS-AuthAdmin/powerdns-authadmin/actions/workflows/pdns-compat-50.yml)
+[![PowerDNS 5.1](https://github.com/PowerDNS-AuthAdmin/powerdns-authadmin/actions/workflows/pdns-compat-51.yml/badge.svg)](https://github.com/PowerDNS-AuthAdmin/powerdns-authadmin/actions/workflows/pdns-compat-51.yml)
 
 ## At a glance
 
@@ -62,6 +65,18 @@ ready-to-use install without a single click.
   the trust root), `pda_pat_` API tokens with per-token permission scopes.
 - **RP-initiated logout.** OIDC sessions sign you out at the IdP, not just locally; the
   `end_session_endpoint` + `id_token_hint` flow lands you on the IdP's signed-out screen.
+- **Reverse DNS.** Optional auto-PTR: saving an A/AAAA record keeps its PTR in a hosted
+  reverse zone in sync (global, per-zone or per-save; never creates zones, never clobbers a
+  PTR that points elsewhere), plus a fleet-wide Reverse DNS page that diffs every address
+  against its PTR and rectifies the rows you pick. **Opt-in:** auto-PTR is the `auto_ptr`
+  setting; the Reverse DNS page and PTR chips need `REVERSE_DNS_ENABLED=true`.
+- **Zone monitoring.** Every hosted zone checked from the outside on a schedule: delegation
+  at the parent (walked from the root servers, not through a resolver), nameserver
+  reachability, authority, serials and NS sets, open AXFR, DS versus DNSKEY, what public or
+  internal resolvers answer, SOA sanity and reverse-DNS drift. Stable finding codes with a
+  what-to-do, horizon-aware, bounded load, findings in the bell and a count in the sidebar.
+  **Opt-in:** set `ZONE_MONITOR_ENABLED=true` to turn it on (it sends DNS queries outside
+  your network).
 - **Zones + records.** Per-RRset editor with diff-before-apply, zone cloning, zone templates
   (NS + SOA timers + prelude records + zone-object settings + per-kind metadata), per-type
   record validators, optimistic concurrency at the RRset level.

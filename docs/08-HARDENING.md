@@ -19,6 +19,13 @@ exotic - it's the handful of things worth getting right before you expose the ap
   PowerDNS API keys and OIDC/SAML/LDAP provider secrets until first boot
   encrypts them in.
 
+- **Global search never returns secrets.** The header palette and the MCP `search` tool read
+  narrow projections that leave out password hashes, API tokens, session ids, TSIG key
+  material, OIDC/SAML/LDAP client secrets, signing keys and bind passwords, PowerDNS API keys,
+  encryption keys, SMTP passwords, WebAuthn credentials, backup contents, PowerDNS request
+  headers and bodies, and audit snapshots; backends show only their URL host, and providers
+  and TSIG keys only their name. Every source is filtered by the caller's own permissions.
+
 ## Network exposure
 
 - **Terminate TLS at a reverse proxy** and forward to port 3000. Set `APP_URL` to
@@ -33,8 +40,8 @@ exotic - it's the handful of things worth getting right before you expose the ap
   private-network/`http://` backends (see [Backends](./04-BACKENDS.md#the-ssrf-guard)).
 - **Pin `METRICS_TOKEN`.** `/metrics` is enabled by default and always
   bearer-gated: if you don't set `METRICS_TOKEN` (≥16 chars) the app generates a
-  random one on every boot and prints it once in the boot log, which makes your
-  scrape config break on each restart. Pin a token, or set
+  random one on every boot and never shows it (the boot log has only a
+  fingerprint), so nothing can scrape. Pin a token, or set
   `METRICS_ENABLED=false` if you don't scrape at all.
 
 ## Authentication
@@ -81,6 +88,17 @@ exotic - it's the handful of things worth getting right before you expose the ap
   it deliberately when you need the sync chip, drift advisories, or the
   dashboard PDNS metrics - see
   [Configuration → `PDNS_BACKGROUND_POLLING`](./03-CONFIGURATION.md#pdns_background_polling).
+- **Know that zone monitoring talks to the internet when you turn it on.** It is off
+  by default. With `ZONE_MONITOR_ENABLED=true` it is the one feature that sends packets
+  on its own: DNS on 53/udp and 53/tcp from the AuthAdmin host to the root, TLD and
+  parent servers, to every hosted zone's nameservers (including an unsigned AXFR probe
+  against those nameservers only) and to the resolvers in
+  `ZONE_MONITOR_PUBLIC_RESOLVERS` / `ZONE_MONITOR_INTERNAL_RESOLVERS`. The Reverse DNS
+  checks (`REVERSE_DNS_ENABLED=true`, also off by default) query those resolvers for
+  addresses no hosted reverse zone covers. Allow that in the egress policy before
+  enabling either; leave both off on an air-gapped install.
+  Nothing else in the app initiates outbound traffic without an operator action. See
+  [Configuration → Zone monitoring](./03-CONFIGURATION.md#zone-monitoring).
 - **Run on Postgres for anything multi-instance.** Boots are serialised by an
   advisory lock so rolling deploys are safe; SQLite is single-writer.
 - **Gate traffic on `/readyz`**, not just `/healthz` - it returns 503 while the

@@ -255,6 +255,21 @@ export function holdsOnSomeZone(
 }
 
 /**
+ * Whether the Add record wizard (/zones/new-record) admits the user: a global
+ * `record.create`, or `record.create` on at least one zone through a grant or
+ * a zone-scoped role. The wizard's zone search then offers only the zones
+ * where `canActOnZone` allows the write. Shared by the page guard, its nav
+ * entry, the Zones toolbar button and the search palette shortcut, so none of
+ * them offers a page that refuses.
+ */
+export function canUseRecordWizard(access: ZoneAccess): boolean {
+  return (
+    access.globalPermissions.has("record.create") ||
+    holdsOnSomeZone(access, (p) => p === "record.create")
+  );
+}
+
+/**
  * Expand a user's grants across cluster peers so a grant issued on one peer of
  * a multi-primary cluster authorizes the zone on EVERY peer of that cluster.
  *

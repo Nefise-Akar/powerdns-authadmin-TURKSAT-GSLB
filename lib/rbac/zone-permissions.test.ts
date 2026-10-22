@@ -4,6 +4,7 @@ import { DEFAULT_ROLES } from "./default-roles";
 import {
   canActOnZone,
   canListZones,
+  canUseRecordWizard,
   effectiveZonePermissions,
   expandGrantsAcrossClusters,
   hasZonePermissionViaGrant,
@@ -419,5 +420,44 @@ describe("expandGrantsAcrossClusters", () => {
 
   it("returns an empty array for empty input", () => {
     expect(expandGrantsAcrossClusters([], new Map())).toEqual([]);
+  });
+});
+
+describe("canUseRecordWizard", () => {
+  const access = (over: Partial<ZoneAccess>): ZoneAccess => ({
+    globalPermissions: new Set(),
+    zoneGrants: [],
+    zoneScopedPermissions: new Map(),
+    ...over,
+  });
+
+  it("admits global record.create, a grant or a zone-scoped role carrying it", () => {
+    expect(canUseRecordWizard(access({ globalPermissions: new Set(["record.create"]) }))).toBe(
+      true,
+    );
+    expect(
+      canUseRecordWizard(
+        access({
+          zoneGrants: [{ serverId: "s", zoneName: "example.com.", permissions: ["record.create"] }],
+        }),
+      ),
+    ).toBe(true);
+    expect(
+      canUseRecordWizard(
+        access({ zoneScopedPermissions: new Map([["example.com.", new Set(["record.create"])]]) }),
+      ),
+    ).toBe(true);
+  });
+
+  it("refuses read-only access", () => {
+    expect(canUseRecordWizard(access({}))).toBe(false);
+    expect(
+      canUseRecordWizard(
+        access({
+          globalPermissions: new Set(["record.read"]),
+          zoneScopedPermissions: new Map([["example.com.", new Set(["record.update"])]]),
+        }),
+      ),
+    ).toBe(false);
   });
 });

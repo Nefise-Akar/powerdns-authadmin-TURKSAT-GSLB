@@ -33,21 +33,24 @@ import { getZoneHorizon, horizonScopeFor } from "@/lib/db/repositories/zone-hori
 import { normalizeZoneId } from "@/lib/pdns/client";
 import { zoneCapabilities } from "@/lib/pdns/writable-kind";
 import {
+  areLuaRecordUpdatesLocked,
+  ENABLE_LUA_RECORD_UPDATES_SETTING,
   ENABLE_LUA_RECORDS_SETTING,
   isLuaEnabledByZoneMetadata,
   isLuaEnabledGlobally,
 } from "@/lib/pdns/metadata-policy";
 import { resolveDefaultTtl, zoneDefaultTtlFromMetadata } from "@/lib/dns/default-ttl";
+import { resolveAutoPtr, zoneAutoPtrFromMetadata } from "@/lib/dns/auto-ptr-setting";
 import { getAppSettings } from "@/lib/settings/app-settings";
 import { normalizeMaster } from "@/lib/pdns/topology";
 import { derivedUpstreamFor } from "@/lib/pdns/topology-cache";
 import { getBackendGateway } from "@/lib/realtime/backend-gateway";
 import { PdnsNotFoundError } from "@/lib/pdns/errors";
 import { logger } from "@/lib/logger";
-import { pdnsBackgroundPollingEnabled } from "@/lib/env";
+import { optionalFeatures, pdnsBackgroundPollingEnabled } from "@/lib/env";
 import { redact } from "@/lib/errors/redact";
 import { parseSoaContent, type SoaFields } from "@/lib/validators/soa";
-import { Lock } from "lucide-react";
+import { History, Lock } from "lucide-react";
 import { RecordTable } from "@/components/domain/record-table";
 import { EditableRecordTable } from "./_components/editable-record-table";
 import { loadGslbTableContext } from "./_lib/gslb-context";
@@ -72,10 +75,11 @@ import { ScrollToTab } from "./_components/scroll-to-tab";
 import { redactSnapshot } from "@/lib/audit/log";
 import type { PdnsZoneDetail } from "@/lib/pdns/types";
 import { Alert } from "@/components/ui/alert";
+import { buttonClass } from "@/components/ui/button";
 
 interface PageProps {
   params: Promise<{ zoneId: string }>;
-  searchParams: Promise<{ server?: string; cluster?: string; tab?: string }>;
+  searchParams: Promise<{ server?: string; cluster?: string; tab?: string; q?: string }>;
 }
 
 type ZoneTab =
@@ -109,6 +113,7 @@ export default async function ZoneDetailPage({ params, searchParams }: PageProps
     server: requestedSlug,
     cluster: requestedClusterSlug,
     tab: requestedTab,
+    q: requestedFilter,
   } = await searchParams;
 
   // Two entry points land in cluster mode:
@@ -164,8 +169,9 @@ export default async function ZoneDetailPage({ params, searchParams }: PageProps
         // the cluster is. Redirect so refreshes, bookmarks, and
         // sharing all reflect the cluster as the addressable thing.
         const tabSegment = requestedTab ? `&tab=${encodeURIComponent(requestedTab)}` : "";
+        const filterSegment = requestedFilter ? `&q=${encodeURIComponent(requestedFilter)}` : "";
         redirect(
-          `/zones/${encodeURIComponent(zoneId)}?cluster=${encodeURIComponent(cluster.slug)}${tabSegment}`,
+          `/zones/${encodeURIComponent(zoneId)}?cluster=${encodeURIComponent(cluster.slug)}${tabSegment}${filterSegment}`,
         );
       }
     }
@@ -314,9 +320,12 @@ export default async function ZoneDetailPage({ params, searchParams }: PageProps
   // LUA records are executable server-side code, so the editor only offers the
   // LUA type when PowerDNS actually has Lua enabled for this zone - the global
   // enable-lua-records setting or the per-zone ENABLE-LUA-RECORDS metadata.
-  // Only editors need the bit, so read-only viewers skip the extra PDNS reads;
-  // the metadata read short-circuits the global check; only the derived boolean
-  // (never the metadata bag) reaches the client; a read failure fails closed.
+  // PowerDNS 5.1+ can additionally lock LUA records against any change
+  // (`enable-lua-record-updates=no`); that rides along as its own bit so the
+  // editor names the right setting.
+  // Only editors need the bits, so read-only viewers skip the extra PDNS reads;
+  // only the derived booleans (never the metadata bag) reach the client; a read
+  // failure fails closed.
   //
   // The global half comes from the backend's observed capability snapshot
   // (#122), not a live `/config` per render - the daemon-meta probe already
@@ -324,27 +333,30 @@ export default async function ZoneDetailPage({ params, searchParams }: PageProps
   // gesture that refreshes every other capability. Only a snapshot predating
   // that field (or a never-probed backend) falls back to the live read.
   //
-  // The same metadata read carries the zone's default-TTL override, so new
-  // records cost no extra round-trip; a failed read just falls back to the
-  // global default.
+  // The same metadata read carries the zone's default-TTL and auto-PTR
+  // overrides, so new records cost no extra round-trip; a failed read just
+  // falls back to the global defaults.
   let luaRecordsEnabled = false;
+  let luaRecordUpdatesLocked = false;
   let zoneDefaultTtl: number | null = null;
+  let zoneAutoPtr: boolean | null = null;
   if (canEdit) {
     try {
       const zoneMetadata = await client.listZoneMetadata(canonical);
       zoneDefaultTtl = zoneDefaultTtlFromMetadata(zoneMetadata);
+      zoneAutoPtr = zoneAutoPtrFromMetadata(zoneMetadata);
       luaRecordsEnabled = isLuaEnabledByZoneMetadata(zoneMetadata);
-      if (!luaRecordsEnabled) {
-        const observed = selected.capabilities?.luaRecords;
-        if (observed !== undefined) {
-          luaRecordsEnabled = observed !== "no";
-        } else {
-          const config = await client.getConfig();
-          const globalSetting = config.find(
-            (row) => row.name === ENABLE_LUA_RECORDS_SETTING,
-          )?.value;
-          luaRecordsEnabled = isLuaEnabledGlobally(globalSetting);
-        }
+      const observed = selected.capabilities;
+      if (observed?.luaRecords !== undefined) {
+        luaRecordsEnabled ||= observed.luaRecords !== "no";
+        luaRecordUpdatesLocked = observed.luaRecordUpdates === false;
+      } else {
+        const config = await client.getConfig();
+        const valueOf = (name: string) => config.find((row) => row.name === name)?.value;
+        luaRecordsEnabled ||= isLuaEnabledGlobally(valueOf(ENABLE_LUA_RECORDS_SETTING));
+        luaRecordUpdatesLocked = areLuaRecordUpdatesLocked(
+          valueOf(ENABLE_LUA_RECORD_UPDATES_SETTING),
+        );
       }
     } catch (err) {
       logger.warn(
@@ -357,9 +369,14 @@ export default async function ZoneDetailPage({ params, searchParams }: PageProps
       );
     }
   }
+  const appSettings = await getAppSettings();
   const defaultTtl = resolveDefaultTtl({
     zone: zoneDefaultTtl,
-    global: (await getAppSettings()).defaultRecordTtl,
+    global: appSettings.defaultRecordTtl,
+  });
+  const autoPtr = resolveAutoPtr({
+    zone: zoneAutoPtr,
+    global: appSettings.autoPtrConfigured ? appSettings.autoPtr : null,
   });
 
   // Direct ?tab=sync / ?tab=statistics on a polling-off install bounces
@@ -537,12 +554,16 @@ export default async function ZoneDetailPage({ params, searchParams }: PageProps
                 canDelete={canDelete}
                 canUpdateApexNs={canUpdateApexNs}
                 luaRecordsEnabled={luaRecordsEnabled}
+                luaRecordUpdatesLocked={luaRecordUpdatesLocked}
                 defaultTtl={defaultTtl}
+                autoPtr={autoPtr}
+                reverseDnsLinks={optionalFeatures.reverseDns}
                 gslb={gslbContext}
               />
             </div>
           ) : (
             <RecordTable
+              reverseDnsLinks={optionalFeatures.reverseDns}
               zoneName={zone.name}
               rrsets={nonSoaRrsets.map((rr) => ({
                 name: rr.name,
@@ -556,6 +577,7 @@ export default async function ZoneDetailPage({ params, searchParams }: PageProps
                   ? { comments: rr.comments as Array<{ content?: string }> }
                   : {}),
               }))}
+              serverSlug={selected.slug}
             />
           )
         ) : tab === "soa" ? (
@@ -635,11 +657,24 @@ export default async function ZoneDetailPage({ params, searchParams }: PageProps
         ) : tab === "access" ? (
           <AccessSection serverId={selected.id} zoneName={zone.name} />
         ) : (
-          <ZoneChangeLog
-            entries={auditEntries}
-            zoneName={zone.name}
-            pdnsHttpByRequestId={pdnsHttpByRequestId}
-          />
+          <div className="space-y-3">
+            {/* The fleet-wide Change log, already narrowed to this zone (its
+                cluster peers included), with every other change one click away. */}
+            <div className="flex justify-end">
+              <Link
+                href={`/admin/changes?${new URLSearchParams({ zone: zone.name, server: selected.slug }).toString()}`}
+                className={buttonClass({ className: "whitespace-nowrap" })}
+              >
+                <History className="h-4 w-4" aria-hidden />
+                Show all changes
+              </Link>
+            </div>
+            <ZoneChangeLog
+              entries={auditEntries}
+              zoneName={zone.name}
+              pdnsHttpByRequestId={pdnsHttpByRequestId}
+            />
+          </div>
         )}
       </Suspense>
     </div>

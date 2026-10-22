@@ -5,9 +5,10 @@
  *
  * Per-zone change history. Table-shaped feed of audit events with filters
  * (search, action, actor, date range), pagination, and per-row click-to-
- * expand revealing the side-by-side Before / After diff. The diff itself
- * is rendered by `BareDiff`; the wrapper is intentionally chrome-light so
- * dense activity scans well.
+ * expand revealing the side-by-side Before / After diff, one row open at a
+ * time through the shared row disclosure. The diff itself is rendered by
+ * `BareDiff`; the wrapper is intentionally chrome-light so dense activity
+ * scans well.
  *
  * Audit row → diff input mapping:
  *   - record.create:        before=[]              after=[after-rrset]
@@ -22,9 +23,15 @@
  * Non-diffable events (zone.notify) render a one-line summary on expand.
  */
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import { colorForAuditAction } from "@/lib/audit/action-color";
 import { DateTimePicker } from "@/components/ui/datetime-picker";
+import {
+  DisclosureChevron,
+  RowDisclosurePanel,
+  rowDetailId,
+  useRowDisclosure,
+} from "@/components/ui/row-disclosure";
 import { SelectMenu } from "@/components/ui/select-menu";
 import { BareDiff } from "./bare-diff";
 import { PdnsHttpLog, type PdnsHttpLogEntry } from "./pdns-http-log";
@@ -64,30 +71,59 @@ export interface ZoneAuditEntryClient {
    * for instance.
    */
   requestId: string | null;
+  /**
+   * Fleet-wide Change log only: the zone and backend a zone-scoped row is
+   * about (read from its resource id), and the change category. Absent on
+   * the zone page, where every row is about that one zone.
+   */
+  zone?: string | null;
+  serverSlug?: string | null;
+  serverName?: string | null;
+  category?: string | null;
 }
 
 interface ZoneChangeLogProps {
   entries: ZoneAuditEntryClient[];
+  /**
+   * "global" is the fleet-wide Change log (/admin/changes): the same feed with
+   * a Zone column and a Category filter, over every zone and over account and
+   * configuration changes. Default "zone" is a single zone's Change log.
+   */
+  mode?: "zone" | "global";
+  /** Category labels for the global Category filter (value → label). */
+  categoryLabels?: Readonly<Record<string, string>>;
   /**
    * Map from operation correlation id → raw PDNS HTTP requests issued
    * during that operation. Rendered inline as a collapsible per row.
    * Empty map (or missing key) hides the section.
    */
   pdnsHttpByRequestId?: Map<string, PdnsHttpLogEntry[]>;
+  /** The zone this feed is about; empty in global mode. */
   zoneName: string;
 }
 
 const PAGE_SIZES = [10, 25, 50, 100] as const;
 
-export function ZoneChangeLog({ entries, zoneName, pdnsHttpByRequestId }: ZoneChangeLogProps) {
+export function ZoneChangeLog({
+  entries,
+  zoneName,
+  pdnsHttpByRequestId,
+  mode = "zone",
+  categoryLabels,
+}: ZoneChangeLogProps) {
+  const global = mode === "global";
   const [query, setQuery] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState<string>("");
   const [actionFilter, setActionFilter] = useState<string>("");
   const [actorFilter, setActorFilter] = useState<string>("");
   const [from, setFrom] = useState<string>("");
   const [to, setTo] = useState<string>("");
   const [pageSize, setPageSize] = useState<(typeof PAGE_SIZES)[number]>(25);
   const [page, setPage] = useState(0);
-  const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
+  const details = useRowDisclosure();
+  // The table and the card list are both in the DOM (CSS hides one per
+  // breakpoint), so each needs its own panel ids for the same entry.
+  const panelPrefix = useId();
 
   // Distinct action / actor values for the filter dropdowns.
   const actionChoices = useMemo(
@@ -100,60 +136,75 @@ export function ZoneChangeLog({ entries, zoneName, pdnsHttpByRequestId }: ZoneCh
     return Array.from(set).sort();
   }, [entries]);
 
+  const categoryChoices = useMemo(
+    () =>
+      global
+        ? Array.from(new Set(entries.map((e) => e.category).filter((c): c is string => !!c)))
+        : [],
+    [entries, global],
+  );
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     const fromTs = from ? new Date(from).getTime() : Number.NEGATIVE_INFINITY;
     const toTs = to ? new Date(to).getTime() : Number.POSITIVE_INFINITY;
     return entries.filter((e) => {
       if (actionFilter && e.action !== actionFilter) return false;
+      if (categoryFilter && e.category !== categoryFilter) return false;
       const actor = e.actorEmail ?? (e.actorType === "system" ? "system" : "-");
       if (actorFilter && actor !== actorFilter) return false;
       const ts = new Date(e.ts).getTime();
       if (ts < fromTs || ts > toTs) return false;
       if (q) {
-        const hay = [e.action, actor, e.actorName ?? "", e.resourceType, e.resourceId ?? ""]
+        const hay = [
+          e.action,
+          actor,
+          e.actorName ?? "",
+          e.resourceType,
+          e.resourceId ?? "",
+          e.zone ?? "",
+          e.serverName ?? "",
+        ]
           .join(" ")
           .toLowerCase();
         if (!hay.includes(q)) return false;
       }
       return true;
     });
-  }, [entries, query, actionFilter, actorFilter, from, to]);
+  }, [entries, query, actionFilter, categoryFilter, actorFilter, from, to]);
 
   // Reset to first page when filters change.
   useEffect(() => {
     setPage(0);
-  }, [query, actionFilter, actorFilter, from, to, pageSize]);
+  }, [query, actionFilter, categoryFilter, actorFilter, from, to, pageSize]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const safePage = Math.min(page, totalPages - 1);
   const shown = filtered.slice(safePage * pageSize, safePage * pageSize + pageSize);
 
-  function toggleRow(id: string) {
-    setExpanded((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  }
-
   function clearFilters() {
     setQuery("");
     setActionFilter("");
+    setCategoryFilter("");
     setActorFilter("");
     setFrom("");
     setTo("");
   }
 
   const anyFilter =
-    query !== "" || actionFilter !== "" || actorFilter !== "" || from !== "" || to !== "";
+    query !== "" ||
+    actionFilter !== "" ||
+    categoryFilter !== "" ||
+    actorFilter !== "" ||
+    from !== "" ||
+    to !== "";
 
   if (entries.length === 0) {
     return (
       <p className="border-border bg-background text-muted-foreground rounded-md border border-dashed p-6 text-center text-sm">
-        No recorded changes for this zone yet. As operators add, edit, or delete records, the diff
-        for each change will appear here.
+        {global
+          ? "No recorded changes match. Changes to records, zones, DNSSEC, users and access, and configuration appear here as they happen."
+          : "No recorded changes for this zone yet. As operators add, edit, or delete records, the diff for each change will appear here."}
       </p>
     );
   }
@@ -166,6 +217,12 @@ export function ZoneChangeLog({ entries, zoneName, pdnsHttpByRequestId }: ZoneCh
         actionFilter={actionFilter}
         onActionFilter={setActionFilter}
         actionChoices={actionChoices}
+        categoryFilter={categoryFilter}
+        onCategoryFilter={setCategoryFilter}
+        categoryChoices={categoryChoices.map((c) => ({
+          value: c,
+          label: categoryLabels?.[c] ?? c,
+        }))}
         actorFilter={actorFilter}
         onActorFilter={setActorFilter}
         actorChoices={actorChoices}
@@ -180,8 +237,15 @@ export function ZoneChangeLog({ entries, zoneName, pdnsHttpByRequestId }: ZoneCh
       <p className="text-muted-foreground text-caption">
         {filtered.length === entries.length
           ? `${entries.length} change${entries.length === 1 ? "" : "s"}`
-          : `${filtered.length} of ${entries.length} change${entries.length === 1 ? "" : "s"} match`}{" "}
-        for <code className="font-mono">{zoneName}</code>.
+          : `${filtered.length} of ${entries.length} change${entries.length === 1 ? "" : "s"} match`}
+        {global ? (
+          "."
+        ) : (
+          <>
+            {" "}
+            for <code className="font-mono">{zoneName}</code>.
+          </>
+        )}
       </p>
 
       {filtered.length === 0 ? (
@@ -200,8 +264,10 @@ export function ZoneChangeLog({ entries, zoneName, pdnsHttpByRequestId }: ZoneCh
                 key={entry.id}
                 entry={entry}
                 zoneName={zoneName}
-                expanded={expanded.has(entry.id)}
-                onToggle={() => toggleRow(entry.id)}
+                global={global}
+                open={details.isOpen(entry.id)}
+                onToggle={() => details.toggle(entry.id)}
+                panelId={rowDetailId(`${panelPrefix}card-`, entry.id)}
                 httpLog={httpEntriesForAuditAction(
                   entry.action,
                   entry.requestId ? (pdnsHttpByRequestId?.get(entry.requestId) ?? []) : [],
@@ -210,14 +276,11 @@ export function ZoneChangeLog({ entries, zoneName, pdnsHttpByRequestId }: ZoneCh
             ))}
           </div>
 
-          {/* Desktop (md+): the dense 5-column table. */}
+          {/* Desktop (md+): the dense table (a Zone column in global mode). */}
           <div className="hidden overflow-hidden md:block">
             <table className="w-full text-sm">
               <thead className="border-border bg-background text-label text-muted-foreground border-y text-left">
                 <tr>
-                  <th scope="col" className="h-9 w-8 px-2 font-medium first:pl-3">
-                    <span className="sr-only">Details</span>
-                  </th>
                   <th scope="col" className="h-9 px-2 font-medium first:pl-3">
                     When
                   </th>
@@ -227,6 +290,11 @@ export function ZoneChangeLog({ entries, zoneName, pdnsHttpByRequestId }: ZoneCh
                   <th scope="col" className="h-9 px-2 font-medium first:pl-3">
                     Resource
                   </th>
+                  {global ? (
+                    <th scope="col" className="h-9 px-2 font-medium first:pl-3">
+                      Zone
+                    </th>
+                  ) : null}
                   <th scope="col" className="h-9 px-2 font-medium first:pl-3">
                     Actor
                   </th>
@@ -238,8 +306,10 @@ export function ZoneChangeLog({ entries, zoneName, pdnsHttpByRequestId }: ZoneCh
                     key={entry.id}
                     entry={entry}
                     zoneName={zoneName}
-                    expanded={expanded.has(entry.id)}
-                    onToggle={() => toggleRow(entry.id)}
+                    global={global}
+                    open={details.isOpen(entry.id)}
+                    onToggle={() => details.toggle(entry.id)}
+                    panelId={rowDetailId(`${panelPrefix}table-`, entry.id)}
                     httpLog={httpEntriesForAuditAction(
                       entry.action,
                       entry.requestId ? (pdnsHttpByRequestId?.get(entry.requestId) ?? []) : [],
@@ -278,8 +348,17 @@ function ExpandedPanel({
   entry: ZoneAuditEntryClient;
   httpLog: PdnsHttpLogEntry[];
 }) {
-  const { removed, added } = useMemo(() => computeEntryDiff(entry), [entry]);
-  const diffable = isDiffableAction(entry.action);
+  // Account and configuration changes (fleet-wide Change log) have no zone
+  // renderer: show their snapshot fields as a field-by-field before/after.
+  const generic = !isZoneScoped(entry);
+  const { removed, added } = useMemo(
+    () =>
+      generic
+        ? diffFieldChanges(scalarFieldLines(entry.before), scalarFieldLines(entry.after))
+        : computeEntryDiff(entry),
+    [entry, generic],
+  );
+  const diffable = generic || isDiffableAction(entry.action);
   return (
     <>
       {entry.requestId ? (
@@ -296,7 +375,9 @@ function ExpandedPanel({
       {diffable ? (
         removed.length === 0 && added.length === 0 ? (
           <p className="text-muted-foreground px-4 py-3 text-xs">
-            Audit row carries no diffable snapshot.
+            {generic
+              ? "No field-level change recorded for this event."
+              : "Audit row carries no diffable snapshot."}
           </p>
         ) : (
           <BareDiff removed={removed} added={added} />
@@ -311,56 +392,70 @@ function ExpandedPanel({
   );
 }
 
-function Chevron({ expanded }: { expanded: boolean }) {
-  return (
-    <svg
-      width="10"
-      height="10"
-      viewBox="0 0 10 10"
-      aria-hidden
-      className={`transition-transform ${expanded ? "rotate-90" : ""}`}
-    >
-      <path
-        d="M3 2l4 3-4 3"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        fill="none"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
+/**
+ * The chevron is the accessible toggle; the rest of the row and the card
+ * header toggle too, as they always did, except when the click landed on a
+ * control of its own (the chevron itself, or a link in the panel).
+ */
+function isOwnControl(target: EventTarget | null): boolean {
+  const el = target as HTMLElement | null;
+  return Boolean(el?.closest("a,button,input,select,textarea,label,[role=button]"));
+}
+
+/** What the row is about, for the chevron's accessible name: "record.update www A". */
+function describeEntry(entry: ZoneAuditEntryClient, zoneName: string): string {
+  const resource = describeResource(entry, zoneName);
+  return resource ? `${entry.action} ${resource}` : entry.action;
+}
+
+interface ChangeEntryProps {
+  entry: ZoneAuditEntryClient;
+  zoneName: string;
+  /** Fleet-wide Change log: show the row's zone and backend. */
+  global: boolean;
+  open: boolean;
+  onToggle: () => void;
+  /** DOM id shared by the chevron's `aria-controls` and the revealed panel. */
+  panelId: string;
+  httpLog: PdnsHttpLogEntry[];
 }
 
 function ChangeRow({
   entry,
   zoneName,
-  expanded,
+  global,
+  open,
   onToggle,
+  panelId,
   httpLog,
-}: {
-  entry: ZoneAuditEntryClient;
-  zoneName: string;
-  expanded: boolean;
-  onToggle: () => void;
-  httpLog: PdnsHttpLogEntry[];
-}) {
-  const resourceLabel = describeResource(entry, zoneName);
+}: ChangeEntryProps) {
+  const zone = entry.zone ?? zoneName;
+  const resourceLabel = describeResource(entry, zone);
   const actor = entry.actorEmail ?? (entry.actorType === "system" ? "system" : "-");
 
   return (
     <>
       <tr
         className="border-border hover:bg-background cursor-pointer border-b transition-colors"
-        onClick={onToggle}
-        aria-expanded={expanded}
-        data-change-entry-toggle="true"
+        onClick={(e) => {
+          if (isOwnControl(e.target)) return;
+          onToggle();
+        }}
       >
-        <td className="text-muted-foreground w-8 px-2 py-2 align-top first:pl-3">
-          <Chevron expanded={expanded} />
-        </td>
         <td className="text-muted-foreground text-mono-xs px-2 py-2 align-top font-mono whitespace-nowrap first:pl-3">
-          {formatTimestamp(entry.ts)}
+          <span className="inline-flex items-center gap-2">
+            <DisclosureChevron
+              open={open}
+              onToggle={onToggle}
+              label={describeEntry(entry, zone)}
+              controls={panelId}
+              // The chevron's hit area is taller than the mono timestamp; the
+              // negative margin keeps the row at the height it had before.
+              className="-my-1"
+              data-change-entry-toggle="true"
+            />
+            {formatTimestamp(entry.ts)}
+          </span>
         </td>
         <td className="px-2 py-2 align-top first:pl-3">
           <ActionChip action={entry.action} />
@@ -368,6 +463,11 @@ function ChangeRow({
         <td className="text-foreground px-2 py-2 align-top font-mono text-xs first:pl-3">
           {resourceLabel ?? "-"}
         </td>
+        {global ? (
+          <td className="px-2 py-2 align-top text-xs first:pl-3">
+            <ZoneCell entry={entry} />
+          </td>
+        ) : null}
         <td className="text-muted-foreground px-2 py-2 align-top text-xs first:pl-3">
           {actor}
           {entry.actorName ? (
@@ -375,10 +475,12 @@ function ChangeRow({
           ) : null}
         </td>
       </tr>
-      {expanded ? (
+      {open ? (
         <tr className="border-border border-b">
-          <td colSpan={5} className="bg-card p-0">
-            <ExpandedPanel entry={entry} httpLog={httpLog} />
+          <td colSpan={global ? 5 : 4} className="bg-card p-0">
+            <RowDisclosurePanel id={panelId} label={`Details for ${describeEntry(entry, zone)}`}>
+              <ExpandedPanel entry={entry} httpLog={httpLog} />
+            </RowDisclosurePanel>
           </td>
         </tr>
       ) : null}
@@ -394,30 +496,32 @@ function ChangeRow({
 function ChangeCard({
   entry,
   zoneName,
-  expanded,
+  global,
+  open,
   onToggle,
+  panelId,
   httpLog,
-}: {
-  entry: ZoneAuditEntryClient;
-  zoneName: string;
-  expanded: boolean;
-  onToggle: () => void;
-  httpLog: PdnsHttpLogEntry[];
-}) {
-  const resourceLabel = describeResource(entry, zoneName);
+}: ChangeEntryProps) {
+  const zone = entry.zone ?? zoneName;
+  const resourceLabel = describeResource(entry, zone);
   const actor = entry.actorEmail ?? (entry.actorType === "system" ? "system" : "-");
   return (
     <div className="border-border bg-card overflow-hidden rounded-md border">
-      <button
-        type="button"
-        onClick={onToggle}
-        aria-expanded={expanded}
-        data-change-entry-toggle="true"
-        className="hover:bg-background flex w-full items-start gap-2 p-3 text-left transition-colors"
+      <div
+        onClick={(e) => {
+          if (isOwnControl(e.target)) return;
+          onToggle();
+        }}
+        className="hover:bg-background flex w-full cursor-pointer items-start gap-2 p-3 text-left transition-colors"
       >
-        <span className="text-muted-foreground mt-1.5 shrink-0">
-          <Chevron expanded={expanded} />
-        </span>
+        <DisclosureChevron
+          open={open}
+          onToggle={onToggle}
+          label={describeEntry(entry, zone)}
+          controls={panelId}
+          className="-mt-0.5"
+          data-change-entry-toggle="true"
+        />
         <div className="min-w-0 flex-1 space-y-1">
           <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
             <span className="text-muted-foreground text-mono-xs font-mono whitespace-nowrap">
@@ -426,6 +530,11 @@ function ChangeCard({
             <ActionChip action={entry.action} />
           </div>
           <div className="text-foreground font-mono text-xs break-all">{resourceLabel ?? "-"}</div>
+          {global && entry.zone ? (
+            <div className="text-xs">
+              <ZoneCell entry={entry} />
+            </div>
+          ) : null}
           <div className="text-muted-foreground text-xs">
             {actor}
             {entry.actorName ? (
@@ -433,11 +542,15 @@ function ChangeCard({
             ) : null}
           </div>
         </div>
-      </button>
-      {expanded ? (
-        <div className="border-border border-t">
+      </div>
+      {open ? (
+        <RowDisclosurePanel
+          id={panelId}
+          label={`Details for ${describeEntry(entry, zone)}`}
+          className="border-border border-t"
+        >
           <ExpandedPanel entry={entry} httpLog={httpLog} />
-        </div>
+        </RowDisclosurePanel>
       ) : null}
     </div>
   );
@@ -449,6 +562,10 @@ interface FiltersProps {
   actionFilter: string;
   onActionFilter: (v: string) => void;
   actionChoices: readonly string[];
+  categoryFilter: string;
+  onCategoryFilter: (v: string) => void;
+  /** Empty on the zone page, where every row is a zone change. */
+  categoryChoices: ReadonlyArray<{ value: string; label: string }>;
   actorFilter: string;
   onActorFilter: (v: string) => void;
   actorChoices: readonly string[];
@@ -466,6 +583,9 @@ function Filters({
   actionFilter,
   onActionFilter,
   actionChoices,
+  categoryFilter,
+  onCategoryFilter,
+  categoryChoices,
   actorFilter,
   onActorFilter,
   actorChoices,
@@ -487,6 +607,18 @@ function Filters({
           className={`w-56 ${inputClass}`}
         />
       </FilterField>
+      {categoryChoices.length > 0 ? (
+        <FilterField label="Category">
+          <SelectMenu
+            value={categoryFilter}
+            onChange={onCategoryFilter}
+            placeholder="all"
+            ariaLabel="Category"
+            className="w-44 text-xs"
+            options={[...categoryChoices]}
+          />
+        </FilterField>
+      ) : null}
       <FilterField label="Action">
         <SelectMenu
           value={actionFilter}
@@ -605,6 +737,11 @@ function isDiffableAction(action: string): boolean {
  *   dnssec.cryptokey.*  - `<field> = <value>` per key field
  */
 function computeEntryDiff(entry: ZoneAuditEntryClient): { removed: string[]; added: string[] } {
+  if (entry.action === "record.ptr-sync") {
+    // The summary row carries one readable line per address, not an RRset.
+    const lines = (entry.after as { lines?: unknown } | null)?.lines;
+    return { removed: [], added: Array.isArray(lines) ? lines.map(String) : [] };
+  }
   if (entry.resourceType === "rrset") {
     return computeRecordDiff(
       entry.before as RRsetSnapshot | null,
@@ -978,7 +1115,55 @@ function describeResource(entry: ZoneAuditEntryClient, zoneName: string): string
 
   if (entry.action === "zone.notify") return "NOTIFY";
 
+  if (!isZoneScoped(entry)) return describeOtherResource(entry);
+
   return null;
+}
+
+/** Zone and record rows; everything else is an account or configuration change. */
+function isZoneScoped(entry: ZoneAuditEntryClient): boolean {
+  return entry.resourceType === "zone" || entry.resourceType === "rrset" || Boolean(entry.zone);
+}
+
+/** "user alice@example.com", "role Operator", "settings": the snapshot's own name for it. */
+function describeOtherResource(entry: ZoneAuditEntryClient): string {
+  const label = readLabel(entry.after) ?? readLabel(entry.before);
+  const type = entry.resourceType.replace(/_/g, " ");
+  return label ? `${type} ${label}` : type;
+}
+
+function readLabel(payload: unknown): string | null {
+  if (typeof payload !== "object" || payload === null) return null;
+  const p = payload as Record<string, unknown>;
+  for (const key of ["email", "name", "slug", "key", "label", "zoneName"]) {
+    const v = p[key];
+    if (typeof v === "string" && v.length > 0) return v;
+  }
+  return null;
+}
+
+/** Zone link (to that zone's page on its backend) with the backend underneath. */
+function ZoneCell({ entry }: { entry: ZoneAuditEntryClient }) {
+  if (!entry.zone) return <span className="text-muted-foreground">-</span>;
+  const href = `/zones/${encodeURIComponent(entry.zone)}${
+    entry.serverSlug ? `?server=${encodeURIComponent(entry.serverSlug)}` : ""
+  }`;
+  return (
+    <span className="flex min-w-0 flex-col">
+      <a
+        href={href}
+        className="text-primary hover:text-primary-hover truncate font-mono hover:underline"
+        title={entry.zone}
+      >
+        {entry.zone}
+      </a>
+      {entry.serverName || entry.serverSlug ? (
+        <span className="text-muted-foreground text-caption truncate">
+          {entry.serverName ?? entry.serverSlug}
+        </span>
+      ) : null}
+    </span>
+  );
 }
 
 function readCryptokeyId(payload: unknown): number | null {

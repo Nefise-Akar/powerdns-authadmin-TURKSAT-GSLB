@@ -399,7 +399,10 @@ export function SelectMenu<T extends string>({
           size === "sm" ? "text-body-sm h-7 px-2" : "text-body h-8 px-3"
         }`}
       >
-        <span className={current ? "truncate" : "text-muted-foreground truncate"}>
+        {/* min-w-0: a flex child never shrinks below its text otherwise, so a
+            long label widened the menu past its container instead of
+            truncating (it covered the Reverse DNS status badge, #185). */}
+        <span className={current ? "min-w-0 truncate" : "text-muted-foreground min-w-0 truncate"}>
           {current ? current.label : (placeholder ?? "Select…")}
         </span>
         <ChevronDown

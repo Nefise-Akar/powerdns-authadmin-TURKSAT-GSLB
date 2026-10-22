@@ -15,6 +15,7 @@
  *   list_zones        zones the caller may read, across backends
  *   get_zone          one zone's summary (kind, serial, DNSSEC, counts)
  *   list_records      records of a zone, filterable by name/type
+ *   search            fuzzy search over zones, records, config, request + audit log
  *   set_records       REPLACE every value of one name+type
  *   add_record        append one value to a name+type
  *   delete_records    remove one value, or the whole name+type
@@ -48,7 +49,22 @@ import {
   dispatchPatchRrsets,
   type RRsetChange,
 } from "./_dispatch";
+import {
+  dispatchMonitoring,
+  dispatchMonitoringRefresh,
+  dispatchNotifications,
+  dispatchDismissNotifications,
+  dispatchRecordsAt,
+  dispatchReverseLinks,
+  dispatchReverseRectify,
+  dispatchReverseReport,
+  dispatchSearch,
+  dispatchSearchZones,
+  dispatchZoneSync,
+} from "./_dispatch";
 import { canonicalName, canonicalZone, filterRows, flattenRrsets } from "./_records";
+import { describePtrOutcome, type AutoPtrOutcome } from "@/lib/dns/auto-ptr";
+import { optionalFeatures } from "@/lib/env";
 
 export interface McpContext {
   request: Request;
@@ -66,7 +82,11 @@ Conventions:
 - TTL is in seconds. When omitted on a new RRset the deployment's default TTL applies; when editing an existing RRset its current TTL is kept.
 - TXT values must be quoted ("v=spf1 -all"); MX values are "<preference> <host.>"; hostnames should end with a dot.
 - Installations with several backends need a backend slug: call list_backends once, then pass server_slug. The default backend is used when omitted.
-- Every write is authorised against the token's permissions and recorded in the audit log under the token owner's name. Prefer list_records before changing anything so you replace exactly what you intend.`;
+- Every write is authorised against the token's permissions and recorded in the audit log under the token owner's name. Prefer list_records before changing anything so you replace exactly what you intend.
+- search is a fuzzy lookup across zones, records, config, the PowerDNS request log and the audit log (scope narrows it); results carry an app link and never include secrets.
+- find_zones searches every zone the token may read (with backend, cluster, horizon); records_at tells whether a name already holds records before you add one; zone_sync_status says whether a change has reached every secondary or cluster peer, so poll it after a write when propagation matters.
+- When the installation enables them (they are opt-in): reverse_dns_report lists every A/AAAA address against its PTR (ok, missing, mismatch, ambiguous, orphan, unhosted) and reverse_dns_rectify writes or removes the PTRs you choose; zone_monitoring returns the latest delegation / nameserver / DNSSEC / resolver findings per zone and zone_monitoring_refresh re-runs the checks (rate-limited). If those tools are not listed, the feature is turned off.
+- Reverse DNS: when an A/AAAA record is written or deleted, the matching PTR in a reverse zone hosted here can be maintained automatically. Pass ptr=true to ask for it, ptr=false to prevent it, or omit it to follow the zone's / the deployment's auto_ptr setting. The result's "ptr" list says what happened per address; a PTR that already points at a different name is reported as a conflict and only replaced when ptr_takeover=true. Reverse zones are never created.`;
 
 const zoneArg = z
   .string()
@@ -88,6 +108,27 @@ const typeArg = z
   .max(12)
   .describe("Record type, e.g. A, AAAA, CNAME, MX, TXT, SRV, CAA.");
 const ttlArg = z.number().int().min(0).max(2_147_483_647).optional().describe("TTL in seconds.");
+const ptrArg = z
+  .boolean()
+  .optional()
+  .describe(
+    "A/AAAA only: also create, update or remove the matching PTR in a hosted reverse zone. Omit to follow the zone's auto_ptr setting.",
+  );
+const ptrTakeoverArg = z
+  .boolean()
+  .optional()
+  .describe("With ptr: replace a PTR that currently points at a different name. Default false.");
+
+/**
+ * Lift the route's per-address PTR outcomes into one readable line each, so the
+ * assistant can tell the operator about a skipped or conflicting reverse record
+ * without parsing the raw result.
+ */
+function ptrSummary(result: unknown): { ptr?: string[] } {
+  const ptr = (result as { ptr?: AutoPtrOutcome[] } | null)?.ptr;
+  if (!Array.isArray(ptr) || ptr.length === 0) return {};
+  return { ptr: ptr.map(describePtrOutcome) };
+}
 
 function text(data: unknown): CallToolResult {
   return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
@@ -303,6 +344,275 @@ export function buildMcpServer(ctx: McpContext): McpServer {
     "zone.create",
     "zone.delete",
   ];
+  // ── Discovery, propagation, reverse DNS and monitoring (read) ─────────────
+
+  server.registerTool(
+    "find_zones",
+    {
+      title: "Find zones",
+      description:
+        "Search the zones this token may read across every backend. Returns name, backend slug, cluster, horizon (public/internal), kind, whether it is a reverse zone and whether you may create records in it. Also reports how many public and internal zones exist.",
+      inputSchema: {
+        query: z.string().max(255).optional().describe("Substring of the zone name; omit for all."),
+        horizon: z.enum(["public", "internal"]).optional(),
+        limit: z.number().int().min(1).max(200).optional(),
+      },
+      annotations: { readOnlyHint: true, openWorldHint: false },
+    },
+    tool(async ({ query, horizon, limit }) =>
+      text(await dispatchSearchZones(request, { q: query, horizon, limit })),
+    ),
+  );
+
+  server.registerTool(
+    "search",
+    {
+      title: "Search everything",
+      description:
+        'Fuzzy search across zones, records (owner names and values), config (settings, admin pages, backends, clusters, users, teams, roles, zone templates, sign-in providers), the PowerDNS request log and the audit log. Each result has a kind, title, inline meta and an app link; every source is filtered by this token\'s permissions and secrets are never returned. The default scope "all" covers zones, records and config only; the request log and audit log are searched only with scope "requests" or "audit" (newest 500 rows), and their counts are null otherwise.',
+      inputSchema: {
+        query: z.string().min(1).max(100).describe("What to look for; fuzzy, case-insensitive."),
+        scope: z
+          .enum(["all", "zones", "records", "config", "requests", "audit"])
+          .optional()
+          .describe(
+            "Narrow to one kind of result. Defaults to all: zones, records and config, 6 per group. Use requests or audit to search those logs.",
+          ),
+        limit: z.number().int().min(1).max(25).optional(),
+      },
+      annotations: { readOnlyHint: true, openWorldHint: false },
+    },
+    tool(async ({ query, scope, limit }) =>
+      text(await dispatchSearch(request, { q: query, scope, limit })),
+    ),
+  );
+
+  server.registerTool(
+    "records_at",
+    {
+      title: "Records at a name",
+      description:
+        "The RRsets that exist at one owner name in a zone (optionally one type), for checking whether a record already exists before adding one.",
+      inputSchema: {
+        zone: zoneArg,
+        server_slug: serverArg,
+        name: nameArg,
+        type: typeArg.optional(),
+      },
+      annotations: { readOnlyHint: true, openWorldHint: false },
+    },
+    tool(async ({ zone, server_slug, name, type }) =>
+      text(
+        await dispatchRecordsAt(request, {
+          zone: canonicalZone(zone),
+          serverSlug: server_slug,
+          name,
+          type,
+        }),
+      ),
+    ),
+  );
+
+  server.registerTool(
+    "zone_sync_status",
+    {
+      title: "Zone propagation status",
+      description:
+        "Where a zone's copies stand: each secondary's serial against the primary, or each cluster peer against the highest serial. `settled` is true when nothing is behind. Poll it after a write when propagation matters.",
+      inputSchema: { zone: zoneArg, server_slug: serverArg },
+      annotations: { readOnlyHint: true, openWorldHint: false },
+    },
+    tool(async ({ zone, server_slug }) =>
+      text(await dispatchZoneSync(request, { zone: canonicalZone(zone), serverSlug: server_slug })),
+    ),
+  );
+
+  // Opt-in feature: the tool exists only when it is enabled.
+  if (optionalFeatures.reverseDns) {
+    server.registerTool(
+      "reverse_dns_report",
+      {
+        title: "Reverse DNS report",
+        description:
+          "Every A/AAAA address across the fleet against the PTR in the hosted reverse zones: ok, missing, mismatch, ambiguous (several names share the address), orphan (PTR with no forward record) or unhosted (no reverse zone here; the world's answer is included when known). Needs global record.read.",
+        inputSchema: {
+          status: z
+            .enum(["ok", "missing", "mismatch", "ambiguous", "orphan", "unhosted"])
+            .optional(),
+          horizon: z.enum(["public", "internal"]).optional(),
+          zone: z
+            .string()
+            .optional()
+            .describe("Only addresses with a forward record in this zone."),
+          limit: z.number().int().min(1).max(1000).optional().describe("Default 200."),
+          refresh: z.boolean().optional().describe("Ask for a fresh scan (rate-limited)."),
+        },
+        annotations: { readOnlyHint: true, openWorldHint: false },
+      },
+      tool(async ({ status, horizon, zone, limit, refresh }) => {
+        const report = (await dispatchReverseReport(request, refresh === true)) as {
+          generatedAt: string;
+          stats: Record<string, number>;
+          rows: Array<
+            { status: string; horizon: string; forward: Array<{ zone: string }> } & Record<
+              string,
+              unknown
+            >
+          >;
+          errors: unknown[];
+        };
+        const wantZone = zone ? canonicalZone(zone) : null;
+        const rows = report.rows.filter(
+          (r) =>
+            (!status || r.status === status) &&
+            (!horizon || r.horizon === horizon) &&
+            (!wantZone || r.forward.some((f) => f.zone === wantZone)),
+        );
+        return text({
+          generatedAt: report.generatedAt,
+          stats: report.stats,
+          matched: rows.length,
+          rows: rows.slice(0, limit ?? 200),
+          errors: report.errors,
+        });
+      }),
+    );
+  }
+
+  // Opt-in feature: the tool exists only when it is enabled.
+  if (optionalFeatures.reverseDns) {
+    server.registerTool(
+      "reverse_dns_links",
+      {
+        title: "Reverse DNS links for a zone",
+        description:
+          "For a forward zone: what the PTR of each A/AAAA address says. For a reverse zone: which A/AAAA records point at each PTR's address. Only zones the token may read are named.",
+        inputSchema: { zone: zoneArg, server_slug: serverArg },
+        annotations: { readOnlyHint: true, openWorldHint: false },
+      },
+      tool(async ({ zone, server_slug }) =>
+        text(
+          await dispatchReverseLinks(request, {
+            zone: canonicalZone(zone),
+            serverSlug: server_slug,
+          }),
+        ),
+      ),
+    );
+  }
+
+  // Opt-in feature: the tool exists only when it is enabled.
+  if (optionalFeatures.zoneMonitoring) {
+    server.registerTool(
+      "zone_monitoring",
+      {
+        title: "Zone monitoring findings",
+        description:
+          "The latest zone monitoring results: per zone, the delegation at the parent, nameserver reachability and authority, serial agreement, open zone transfers, DNSSEC chain, resolver view, SOA sanity and reverse-DNS drift, as findings with stable codes and severities. Needs global zone.read.",
+        inputSchema: {
+          zone: z.string().optional(),
+          server_slug: serverArg,
+          severity: z
+            .enum(["error", "warn", "info"])
+            .optional()
+            .describe("Only zones whose worst finding is this severity."),
+        },
+        annotations: { readOnlyHint: true, openWorldHint: false },
+      },
+      tool(async ({ zone, server_slug, severity }) => {
+        const state = (await dispatchMonitoring(request)) as {
+          results: Array<
+            { zone: string; server: string; severity: string | null } & Record<string, unknown>
+          >;
+        } & Record<string, unknown>;
+        const wantZone = zone ? canonicalZone(zone) : null;
+        const results = state.results.filter(
+          (r) =>
+            (!wantZone || r.zone === wantZone) &&
+            (!server_slug || r.server === server_slug) &&
+            (!severity || r.severity === severity),
+        );
+        return text({ ...state, results });
+      }),
+    );
+  }
+
+  // Opt-in feature: the tool exists only when it is enabled.
+  if (optionalFeatures.zoneMonitoring) {
+    server.registerTool(
+      "zone_monitoring_refresh",
+      {
+        title: "Re-run zone monitoring",
+        description:
+          "Run the monitoring checks now for one zone (zone + server_slug) or for every zone (no arguments). Rate-limited: a refused run answers with the retry interval.",
+        inputSchema: { zone: z.string().optional(), server_slug: serverArg },
+        annotations: {
+          readOnlyHint: false,
+          destructiveHint: false,
+          idempotentHint: true,
+          openWorldHint: true,
+        },
+      },
+      tool(async ({ zone, server_slug }) =>
+        text(
+          await dispatchMonitoringRefresh(
+            request,
+            zone ? { zone: canonicalZone(zone), serverSlug: server_slug } : {},
+          ),
+        ),
+      ),
+    );
+  }
+
+  server.registerTool(
+    "list_notifications",
+    {
+      title: "Notifications",
+      description:
+        "The notifications this token may see: backend health and zone monitoring findings, errors first, with a count by severity. Each row is filtered by its own scope (a zone finding needs zone.read on that zone). Pass include_dismissed to list dismissed ones too.",
+      inputSchema: {
+        include_dismissed: z.boolean().optional(),
+        severity: z.enum(["error", "warn", "info"]).optional(),
+        source: z.enum(["backend", "zone"]).optional(),
+        limit: z.number().int().min(1).max(500).optional().describe("Default 100."),
+      },
+      annotations: { readOnlyHint: true, openWorldHint: false },
+    },
+    tool(async ({ include_dismissed, severity, source, limit }) => {
+      const body = (await dispatchNotifications(request, include_dismissed === true)) as {
+        summary: unknown;
+        notifications: Array<{ severity: string; source: string } & Record<string, unknown>>;
+      };
+      const rows = body.notifications.filter(
+        (n) => (!severity || n.severity === severity) && (!source || n.source === source),
+      );
+      return text({
+        summary: body.summary,
+        matched: rows.length,
+        notifications: rows.slice(0, limit ?? 100),
+      });
+    }),
+  );
+
+  // Dismissing is not a DNS change: anyone who can see a notification may
+  // dismiss it, so this sits with the read tools rather than behind the write gate.
+  server.registerTool(
+    "dismiss_notifications",
+    {
+      title: "Dismiss notifications",
+      description:
+        "Dismiss notifications by id (from list_notifications). A dismissed notification leaves the bell until its condition changes or comes back. Ids the token cannot see are skipped.",
+      inputSchema: { ids: z.array(z.string().min(1).max(64)).min(1).max(500) },
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false,
+      },
+    },
+    tool(async ({ ids }) => text(await dispatchDismissNotifications(request, ids))),
+  );
+
   const canWriteSomewhere =
     WRITE_PERMISSIONS.some((p) => auth.globalPermissions.has(p)) ||
     holdsOnSomeZone(auth, (p) => p.startsWith("record."));
@@ -330,37 +640,54 @@ export function buildMcpServer(ctx: McpContext): McpServer {
         records: z.array(recordValue).min(1).max(1000),
         ttl: ttlArg,
         comment: z.string().max(1000).optional().describe("Free-form note stored on the RRset."),
+        ptr: ptrArg,
+        ptr_takeover: ptrTakeoverArg,
       },
       annotations: { destructiveHint: true, idempotentHint: true, openWorldHint: false },
     },
-    tool(async ({ zone: zoneInput, server_slug, name, type, records, ttl, comment }) => {
-      const { zone, selected, detail } = await readZone(zoneInput, server_slug);
-      const owner = canonicalName(name, zone);
-      const rtype = type.trim().toUpperCase();
-      const existing = (detail.rrsets ?? []).find((rr) => rr.name === owner && rr.type === rtype);
-      const change: RRsetChange = {
-        kind: "upsert",
-        name: owner,
-        type: rtype,
+    tool(
+      async ({
+        zone: zoneInput,
+        server_slug,
+        name,
+        type,
         records,
-        ...(ttl !== undefined ? { ttl } : existing ? { ttl: existing.ttl } : {}),
-        ...(comment !== undefined ? { comment } : {}),
-      };
-      const result = await dispatchPatchRrsets(request, {
-        zone,
-        serverSlug: selected.slug,
-        changes: [change],
-      });
-      return text({
-        ok: true,
-        zone,
-        server: selected.slug,
-        name: owner,
-        type: rtype,
-        records,
-        result,
-      });
-    }),
+        ttl,
+        comment,
+        ptr,
+        ptr_takeover,
+      }) => {
+        const { zone, selected, detail } = await readZone(zoneInput, server_slug);
+        const owner = canonicalName(name, zone);
+        const rtype = type.trim().toUpperCase();
+        const existing = (detail.rrsets ?? []).find((rr) => rr.name === owner && rr.type === rtype);
+        const change: RRsetChange = {
+          kind: "upsert",
+          name: owner,
+          type: rtype,
+          records,
+          ...(ttl !== undefined ? { ttl } : existing ? { ttl: existing.ttl } : {}),
+          ...(comment !== undefined ? { comment } : {}),
+          ...(ptr !== undefined ? { ptr } : {}),
+          ...(ptr_takeover !== undefined ? { ptrTakeover: ptr_takeover } : {}),
+        };
+        const result = await dispatchPatchRrsets(request, {
+          zone,
+          serverSlug: selected.slug,
+          changes: [change],
+        });
+        return text({
+          ok: true,
+          zone,
+          server: selected.slug,
+          name: owner,
+          type: rtype,
+          records,
+          ...ptrSummary(result),
+          result,
+        });
+      },
+    ),
   );
 
   server.registerTool(
@@ -376,10 +703,12 @@ export function buildMcpServer(ctx: McpContext): McpServer {
         type: typeArg,
         content: z.string().min(1).describe("Record value in zone-file syntax."),
         ttl: ttlArg,
+        ptr: ptrArg,
+        ptr_takeover: ptrTakeoverArg,
       },
       annotations: { destructiveHint: false, idempotentHint: true, openWorldHint: false },
     },
-    tool(async ({ zone: zoneInput, server_slug, name, type, content, ttl }) => {
+    tool(async ({ zone: zoneInput, server_slug, name, type, content, ttl, ptr, ptr_takeover }) => {
       const { zone, selected, detail } = await readZone(zoneInput, server_slug);
       const owner = canonicalName(name, zone);
       const rtype = type.trim().toUpperCase();
@@ -394,6 +723,8 @@ export function buildMcpServer(ctx: McpContext): McpServer {
         type: rtype,
         records: [...current, { content }],
         ...(ttl !== undefined ? { ttl } : existing ? { ttl: existing.ttl } : {}),
+        ...(ptr !== undefined ? { ptr } : {}),
+        ...(ptr_takeover !== undefined ? { ptrTakeover: ptr_takeover } : {}),
       };
       const result = await dispatchPatchRrsets(request, {
         zone,
@@ -407,6 +738,7 @@ export function buildMcpServer(ctx: McpContext): McpServer {
         name: owner,
         type: rtype,
         records: change.records,
+        ...ptrSummary(result),
         result,
       });
     }),
@@ -427,10 +759,11 @@ export function buildMcpServer(ctx: McpContext): McpServer {
           .string()
           .optional()
           .describe("The exact value to remove. Omit to remove every value of this name+type."),
+        ptr: ptrArg,
       },
       annotations: { destructiveHint: true, idempotentHint: true, openWorldHint: false },
     },
-    tool(async ({ zone: zoneInput, server_slug, name, type, content }) => {
+    tool(async ({ zone: zoneInput, server_slug, name, type, content, ptr }) => {
       const { zone, selected, detail } = await readZone(zoneInput, server_slug);
       const owner = canonicalName(name, zone);
       const rtype = type.trim().toUpperCase();
@@ -449,6 +782,7 @@ export function buildMcpServer(ctx: McpContext): McpServer {
             ? { kind: "delete", name: owner, type: rtype }
             : { kind: "upsert", name: owner, type: rtype, ttl: existing.ttl, records: remaining };
       }
+      if (ptr !== undefined) change.ptr = ptr;
       const result = await dispatchPatchRrsets(request, {
         zone,
         serverSlug: selected.slug,
@@ -461,10 +795,51 @@ export function buildMcpServer(ctx: McpContext): McpServer {
         name: owner,
         type: rtype,
         change: change.kind,
+        ...ptrSummary(result),
         result,
       });
     }),
   );
+
+  // Opt-in feature: the tool exists only when it is enabled.
+  if (optionalFeatures.reverseDns) {
+    server.registerTool(
+      "reverse_dns_rectify",
+      {
+        title: "Rectify reverse DNS",
+        description:
+          "Write or remove PTRs chosen from reverse_dns_report. `set` writes the PTR for the address to `target` (replacing one that points elsewhere, because you chose it); `remove` removes a PTR that still points at `target`. Each item needs record permissions in the reverse zone; the result lists what happened per address.",
+        inputSchema: {
+          items: z
+            .array(
+              z.object({
+                ip: z.string().min(1).max(64),
+                action: z.enum(["set", "remove"]),
+                target: z
+                  .string()
+                  .min(1)
+                  .max(255)
+                  .describe("Forward name to point at (set) or the current target (remove)."),
+                ttl: ttlArg,
+              }),
+            )
+            .min(1)
+            .max(500),
+        },
+        annotations: { destructiveHint: true, idempotentHint: true, openWorldHint: false },
+      },
+      tool(async ({ items }) => {
+        const result = (await dispatchReverseRectify(request, { items })) as {
+          outcomes: AutoPtrOutcome[];
+        };
+        return text({
+          ok: true,
+          outcomes: result.outcomes,
+          lines: result.outcomes.map(describePtrOutcome),
+        });
+      }),
+    );
+  }
 
   server.registerTool(
     "create_zone",

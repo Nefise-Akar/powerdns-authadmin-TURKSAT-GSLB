@@ -1,5 +1,5 @@
 {
-  "id": "a10c1dc7-54a8-4408-b43f-f2c79c8c13de",
+  "id": "8c9887b3-22de-4a87-af86-3883bc86a655",
   "prevId": "057aeafb-ae0c-480f-8c0b-5e963f591de9",
   "version": "7",
   "dialect": "postgresql",
@@ -476,137 +476,6 @@
             "id"
           ],
           "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.gslb_backends": {
-      "name": "gslb_backends",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "slug": {
-          "name": "slug",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "name": {
-          "name": "name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "description": {
-          "name": "description",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "base_url": {
-          "name": "base_url",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "username": {
-          "name": "username",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "password_encrypted": {
-          "name": "password_encrypted",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "nameserver_host": {
-          "name": "nameserver_host",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "nameserver_addresses": {
-          "name": "nameserver_addresses",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "enabled": {
-          "name": "enabled",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": true
-        },
-        "probe_cache": {
-          "name": "probe_cache",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_by": {
-          "name": "created_by",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "gslb_backends_slug_idx": {
-          "name": "gslb_backends_slug_idx",
-          "columns": [
-            {
-              "expression": "slug",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "gslb_backends_created_by_users_id_fk": {
-          "name": "gslb_backends_created_by_users_id_fk",
-          "tableFrom": "gslb_backends",
-          "tableTo": "users",
-          "columnsFrom": [
-            "created_by"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
           "onUpdate": "no action"
         }
       },
@@ -1496,6 +1365,13 @@
         },
         "is_default": {
           "name": "is_default",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "monitor_accept_single_ns": {
+          "name": "monitor_accept_single_ns",
           "type": "boolean",
           "primaryKey": false,
           "notNull": true,

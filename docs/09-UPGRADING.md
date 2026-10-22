@@ -39,6 +39,96 @@ half-migrated schema; fix the cause and restart.
 
 ## Version-specific notes
 
+### Migration numbering in the GSLB build (merge of upstream 1.11.0)
+
+Upstream 1.10.0 added migration `0008_monitor_accept_single_ns`. This build's
+GSLB migrations ([ADR-0024](./adr/0024-powergslb-integration.md)) were
+numbered 0008-0014 before that, and are now 0009-0015 so upstream's 0008 keeps
+its number. The SQL files are unchanged. Each one keeps its original journal
+`when`, which is the value the database ledger (`__drizzle_migrations.created_at`)
+records, so a database that already applied them recognises them under their
+new names.
+
+Drizzle's migrator only applies entries whose `when` is newer than the newest
+ledger row. Upstream's 0008 is newer than every GSLB migration, so the runner
+(`scripts/migrate.ts` and `lib/db/migrate-sqlite.ts`) adds one step after
+drizzle's pass. Any journal entry drizzle skips because it is out of `when`
+order, and that has no ledger row, is applied in its own transaction
+(`outOfOrderPending` in `lib/db/migration-status.ts`). The result on boot:
+
+| Database before the upgrade                      | What the migrator applies     |
+| ------------------------------------------------ | ----------------------------- |
+| This build with GSLB 0008-0014 applied           | upstream 0008 only            |
+| Plain upstream 1.10/1.11 (upstream 0008 applied) | GSLB 0009-0015 (out of order) |
+| 1.9.x or older                                   | everything pending, in order  |
+| Empty                                            | everything, in order          |
+
+`lib/db/migrate-sqlite.test.ts` covers the first, second and last rows on
+SQLite. New migrations that drizzle-kit generates get a current `when` and need
+nothing special.
+
+### Upgrading to 1.11.0 (from 1.10.1)
+
+No migration, no schema change, no config change - pull the new tag and
+recreate the container. AuthAdmin now supports PowerDNS Authoritative 5.1.
+
+Nothing changes for backends older than 5.1. If you run a 5.1 backend that
+has LUA records, check one setting there. In 5.1 LUA records can't be
+created, edited or deleted unless `enable-lua-record-updates=yes` is set in
+`pdns.conf`, even with `enable-lua-records` on. That's a PowerDNS default,
+not an AuthAdmin one. On a backend without it, AuthAdmin stops offering the
+`LUA` type and refuses LUA changes with a message naming the setting. The
+setting also covers zone transfers, so a 5.1 secondary needs it too or it
+won't accept LUA records from its primary. After changing `pdns.conf`, use
+**Admin → PowerDNS servers → Refresh** so the editor picks it up.
+
+### Upgrading to 1.10.1 (from 1.10.0)
+
+No migration, no schema change, no config change - pull the new tag and
+recreate the container. Two behaviour changes to know about:
+
+- A zone under a name reserved for private use (`.internal`, `home.arpa`,
+  `.local`, `.test`, `.invalid`, `.localhost`) that you never classified now
+  counts as **internal** rather than public. It moves to the Internal side of
+  the zones list, Reverse DNS matches it against internal reverse zones, and
+  Zone Monitoring stops reporting it as undelegated. If one of them really is
+  public, set **Public** on its Zone settings tab; that choice is kept.
+- With `METRICS_TOKEN` unset, the generated token is no longer printed to the
+  boot log, so nothing can scrape `/metrics` until you set `METRICS_TOKEN`
+  (or set `METRICS_ENABLED=false`).
+
+See the [CHANGELOG](../CHANGELOG.md#1101---2026-10-21).
+
+### Upgrading to 1.10.0 (from 1.9.1)
+
+Pull the new tag and recreate the container. One small migration runs
+automatically at boot: it adds the `monitor_accept_single_ns` column (boolean,
+default off) to `pdns_servers`, for the new "Don't warn about single-nameserver
+zones on this backend" setting. Nothing to do by hand, and an older image keeps
+working against the migrated database if you roll back. Search, Notifications, the Add record wizard and the record editor's per-save
+"Sync PTR" checkbox are available straight away (no PTR is written unless the
+box is ticked). Everything below is off by default until you opt in.
+
+- **Automatic PTR maintenance** is off until you enable the `auto_ptr` setting
+  (Admin → Settings, or `auto_ptr: true` in provisioning), or per zone with
+  `X-AUTHADMIN-AUTO-PTR` metadata, or per save in the record editor. It never
+  creates reverse zones and never replaces a PTR that points elsewhere without
+  an explicit takeover.
+- **Reverse DNS checks** (`REVERSE_DNS_ENABLED=true`) add the fleet-wide
+  A/AAAA-vs-PTR report and PTR links on record tables. They read every zone on
+  every backend periodically, and look up uncovered addresses through
+  resolvers (`EXTERNAL_PTR_INTERVAL_SECONDS`).
+- **Zone monitoring** (`ZONE_MONITOR_ENABLED=true`) sends DNS queries outside
+  your network: to the root servers, to `ZONE_MONITOR_PUBLIC_RESOLVERS`
+  (default `1.1.1.1,8.8.8.8,9.9.9.9`) and to each zone's own nameservers,
+  including an unsigned AXFR attempt. On a restricted network, set
+  `ZONE_MONITOR_INTERNAL_RESOLVERS` and allow outbound DNS before enabling it.
+  See [Configuration](./03-CONFIGURATION.md) for every `ZONE_MONITOR_*`
+  variable.
+
+While either check is off, its page, sidebar entry, API routes and MCP tools
+do not exist. See the [CHANGELOG](../CHANGELOG.md#1100---2026-10-21).
+
 ### Upgrading to 1.9.1 (from 1.9.0)
 
 No migration, no schema change, no config change - pull the new tag and

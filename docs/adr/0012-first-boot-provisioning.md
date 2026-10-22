@@ -1,10 +1,7 @@
-# 12. First-boot provisioning + OIDC group → role materialisation
+# ADR 0012 - First-boot provisioning + OIDC group → role materialisation
 
-Date: 2026-05-18
-
-## Status
-
-Accepted.
+- **Status:** Accepted
+- **Date:** 2026-05-18
 
 ## Context
 

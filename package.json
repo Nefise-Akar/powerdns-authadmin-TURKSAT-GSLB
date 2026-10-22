@@ -1,6 +1,6 @@
 {
   "name": "powerdns-authadmin",
-  "version": "1.9.1",
+  "version": "1.11.0",
   "private": true,
   "description": "Modern, self-hosted DNS administration UI for PowerDNS - multi-team RBAC, real audit, real SSO. From-scratch rebuild of PowerDNS-Admin in Node.js + TypeScript.",
   "license": "MIT",
@@ -41,6 +41,7 @@
     "db:seed": "NODE_OPTIONS=--conditions=react-server tsx scripts/seed.ts",
     "provision": "NODE_OPTIONS=--conditions=react-server tsx scripts/provision.ts",
     "demo:seed:graphs": "NODE_OPTIONS=--conditions=react-server tsx scripts/demo-seed-graphs.ts",
+    "demo:seed:ptr": "node scripts/demo-seed-ptr.mjs",
     "audit:strict": "npm audit --audit-level=high --omit=dev",
     "validate": "npm run lint && npm run typecheck && npm run format:check && npm run test",
     "ci:local": "act -j static-checks && act -j test"

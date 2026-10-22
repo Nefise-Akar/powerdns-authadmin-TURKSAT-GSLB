@@ -22,7 +22,11 @@ import { listRoleMfaStatesForUser } from "@/lib/db/repositories/roles";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { UserMenu } from "@/components/ui/user-menu";
 import { HealthBell } from "@/components/domain/health-bell";
-import { listActiveAdvisories } from "@/lib/db/repositories/backend-advisories";
+import { GlobalSearch } from "@/components/domain/global-search";
+import { buildSearchQuickLinks, searchTabsFor } from "@/lib/search/quick-links";
+import { warmSearchIndex } from "@/lib/search/search-index";
+import { hasNotificationAudience, loadNotificationsFor } from "@/lib/health/load-notifications";
+import { bellPreview, summarizeNotifications } from "@/lib/health/notifications";
 import { BrandMark } from "@/components/ui/brandmark";
 import { AppShell, type NavGroup, type NavItem } from "@/components/ui/app-shell";
 import { iconButtonClass } from "@/components/ui/button";
@@ -35,8 +39,14 @@ import { getAppSettings } from "@/lib/settings/app-settings";
 import { ensureBackendsObserved } from "@/lib/realtime/zone-poller";
 import { globalAnyLagging, hasReplicationTopology } from "@/lib/pdns/sync";
 import { decideHeaderChipMode } from "@/lib/realtime/header-chip-mode";
-import { pdnsBackgroundPollingEnabled } from "@/lib/env";
+import { optionalFeatures, pdnsBackgroundPollingEnabled } from "@/lib/env";
+import {
+  ensureZoneMonitorRunning,
+  reverseDnsBadge,
+  zoneMonitorBadge,
+} from "@/lib/monitoring/zone-monitor";
 import { navAccessOf } from "@/lib/rbac/nav-access";
+import { plural } from "@/lib/text/plural";
 
 /**
  * Paths a non-compliant user (forced-MFA-not-enrolled, or flagged
@@ -111,6 +121,7 @@ export default async function AppLayout({ children }: Readonly<{ children: React
     zoneGrants: current.zoneGrants,
     zoneScopedPermissions: current.zoneScopedPermissions,
     canReadAnyTeam: current.ability.can("read", "Team"),
+    features: optionalFeatures,
   });
   const canReadZones = navAccess.zones;
   const canReadServers = navAccess.servers;
@@ -125,18 +136,19 @@ export default async function AppLayout({ children }: Readonly<{ children: React
   const canUseTemplates = navAccess.zoneTemplates;
   const canManageGslb = navAccess.gslb;
 
-  // Health-bell advisories (ADR-0015) - only for users who can read backends.
-  const advisories = canReadServers
-    ? (await listActiveAdvisories()).map((a) => ({
-        id: a.id,
-        backendId: a.backendId,
-        backendName: a.backendName,
-        severity: a.severity,
-        title: a.title,
-        detail: a.detail,
-        acknowledged: a.acknowledgedAt !== null,
-      }))
-    : [];
+  // Zone monitoring runs in the background from the first authenticated render.
+  ensureZoneMonitorRunning();
+  // Build the search index in the background so the first Ctrl/Cmd K is instant.
+  warmSearchIndex();
+
+  // Notifications (ADR-0015): backend health and zone monitoring, filtered per
+  // row to what this user may see (a zone finding needs zone.read on its zone).
+  // Only the preview and the counts reach the client; the full list lives on
+  // /notifications.
+  const showBell = hasNotificationAudience(current);
+  const notifications = showBell ? await loadNotificationsFor(current) : [];
+  const bellSummary = summarizeNotifications(notifications);
+  const bellItems = bellPreview(notifications);
 
   // One rail entry per area; an area's pages show as tabs above the page. An
   // entry renders only when the user can see at least one of its pages.
@@ -157,21 +169,54 @@ export default async function AppLayout({ children }: Readonly<{ children: React
     ...(canReadRoles ? [{ href: "/admin/roles", label: "Roles" }] : []),
     ...(canReadAuth ? [{ href: "/admin/authentication", label: "Authentication" }] : []),
   ];
+  // Reverse DNS and Zone Monitoring sit beside the zone list as tabs of the
+  // Zones area, each with the count of things needing attention behind it.
+  const reverseBadge = navAccess.reverseDns ? reverseDnsBadge() : 0;
+  const monitorBadge = navAccess.zoneMonitoring
+    ? zoneMonitorBadge()
+    : { problems: 0, tone: "warn" as const };
+  const zonesItems: NavItem[] = [
+    ...(canReadZones ? [{ href: "/zones", label: "Zones" }] : []),
+    ...(navAccess.reverseDns
+      ? [
+          {
+            href: "/zones/auto-ptr",
+            label: "Reverse DNS",
+            badge: {
+              count: reverseBadge,
+              tone: "warn" as const,
+              label: `${plural(reverseBadge, "address")} with reverse DNS problems`,
+            },
+          },
+        ]
+      : []),
+    ...(navAccess.zoneMonitoring
+      ? [
+          {
+            href: "/zones/monitoring",
+            label: "Zone Monitoring",
+            badge: {
+              count: monitorBadge.problems,
+              tone: monitorBadge.tone,
+              label: `${plural(monitorBadge.problems, "zone")} with findings`,
+            },
+          },
+        ]
+      : []),
+  ];
+  // The three logs (Audit, Change, Request) are global audit.read pages; the
+  // Request log stays with the PowerDNS pages it records.
+  const logItems: NavItem[] = [
+    ...(canReadAudit ? [{ href: "/admin/audit", label: "Audit log" }] : []),
+    ...(navAccess.changeLog ? [{ href: "/admin/changes", label: "Change log" }] : []),
+  ];
   const nav: NavGroup[] = [
     { key: "dashboard", label: "Dashboard", items: [{ href: "/dashboard", label: "Dashboard" }] },
   ];
-  if (canReadZones) {
-    nav.push({ key: "zones", label: "Zones", items: [{ href: "/zones", label: "Zones" }] });
-  }
+  if (zonesItems.length) nav.push({ key: "zones", label: "Zones", items: zonesItems });
   if (powerdnsItems.length) nav.push({ key: "powerdns", label: "PowerDNS", items: powerdnsItems });
   if (accessItems.length) nav.push({ key: "access", label: "Access", items: accessItems });
-  if (canReadAudit) {
-    nav.push({
-      key: "audit",
-      label: "Audit log",
-      items: [{ href: "/admin/audit", label: "Audit log" }],
-    });
-  }
+  if (logItems.length) nav.push({ key: "audit", label: "Logs", items: logItems });
 
   const mark = (
     <Link
@@ -205,9 +250,15 @@ export default async function AppLayout({ children }: Readonly<{ children: React
     </Link>
   );
 
+  const headerSearch = (
+    <GlobalSearch
+      visibility={searchTabsFor(current)}
+      quickLinks={buildSearchQuickLinks(current, optionalFeatures)}
+    />
+  );
   const headerControls = (
     <>
-      {canReadServers ? <HealthBell advisories={advisories} /> : null}
+      {showBell ? <HealthBell preview={bellItems} summary={bellSummary} /> : null}
       <ThemeToggle />
       {canReadSettings ? (
         <Link href="/admin/settings" aria-label="Settings" className={iconButtonClass("lg")}>
@@ -261,7 +312,13 @@ export default async function AppLayout({ children }: Readonly<{ children: React
   });
 
   const shell = (
-    <AppShell nav={nav} mark={mark} brand={brand} headerControls={headerControls}>
+    <AppShell
+      nav={nav}
+      mark={mark}
+      brand={brand}
+      headerCenter={headerSearch}
+      headerControls={headerControls}
+    >
       {children}
     </AppShell>
   );

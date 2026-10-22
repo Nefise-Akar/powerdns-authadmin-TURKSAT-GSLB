@@ -28,7 +28,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { CreateButton } from "@/components/ui/create-button";
+import { ArrowLeftRight, Plus } from "lucide-react";
 import { requireUserForPage } from "@/lib/auth/require-user";
 import {
   listSelectableBackends,
@@ -42,7 +42,7 @@ import {
   horizonKey,
   type ZoneHorizonIndex,
 } from "@/lib/db/repositories/zone-horizons";
-import { DEFAULT_ZONE_HORIZON } from "@/lib/dns/zone-horizon";
+import { defaultZoneHorizonForName } from "@/lib/dns/zone-horizon";
 import { dedupeZonesByIdentity } from "@/lib/dns/zone-dedupe";
 import { isReadOnlyZoneKind } from "@/lib/pdns/writable-kind";
 import { latestEditTimestampsByZone } from "@/lib/db/repositories/audit-log";
@@ -56,11 +56,17 @@ import { backendUnreachability } from "@/lib/realtime/backend-status";
 import type { PdnsServer } from "@/lib/db/schema";
 import { ZonesTable, type ZoneRow } from "./_components/zones-table";
 import { loadZoneGslbHealthIndex, type ZoneGslbHealth } from "./_lib/gslb-health";
-import { pdnsBackgroundPollingEnabled } from "@/lib/env";
+import { optionalFeatures, pdnsBackgroundPollingEnabled } from "@/lib/env";
 import { PollingDisabledHint } from "@/components/domain/polling-disabled-hint";
 import { ServerRealtimeSubscriber } from "./_components/server-realtime-subscriber";
-import { canListZones, listableZoneFilter, zoneIsListable } from "@/lib/rbac/zone-permissions";
+import {
+  canListZones,
+  canUseRecordWizard,
+  listableZoneFilter,
+  zoneIsListable,
+} from "@/lib/rbac/zone-permissions";
 import { buttonClass } from "@/components/ui/button";
+import { createCtaClass } from "@/components/ui/create-button";
 import { Alert } from "@/components/ui/alert";
 
 export const metadata: Metadata = { title: "Zones" };
@@ -80,7 +86,15 @@ export default async function ZonesPage() {
   const zoneFilter = listableZoneFilter(auth);
   const canCreateServer = globalPermissions.has("server.create");
   const canCreateZone = globalPermissions.has("zone.create");
+  // The Add record wizard searches zones per grant and zone-scoped role, so a
+  // zone-level operator gets the button too; the wizard page applies the same
+  // check and its zone search decides per zone.
+  const canCreateRecord = canUseRecordWizard(auth);
   const canReadAudit = globalPermissions.has("audit.read");
+  // The reverse DNS reconciler reads every zone's records, so it is gated on
+  // the global permission rather than on any single zone grant.
+  // The Reverse DNS checks are opt-in (REVERSE_DNS_ENABLED); no button when off.
+  const canReconcilePtr = optionalFeatures.reverseDns && globalPermissions.has("record.read");
 
   // Ask the broker to ensure a recent observation, then read its store. Serves
   // from the warm store on a hot path; runs/joins one poll when cold or stale.
@@ -264,7 +278,32 @@ export default async function ZonesPage() {
             {errors.length > 0 ? ` · ${errors.length} unreachable` : ""}.
           </p>
         </div>
-        {canCreateZone ? <CreateButton href="/zones/new" label="Add zone" /> : null}
+        {canCreateZone || canCreateRecord || canReconcilePtr ? (
+          <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+            {canReconcilePtr ? (
+              <Link
+                href="/zones/auto-ptr"
+                title="Compare every A/AAAA record with its PTR and fix the gaps"
+                className={buttonClass({ className: "whitespace-nowrap" })}
+              >
+                <ArrowLeftRight className="h-4 w-4" aria-hidden />
+                Reverse DNS
+              </Link>
+            ) : null}
+            {canCreateRecord ? (
+              <Link href="/zones/new-record" className={createCtaClass}>
+                <Plus aria-hidden strokeWidth={2} />
+                Add record
+              </Link>
+            ) : null}
+            {canCreateZone ? (
+              <Link href="/zones/new" className={createCtaClass}>
+                <Plus aria-hidden strokeWidth={2} />
+                Add zone
+              </Link>
+            ) : null}
+          </div>
+        ) : null}
       </header>
 
       {errors.length > 0 ? (
@@ -437,12 +476,13 @@ function readOnlySecondaryRows(
   for (const z of cached.zones.values()) {
     const fold = foldLastEdit(z.serial, null);
     const own = horizonFrom(horizonIndex, { serverId: secondary.id }, z.name);
+    const nameDefault = defaultZoneHorizonForName(z.name);
     const horizon =
-      own !== DEFAULT_ZONE_HORIZON
+      own !== nameDefault
         ? own
         : parent
           ? horizonFrom(horizonIndex, horizonScopeFor(parent), z.name)
-          : DEFAULT_ZONE_HORIZON;
+          : nameDefault;
     rows.push({
       horizon,
       id: z.id,

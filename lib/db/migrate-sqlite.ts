@@ -19,14 +19,20 @@
  * integrity is verified explicitly afterwards (`PRAGMA foreign_key_check`),
  * which is exactly the procedure SQLite's own ALTER TABLE documentation
  * prescribes for table rebuilds.
+ *
+ * After drizzle's pass, journal entries it skips by design - out of `when`
+ * order and below the ledger's high-water mark - are applied in a second
+ * transaction (`outOfOrderPending` in ./migration-status explains when that
+ * happens).
  */
 
 import "server-only";
 import Database from "better-sqlite3";
 import { drizzle } from "drizzle-orm/better-sqlite3";
 import { migrate } from "drizzle-orm/better-sqlite3/migrator";
+import { readMigrationFiles } from "drizzle-orm/migrator";
 import { logger } from "@/lib/logger";
-import { diffByOrdinal, readJournal } from "./migration-status";
+import { diffByWhen, outOfOrderPending, readJournal, type JournalEntry } from "./migration-status";
 
 export const MIGRATIONS_DIR_SQLITE = "./drizzle-sqlite";
 
@@ -62,11 +68,11 @@ export function migrateSqliteDatabase(
     handle.pragma("journal_mode = WAL");
     handle.pragma("busy_timeout = 5000");
 
-    const beforeCount = readAppliedCountSqlite(handle);
-    const beforeStatus = diffByOrdinal(journal, beforeCount);
+    const before = readAppliedWhensSqlite(handle);
+    const beforeStatus = diffByWhen(journal, before);
     if (beforeStatus.pending.length === 0) {
       logger.info(
-        { applied: beforeCount, total: journal.length, file: filePath },
+        { applied: before.size, total: journal.length, file: filePath },
         "migrate.sqlite.up-to-date",
       );
     } else {
@@ -80,6 +86,8 @@ export function migrateSqliteDatabase(
     handle.pragma("foreign_keys = OFF");
     try {
       migrate(drizzle(handle), { migrationsFolder: migrationsDir });
+      const skipped = outOfOrderPending(journal, readAppliedWhensSqlite(handle));
+      if (skipped.length > 0) applyOutOfOrder(handle, migrationsDir, skipped);
     } finally {
       // Re-enable regardless of outcome so a failed run can't leave the
       // connection (reused by a caller) without enforcement.
@@ -97,8 +105,11 @@ export function migrateSqliteDatabase(
       );
     }
 
-    const afterCount = readAppliedCountSqlite(handle);
-    const justApplied = journal.slice(beforeCount, afterCount).map((e) => e.tag);
+    const after = readAppliedWhensSqlite(handle);
+    const justApplied = journal
+      .filter((e) => after.has(e.when) && !before.has(e.when))
+      .map((e) => e.tag);
+    const afterCount = journal.filter((e) => after.has(e.when)).length;
     logger.info(
       {
         applied: justApplied,
@@ -110,7 +121,7 @@ export function migrateSqliteDatabase(
       "migrate.sqlite.complete",
     );
 
-    const finalStatus = diffByOrdinal(journal, afterCount);
+    const finalStatus = diffByWhen(journal, after);
     if (finalStatus.pending.length > 0) {
       logger.error({ stillPending: finalStatus.pending }, "migrate.sqlite.incomplete");
       throw new Error(
@@ -124,15 +135,43 @@ export function migrateSqliteDatabase(
   }
 }
 
-function readAppliedCountSqlite(handle: Database.Database): number {
+/**
+ * Apply journal entries drizzle skipped, the way drizzle would: every
+ * statement, then a ledger row with the entry's `when`, all in one
+ * transaction so a failure leaves the ledger untouched.
+ */
+function applyOutOfOrder(
+  handle: Database.Database,
+  migrationsDir: string,
+  entries: readonly JournalEntry[],
+): void {
+  const files = new Map(
+    readMigrationFiles({ migrationsFolder: migrationsDir }).map((m) => [m.folderMillis, m]),
+  );
+  logger.info({ tags: entries.map((e) => e.tag) }, "migrate.sqlite.out-of-order");
+  const record = handle.prepare(
+    'INSERT INTO __drizzle_migrations ("hash", "created_at") VALUES (?, ?)',
+  );
+  handle.transaction(() => {
+    for (const entry of entries) {
+      const file = files.get(entry.when);
+      if (!file)
+        throw new Error(`migrate.sqlite: no migration file for journal entry ${entry.tag}`);
+      for (const statement of file.sql) handle.exec(statement);
+      record.run(file.hash, entry.when);
+    }
+  })();
+}
+
+/** The ledger's `created_at` values - drizzle stores each entry's journal `when` there. */
+function readAppliedWhensSqlite(handle: Database.Database): Set<number> {
   try {
-    const row = handle.prepare("SELECT COUNT(*) AS n FROM __drizzle_migrations").get() as
-      | { n?: unknown }
-      | undefined;
-    const n = row?.n;
-    return typeof n === "number" ? n : 0;
+    const rows = handle.prepare("SELECT created_at FROM __drizzle_migrations").all() as Array<{
+      created_at: unknown;
+    }>;
+    return new Set(rows.map((r) => Number(r.created_at)));
   } catch {
     // The migrations table doesn't exist yet - a fresh database.
-    return 0;
+    return new Set();
   }
 }

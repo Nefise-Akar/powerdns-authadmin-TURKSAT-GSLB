@@ -23,6 +23,7 @@ interface SettingsFormProps {
     login_lockout_seconds: number;
     allow_password_reset: boolean;
     default_record_ttl: number;
+    auto_ptr: boolean;
   };
   canWrite: boolean;
   /**
@@ -60,6 +61,7 @@ export function SettingsForm({ initial, canWrite, lockedByPolicy }: SettingsForm
   const [lockoutSeconds, setLockoutSeconds] = useState(String(initial.login_lockout_seconds));
   const [allowPasswordReset, setAllowPasswordReset] = useState(initial.allow_password_reset);
   const [defaultRecordTtl, setDefaultRecordTtl] = useState(String(initial.default_record_ttl));
+  const [autoPtr, setAutoPtr] = useState(initial.auto_ptr);
 
   const [saving, setSaving] = useState(false);
   const [ok, setOk] = useState(false);
@@ -148,6 +150,7 @@ export function SettingsForm({ initial, canWrite, lockedByPolicy }: SettingsForm
       login_lockout_seconds: Number.isFinite(parsedSeconds) ? parsedSeconds : null,
       allow_password_reset: allowPasswordReset,
       default_record_ttl: Number.isFinite(parsedTtl) ? parsedTtl : null,
+      auto_ptr: autoPtr,
     };
 
     try {
@@ -382,6 +385,26 @@ export function SettingsForm({ initial, canWrite, lockedByPolicy }: SettingsForm
             className={inputClass}
           />
         </Field>
+        <label className="flex items-start gap-3 text-sm">
+          <input
+            type="checkbox"
+            checked={autoPtr}
+            onChange={(e) => setAutoPtr(e.target.checked)}
+            disabled={!canWrite}
+            className="border-border mt-0.5 h-4 w-4 rounded"
+          />
+          <span>
+            <span className="font-medium">Auto-PTR: keep reverse DNS in sync</span>
+            <span className="text-muted-foreground mt-0.5 block text-xs">
+              When an A or AAAA record is saved or deleted, create, update or remove the matching
+              PTR in a reverse zone hosted here. Reverse zones are never created, a PTR that points
+              at another name is never replaced without an explicit choice, and the user needs
+              record permissions in the reverse zone. A zone can override this with
+              X-AUTHADMIN-AUTO-PTR (on / off) on its Metadata tab; the record editor offers a
+              per-save checkbox either way.
+            </span>
+          </span>
+        </label>
       </fieldset>
 
       <fieldset className="border-border bg-background space-y-3 rounded-md border p-4">

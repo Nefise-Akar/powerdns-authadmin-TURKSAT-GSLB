@@ -1,6 +1,6 @@
 {
-  "id": "8d89c787-2fe7-41ed-b901-39ec45db486e",
-  "prevId": "a10c1dc7-54a8-4408-b43f-f2c79c8c13de",
+  "id": "a10c1dc7-54a8-4408-b43f-f2c79c8c13de",
+  "prevId": "8c9887b3-22de-4a87-af86-3883bc86a655",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -599,125 +599,6 @@
         "gslb_backends_created_by_users_id_fk": {
           "name": "gslb_backends_created_by_users_id_fk",
           "tableFrom": "gslb_backends",
-          "tableTo": "users",
-          "columnsFrom": [
-            "created_by"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.gslb_regions": {
-      "name": "gslb_regions",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "backend_id": {
-          "name": "backend_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "slug": {
-          "name": "slug",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "name": {
-          "name": "name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "description": {
-          "name": "description",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "rules": {
-          "name": "rules",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_by": {
-          "name": "created_by",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "gslb_regions_backend_slug_idx": {
-          "name": "gslb_regions_backend_slug_idx",
-          "columns": [
-            {
-              "expression": "backend_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "slug",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "gslb_regions_backend_id_gslb_backends_id_fk": {
-          "name": "gslb_regions_backend_id_gslb_backends_id_fk",
-          "tableFrom": "gslb_regions",
-          "tableTo": "gslb_backends",
-          "columnsFrom": [
-            "backend_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "gslb_regions_created_by_users_id_fk": {
-          "name": "gslb_regions_created_by_users_id_fk",
-          "tableFrom": "gslb_regions",
           "tableTo": "users",
           "columnsFrom": [
             "created_by"
@@ -1615,6 +1496,13 @@
         },
         "is_default": {
           "name": "is_default",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "monitor_accept_single_ns": {
+          "name": "monitor_accept_single_ns",
           "type": "boolean",
           "primaryKey": false,
           "notNull": true,

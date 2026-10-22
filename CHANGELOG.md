@@ -6,6 +6,252 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [1.11.0] - 2026-10-22
+
+Adds PowerDNS Authoritative 5.1 to the supported versions. **No schema change, no migration.**
+Pull the new tag and recreate the container. If a 5.1 backend serves LUA records, see the
+[upgrade notes](./docs/09-UPGRADING.md#upgrading-to-1110-from-1101).
+
+### Added
+
+- **PowerDNS Authoritative 5.1 support.** 5.1 joins the compatibility matrix with its own
+  monthly workflow and README badge. 5.1 makes LUA records immutable unless
+  `enable-lua-record-updates=yes`, even with `enable-lua-records` on: creates, edits and deletes
+  all come back as 422. The Lua gate now reads that setting too, for deletes as well as upserts,
+  on both the RRset editor and zonefile import, and tells the operator which setting to change.
+  The backend capability snapshot carries the setting, so the record editor stops offering
+  `LUA` on a locked daemon. Daemons older than 5.1 don't report the setting and behave as
+  before. ([#195](https://github.com/PowerDNS-AuthAdmin/powerdns-authadmin/issues/195))
+
+## [1.10.1] - 2026-10-21
+
+Fixes from running 1.10.0 in production. **No schema change, no migration.** Pull the new tag
+and recreate the container. Most of the fixes come from [@Enard52](https://github.com/Enard52) (#186 to #189),
+thanks Ensar.
+
+### Changed
+
+- **Zones under names reserved for private use default to the internal horizon.** A zone at or
+  under `.internal`, `home.arpa`, `.local`, `.test`, `.invalid` or `.localhost` can never be
+  delegated on the internet, yet with no classification it counted as public, so Zone Monitoring
+  reported it as undelegated, unreachable from public resolvers and served from a private
+  address. Unclassified, such a zone is now internal everywhere: the zones list, Reverse DNS and
+  Zone Monitoring. An explicit **Public** on its Zone settings tab is stored and kept, and the
+  Create zone form's Internal switch starts on for such a name.
+  ([#181](https://github.com/PowerDNS-AuthAdmin/powerdns-authadmin/issues/181), [#189](https://github.com/PowerDNS-AuthAdmin/powerdns-authadmin/pull/189), thanks @Enard52)
+
+### Fixed
+
+- **A generated `METRICS_TOKEN` was printed in full to the boot log.** With `METRICS_TOKEN`
+  unset, the app generates one at boot, and the `/metrics` bearer credential then reached every
+  log collector. The log now shows only a fingerprint and says how to pin a token; the
+  configuration and hardening guides are corrected.
+  ([#182](https://github.com/PowerDNS-AuthAdmin/powerdns-authadmin/issues/182), [#188](https://github.com/PowerDNS-AuthAdmin/powerdns-authadmin/pull/188), thanks @Enard52)
+- **Reverse DNS: the name picker on an Ambiguous row covered the status badge.** The picker kept
+  its full text width and the Status column was narrower than its chip. The picker now truncates
+  inside its column at every width (every select in the app truncates a long label now), and the
+  Status column fits its widest chip.
+  ([#185](https://github.com/PowerDNS-AuthAdmin/powerdns-authadmin/issues/185), [#187](https://github.com/PowerDNS-AuthAdmin/powerdns-authadmin/pull/187), thanks @Enard52)
+- **"1 address(es)"** in the Reverse DNS drift finding, and in the backend form's AXFR / DNS
+  addresses label, now reads properly.
+  ([#184](https://github.com/PowerDNS-AuthAdmin/powerdns-authadmin/issues/184), [#186](https://github.com/PowerDNS-AuthAdmin/powerdns-authadmin/pull/186), thanks @Enard52)
+- **A zone re-check slower than its cooldown left no cooldown.** The 20-second limit on
+  re-checking one zone counted from when the check started, so a check that took longer (slow or
+  unreachable nameservers) could be repeated at once. It now also counts from when the check ends.
+- **The header status chip ran under the search button on a phone.** Below `sm` it shows only
+  its connection and sync dots; the words stay for screen readers.
+
+### Security
+
+- **`vite` 8.0.16 → 8.3.4** (development dependency, not in the image), fixing
+  [GHSA-587h-7wmj-h5pm](https://github.com/advisories/GHSA-587h-7wmj-h5pm) (high),
+  [GHSA-r825-w8mm-5pxw](https://github.com/advisories/GHSA-r825-w8mm-5pxw) and
+  [GHSA-698v-4r3x-3vcv](https://github.com/advisories/GHSA-698v-4r3x-3vcv) in its bundled
+  `launch-editor`. ([#192](https://github.com/PowerDNS-AuthAdmin/powerdns-authadmin/pull/192))
+
+### Documentation
+
+- Every screenshot is retaken on the 1.10.0 look, with the new Change log page.
+  `npm run demo:seed:ptr` seeds the combined demo stack with a reverse zone covering every PTR
+  status, for the Reverse DNS and Zone Monitoring shots. ([#190](https://github.com/PowerDNS-AuthAdmin/powerdns-authadmin/pull/190))
+- The 1.10.0 entry below now matches its published release notes.
+
+## [1.10.0] - 2026-10-21
+
+Feature release. The headline is **automatic PTR maintenance**: saving or deleting an A/AAAA
+record can keep its PTR in step, with a fleet-wide **Reverse DNS** report to reconcile what is
+already there. Alongside it: **Zone Monitoring** (delegation, nameservers, DNSSEC chain and open
+AXFR checked from the outside), an **Add record** wizard that waits for propagation, a **global
+search** palette, a **Notifications** page, and a realtime stream that recovers on its own after
+a tab sleeps. Every new page has an MCP tool. **One small additive migration** (a boolean column on
+`pdns_servers`, off by default), applied automatically at boot. New optional environment
+variables only. Search, Notifications, Add record and the editor's per-save "Sync
+PTR" checkbox are there from the start (no PTR is written unless it is ticked); the opt-in
+features below stay off until you turn them on (see the
+[upgrade notes](./docs/09-UPGRADING.md#upgrading-to-1100-from-191)).
+
+**Opt-in features.** Zone monitoring and the Reverse DNS checks are **off by default** because
+they add background load (a periodic read of every zone on every backend) and send DNS queries
+outside your network. Turn them on with `ZONE_MONITOR_ENABLED=true` and
+`REVERSE_DNS_ENABLED=true`. While a feature is off, its page, sidebar entry, buttons, API routes
+and MCP tools do not exist. Automatic PTR maintenance on save is opt-in through the `auto_ptr`
+setting and does not need either variable.
+
+### Added
+
+- **Global search answers from a prebuilt index.** The index is rebuilt in the background after
+  each change and hot-swapped in, an open search palette updates itself over the realtime
+  stream, and recent answers are cached in the palette, so a keystroke never waits on a backend
+  or the database. ([#169](https://github.com/PowerDNS-AuthAdmin/powerdns-authadmin/issues/169))
+- **Global search.** A header palette (`Ctrl K` / `⌘K`, `/`, or the **Search…** button) that
+  fuzzy-matches zones, records (names and values), config (settings, admin pages, backends,
+  clusters, users, teams, roles, zone templates, sign-in providers), the PowerDNS request log
+  and the audit log, with **All / Zones / Records / Config / Requests / Audit** tabs, match
+  counts, highlighted hits and full keyboard navigation. Every source is filtered by the
+  user's own permissions and secrets are never indexed or returned; docs searches hand off to
+  powerdns-authadmin.org. Also `GET /api/search` and the MCP `search` tool.
+  ([#169](https://github.com/PowerDNS-AuthAdmin/powerdns-authadmin/issues/169))
+- **Automatic PTR maintenance (auto-PTR).** Saving or deleting an A/AAAA record can create,
+  update or remove the matching PTR in a reverse zone hosted on any backend, including RFC
+  2317 classless zones. Off by default; enabled globally (`auto_ptr` setting, also in
+  provisioning), per zone (`X-AUTHADMIN-AUTO-PTR` metadata) or per save (editor checkbox,
+  `ptr` / `ptrTakeover` on the RRset PATCH, `ptr` / `ptr_takeover` on the MCP record tools).
+  Reverse zones are never created, a PTR that points at a different name is never replaced
+  without an explicit takeover and never deleted, the user needs record permissions in the
+  reverse zone, and every outcome is reported per address and audited (`record.ptr-sync`).
+  The review dialog previews the reverse changes before Save.
+  ([#164](https://github.com/PowerDNS-AuthAdmin/powerdns-authadmin/issues/164))
+- **Reverse DNS page** (`/zones/auto-ptr`, **opt-in: `REVERSE_DNS_ENABLED=true`**): every A/AAAA record across the fleet diffed
+  against its PTR - ok, missing, mismatch, ambiguous, orphan, unhosted - with per-row,
+  selected or all-fixable rectification through the same audited path. Record tables link
+  each A/AAAA row to its PTR and each PTR row to every forward record pointing at the address.
+  Matching is scoped to the zone horizon: public forward records only match public reverse
+  zones and internal ones only internal, and an unclassified reverse zone over private address
+  space counts as internal. Addresses no hosted reverse zone covers are looked up through the
+  public or internal resolvers instead, so the row shows whether the upstream PTR matches, and
+  a rate-limited **Refresh external lookups** button
+  (`POST /api/admin/pdns/auto-ptr/external-refresh`) refreshes them on demand
+  (`EXTERNAL_PTR_INTERVAL_SECONDS`). The sidebar entry carries the
+  number of addresses needing attention. ([#164](https://github.com/PowerDNS-AuthAdmin/powerdns-authadmin/issues/164))
+- **Add record wizard** (`/zones/new-record`, **Add record** next to **Add zone**): horizon →
+  zone type-ahead across every backend → record with a live "already exists / available" check
+  → the editor's review and Save → a propagation step that waits for every secondary or cluster
+  peer (Finish when all are in sync, Skip with a confirmation before). Orphan rows on the
+  Reverse DNS page deep-link into it. Backed by three new read endpoints, zone search, records
+  at a name and per-zone sync status, which are also MCP tools (`find_zones`, `records_at`,
+  `zone_sync_status`), alongside `reverse_dns_report`, `reverse_dns_links`,
+  `reverse_dns_rectify`, `zone_monitoring` and `zone_monitoring_refresh`, so everything the new
+  pages do is available to an assistant. ([#167](https://github.com/PowerDNS-AuthAdmin/powerdns-authadmin/issues/167))
+- **Notifications page and a compact bell.** The bell now previews the three most pressing
+  active notifications with a count by severity and **Show all**; `/notifications` lists every
+  notification with status, severity and source filters, search, an accordion for the detail,
+  per-row and bulk dismissal, and live refresh. New `GET /api/admin/notifications`,
+  `POST /api/admin/notifications/dismiss` and MCP tools `list_notifications` /
+  `dismiss_notifications`. A notification is shown, and can be dismissed, only by users who can
+  read what it is about: a zone finding needs `zone.read` on that zone, so users whose only
+  access is a zone grant now get the bell for their own zones and nothing else.
+  ([#170](https://github.com/PowerDNS-AuthAdmin/powerdns-authadmin/issues/170))
+- **Zone Monitoring** (`/zones/monitoring`): every hosted zone checked from the outside on a
+  schedule. The delegation is read by walking from the root servers to the parent rather than
+  through a recursive resolver, so the NS set, glue and DS the internet actually sees are
+  compared with the zone's apex and DNSKEYs. Each nameserver is probed for reachability, the AA
+  flag, its serial and its NS set, and for an unsigned AXFR; the configured public or internal
+  resolvers are asked what they answer; SOA timers, MNAME and RNAME are checked; reverse-DNS
+  drift is tallied per zone. Findings have stable codes and three severities (error / warn /
+  info) with a what-to-do detail, horizon-aware rules (internal zones skip the root walk and
+  are judged against internal resolvers), bounded load (three zones at a time, spaced across
+  the interval, 3 s timeouts, no retry loops) and rate-limited manual re-checks. Error and warn
+  findings reach the notification bell as `monitor.<zone>.<code>` advisories after two
+  sightings (at once after a manual re-check), visible to users who can read zones, and the
+  sidebar shows a per-page count. Own wire-format DNS client (`lib/dns/wire.ts`). **Opt-in:
+  off unless `ZONE_MONITOR_ENABLED=true`**; `ZONE_MONITOR_*` variables in the configuration
+  guide. ([#166](https://github.com/PowerDNS-AuthAdmin/powerdns-authadmin/issues/166))
+
+### Changed
+
+- **One expandable-row control across the log tables.** The zone change log, PowerDNS request
+  log and audit log share one chevron accordion (one open row per table), with a shared toggle
+  chip and a scrollable dialog for long lists. Reverse DNS and Zone Monitoring sit under
+  **Zones** in the sidebar with counts in the app's chip style, and `DataTable` cards no longer
+  leave a gap under an empty action cell. ([#172](https://github.com/PowerDNS-AuthAdmin/powerdns-authadmin/issues/172))
+- **Both maintainers are code owners of every path.** Every change needs an approving review
+  from a code owner other than its author, and branch protection now applies to admins too.
+  ([#175](https://github.com/PowerDNS-AuthAdmin/powerdns-authadmin/pull/175))
+- **Filter chips show their counts at a glance.** A chip whose count is 0 renders neutral
+  instead of in its status colour, on the Reverse DNS, Zone Monitoring and Notifications
+  filters, and so does a chip whose count is still loading. The Reverse DNS status chips are
+  ordered by count, highest first; "Not hosted" always follows Missing, Mismatch, Ambiguous and
+  OK when those have a count, and empty statuses come last. Zone Monitoring's verdict chips
+  follow the same rule (Info never ahead of Error, Warning or OK). Until the first counts land,
+  both pages show placeholder pills instead of chips that jump into place. The zones list's scope
+  and horizon filters use the same chips.
+- **One compact button size.** Every button in the app has the compact size of the page
+  toolbars, keeping its own colour; Add zone and Add record stay green.
+- **Search covers zones, records and config by default.** The request log and the audit log are
+  searched only from their own tabs, which sit apart after a "Logs" divider and are never
+  remembered as the opening tab, so the everyday search does not scan the logs. The MCP
+  `search` tool follows the same rule (`scope: requests` / `scope: audit`). Zone and record
+  results show where they live and their state: backend, cluster or standalone, internal or
+  public, plus a zone's kind, DNSSEC, serial and RRset count, or a record's zone, TTL, value
+  count and disabled values.
+- **Accept single-nameserver zones per backend.** A standalone backend's settings have **Don't
+  warn about single-nameserver zones on this backend**; zone monitoring then reports
+  `nameserver.count` as accepted information, kept on the page and out of the notification bell.
+  Hidden, and ignored, for a backend in a group, where the group provides the redundancy. Also
+  `monitor_accept_single_ns` in provisioning (optional, so a boot does not override the UI).
+  Adds the `pdns_servers.monitor_accept_single_ns` column.
+- **Change log.** `/admin/changes` gathers what people changed, everywhere: records, zones,
+  DNSSEC, users and access (accounts, passwords, MFA, passkeys, tokens, sessions, roles, teams,
+  zone grants) and configuration, in the zone page's own colour-coded layout plus a Zone column
+  and a Category filter. A zone's **Change history** tab is now **Change log** and links to it
+  with **Show all changes**. The sidebar has a new **Logs** section: Change log, Request log,
+  Audit log. Gated on global `audit.read`, like the logs beside it.
+- **Suggested fixes with a reviewed diff.** Zone Monitoring's "SOA MNAME is not one of the
+  nameservers" finding suggests the zone's first nameserver and has a **Fix** button: Review
+  changes shows the SOA before and after, and Save applies it through the zone's own SOA route
+  (needs `soa.update`), then re-checks the zone. `a.misconfigured.dns.server.invalid.` is now
+  recognised as a placeholder MNAME. On Reverse DNS, orphan rows list the fixes (add the forward
+  record, or remove the PTR), and removals and bulk rectifies open Review changes with the PTR
+  diff for each reverse zone before Apply. "3 addressss" now reads "3 addresses".
+- **The app takes the project website's look.** The colour palette (light and dark), the Inter
+  and JetBrains Mono typefaces (self-hosted, no font CDN; the CSP is unchanged), softer corner
+  radii, a translucent top bar and matching chart colours. The search pill sits centred in the
+  top bar and scales with the window, names what it searches, and keeps your recent searches
+  (in this browser only); its focus ring no longer draws a doubled border in Safari.
+
+### Fixed
+
+- **A focus ring outlined the whole page in Safari after saving with Enter.** Regions the app
+  focuses by script (the main area, dialogs, search results) are never tab stops and no longer
+  draw the ring; real controls keep theirs.
+- **The notifications panel and user menu opened behind dashboard cards.** The top bar now
+  sits on its own layer, under the mobile navigation drawer.
+- **A new zone could take up to 15 s to appear in search.** A zone change no longer waits
+  behind a slower rebuild queued for request-log churn, and rebuilds start at most once per
+  5 s so a burst of changes does not trigger back-to-back fleet scans.
+
+- **Zone Monitoring showed "Next run: N seconds ago" while checks were running.** Opening the
+  page right after a start begins a catch-up check of zones not seen yet; the first scheduled
+  full cycle fired during it and was dropped rather than queued, so "Last run" stayed empty and
+  "Next run" counted into the past for up to a whole interval. A full cycle asked for during a
+  partial one now runs as soon as it ends, the schedule re-arms itself after every run so "Next
+  run" is the real next start, and the header says "due now" instead of a time in the past.
+  ([#177](https://github.com/PowerDNS-AuthAdmin/powerdns-authadmin/issues/177))
+
+- **Header chip stuck on "connecting" after a tab slept.** Safari (and Chrome on battery)
+  freezes background tabs and hands back a dead or permanently connecting event stream that
+  never errors. The server heartbeat is now a message the page can measure, and the realtime
+  provider reopens the stream when it is silent past two heartbeats, stuck connecting, or
+  closed - on a 5 s watchdog and immediately when the tab is shown, the window focused or the
+  network returns. Pages receive a `realtime.reconnected` event and refetch; the page itself
+  never reloads. ([#168](https://github.com/PowerDNS-AuthAdmin/powerdns-authadmin/issues/168))
+- **Integration stack sometimes failed to start with "Address already in use".** Containers
+  with dynamic addresses could take the ones pinned for the primary and secondaries; dynamic
+  allocation now uses the upper half of the compose subnet. ([#171](https://github.com/PowerDNS-AuthAdmin/powerdns-authadmin/issues/171))
+- **Unit tests broke from a checkout whose path contains a space.** The vitest `server-only`
+  alias and the audit resource-id contract test now resolve paths with `fileURLToPath`.
+  ([#173](https://github.com/PowerDNS-AuthAdmin/powerdns-authadmin/issues/173))
+
 ## [1.9.1] - 2026-10-17
 
 Focus fix for the Create zone form. **No schema change, no migration.** Pull the new
@@ -2089,7 +2335,9 @@ First production release.
 - **Distribution** - multi-arch (`linux/amd64` + `linux/arm64`) image published to Docker Hub as
   `jseifeddine/powerdns-authadmin`, plus a one-command minimal-demo stack.
 
-[Unreleased]: https://github.com/PowerDNS-AuthAdmin/powerdns-authadmin/compare/v1.5.6...HEAD
+[Unreleased]: https://github.com/PowerDNS-AuthAdmin/powerdns-authadmin/compare/v1.10.1...HEAD
+[1.10.1]: https://github.com/PowerDNS-AuthAdmin/powerdns-authadmin/compare/v1.10.0...v1.10.1
+[1.10.0]: https://github.com/PowerDNS-AuthAdmin/powerdns-authadmin/compare/v1.9.1...v1.10.0
 [1.5.6]: https://github.com/PowerDNS-AuthAdmin/powerdns-authadmin/compare/v1.5.5...v1.5.6
 [1.5.5]: https://github.com/PowerDNS-AuthAdmin/powerdns-authadmin/compare/v1.5.4...v1.5.5
 [1.5.4]: https://github.com/PowerDNS-AuthAdmin/powerdns-authadmin/compare/v1.5.3...v1.5.4

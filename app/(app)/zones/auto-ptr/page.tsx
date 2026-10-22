@@ -1,0 +1,46 @@
+/**
+ * app/(app)/zones/auto-ptr/page.tsx
+ *
+ * Fleet-wide reverse DNS reconciler. Every A/AAAA record across every zone,
+ * side by side with the PTR that currently exists for its address in the
+ * reverse zones this installation hosts, with multi-select rectification.
+ *
+ * The page itself is thin: the report is slow (it reads every zone on every
+ * backend), so the client component fetches it after the shell has painted
+ * and owns the loading state. Permission: global `record.read`; the rectify
+ * route re-checks write permission per reverse zone.
+ */
+
+import type { Metadata } from "next";
+import Link from "next/link";
+import { requireUserForPage } from "@/lib/auth/require-user";
+import { PtrReconciler } from "./_components/ptr-reconciler";
+import { notFound } from "next/navigation";
+import { optionalFeatures } from "@/lib/env";
+
+export const metadata: Metadata = { title: "Reverse DNS" };
+
+export default async function AutoPtrPage() {
+  if (!optionalFeatures.reverseDns) notFound();
+  await requireUserForPage({ can: "record.read" });
+
+  return (
+    <div className="space-y-6">
+      <Link href="/zones" className="text-primary hover:text-primary-hover text-sm hover:underline">
+        ← Back to zones
+      </Link>
+      <header>
+        <h1 className="text-h1">Reverse DNS</h1>
+        <p className="text-muted-foreground mt-1 text-sm">
+          Compares every A/AAAA record with the PTR in the hosted reverse zones. Rectifying writes
+          the PTR exactly as the record editor&apos;s auto-PTR would, with the same permissions and
+          audit rows. Public zones are matched against public reverse zones and internal zones
+          against internal ones; a reverse zone covering private address space counts as internal.
+          Addresses no hosted reverse zone covers show what the world&apos;s resolvers answer
+          instead.
+        </p>
+      </header>
+      <PtrReconciler />
+    </div>
+  );
+}

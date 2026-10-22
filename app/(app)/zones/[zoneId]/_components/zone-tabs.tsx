@@ -123,7 +123,7 @@ export function ZoneTabs({
         ) : null}
         {canReadAudit ? (
           <TabLink href={historyHref} active={active === "history"}>
-            Change history
+            Change log
           </TabLink>
         ) : null}
       </nav>
