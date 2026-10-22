@@ -1,0 +1,65 @@
+import { describe, expect, it } from "vitest";
+import { navAccessOf, type NavAccessInput } from "./nav-access";
+import { zoneScopedPermissionsOf } from "./zone-permissions";
+
+function input(overrides: Partial<NavAccessInput> = {}): NavAccessInput {
+  return {
+    globalPermissions: new Set(),
+    zoneGrants: [],
+    zoneScopedPermissions: new Map(),
+    canReadAnyTeam: false,
+    ...overrides,
+  };
+}
+
+describe("navAccessOf", () => {
+  it("a user whose only role is scoped to one zone sees Zones and nothing admin-wide", () => {
+    // Read Only scoped to a zone: before, every type-level check passed and the
+    // nav offered Servers / Users / Roles / Settings, each of which refused.
+    const nav = navAccessOf(
+      input({
+        zoneScopedPermissions: zoneScopedPermissionsOf([
+          {
+            scopeType: "zone",
+            scopeId: "turksat.test.",
+            permissions: ["zone.read", "record.read", "user.read", "server.read", "settings.read"],
+          },
+        ]),
+      }),
+    );
+    expect(nav.zones).toBe(true);
+    const { zones: _zones, ...rest } = nav;
+    expect(Object.values(rest).every((v) => v === false)).toBe(true);
+  });
+
+  it("a zone_grant opens the zones entry, matching the zones page guard", () => {
+    const nav = navAccessOf(
+      input({ zoneGrants: [{ serverId: "s", zoneName: "a.test.", permissions: ["zone.read"] }] }),
+    );
+    expect(nav.zones).toBe(true);
+    expect(nav.importExport).toBe(false);
+  });
+
+  it("no access hides Zones", () => {
+    expect(navAccessOf(input()).zones).toBe(false);
+  });
+
+  it("global permissions open their pages", () => {
+    const nav = navAccessOf(
+      input({
+        globalPermissions: new Set(["zone.read", "server.read", "audit.read", "settings.read"]),
+      }),
+    );
+    expect(nav.zones).toBe(true);
+    expect(nav.importExport).toBe(true);
+    expect(nav.servers).toBe(true);
+    expect(nav.audit).toBe(true);
+    expect(nav.requestLog).toBe(true);
+    expect(nav.settings).toBe(true);
+    expect(nav.users).toBe(false);
+  });
+
+  it("Teams follows the any-instance check its page uses", () => {
+    expect(navAccessOf(input({ canReadAnyTeam: true })).teams).toBe(true);
+  });
+});

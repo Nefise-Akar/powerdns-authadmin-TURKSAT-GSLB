@@ -47,7 +47,8 @@ export async function resolveGslbRouteContext(
   zoneParam: string,
   serverSlug: unknown,
 ): Promise<GslbRouteContext> {
-  const { user, globalPermissions, zoneGrants } = await requireUser();
+  const auth = await requireUser();
+  const { user } = auth;
   await requireCsrf(request);
   // Canonical form, as the other zone routes use: grants are stored lowercase
   // with the trailing dot, and audit ids must not vary with the URL spelling.
@@ -61,13 +62,7 @@ export async function resolveGslbRouteContext(
     throw new ValidationError("Unknown or disabled PowerDNS backend.");
   }
   for (const permission of GSLB_RECORD_PERMISSIONS) {
-    const allowed = canActOnZone({
-      hasGlobalPermission: globalPermissions.has(permission),
-      grants: zoneGrants,
-      serverId: server.id,
-      zoneName,
-      permission,
-    });
+    const allowed = canActOnZone(auth, { serverId: server.id, zoneName, permission });
     if (!allowed) {
       throw new ForbiddenError(
         "Switching GSLB needs record.create, record.update and record.delete on this zone.",

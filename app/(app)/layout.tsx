@@ -36,6 +36,7 @@ import { ensureBackendsObserved } from "@/lib/realtime/zone-poller";
 import { globalAnyLagging, hasReplicationTopology } from "@/lib/pdns/sync";
 import { decideHeaderChipMode } from "@/lib/realtime/header-chip-mode";
 import { pdnsBackgroundPollingEnabled } from "@/lib/env";
+import { navAccessOf } from "@/lib/rbac/nav-access";
 
 /**
  * Paths a non-compliant user (forced-MFA-not-enrolled, or flagged
@@ -102,20 +103,27 @@ export default async function AppLayout({ children }: Readonly<{ children: React
 
   const appSettings = await getAppSettings();
 
-  const canReadZones = current.ability.can("read", "Zone");
-  const canReadServers = current.ability.can("read", "Server");
-  const canReadTsig = current.ability.can("read", "Tsig");
-  const canManageAutoprimary = current.ability.can("manage", "Autoprimary");
-  const canReadUsers = current.ability.can("read", "User");
-  const canReadRoles = current.ability.can("read", "Role");
-  const canReadTeams = current.ability.can("read", "Team");
-  const canReadAudit = current.ability.can("read", "Audit");
-  const canReadSettings = current.ability.can("read", "Settings");
-  const canReadAuth = current.ability.can("read", "Auth");
-  const canUseTemplates = current.ability.can("use", "Template");
-  // Global grant only, matching the page/route gate: a scoped `gslb.manage`
-  // would pass a type-level CASL check yet still be refused by the page.
-  const canManageGslb = current.globalPermissions.has("gslb.manage");
+  // Each flag mirrors the guard of the page it links to (`navAccessOf`), so a
+  // menu item never leads to a refusal. A type-level `ability.can(...)` would
+  // be true for any scoped rule and offer pages that only admit global grants.
+  const navAccess = navAccessOf({
+    globalPermissions: current.globalPermissions,
+    zoneGrants: current.zoneGrants,
+    zoneScopedPermissions: current.zoneScopedPermissions,
+    canReadAnyTeam: current.ability.can("read", "Team"),
+  });
+  const canReadZones = navAccess.zones;
+  const canReadServers = navAccess.servers;
+  const canReadTsig = navAccess.tsigKeys;
+  const canManageAutoprimary = navAccess.autoprimaries;
+  const canReadUsers = navAccess.users;
+  const canReadRoles = navAccess.roles;
+  const canReadTeams = navAccess.teams;
+  const canReadAudit = navAccess.audit;
+  const canReadSettings = navAccess.settings;
+  const canReadAuth = navAccess.authentication;
+  const canUseTemplates = navAccess.zoneTemplates;
+  const canManageGslb = navAccess.gslb;
 
   // Health-bell advisories (ADR-0015) - only for users who can read backends.
   const advisories = canReadServers
@@ -138,10 +146,10 @@ export default async function AppLayout({ children }: Readonly<{ children: React
     ...(canReadServers ? [{ href: "/admin/clusters", label: "Clusters" }] : []),
     ...(canManageAutoprimary ? [{ href: "/admin/autoprimaries", label: "Autoprimaries" }] : []),
     ...(canUseTemplates ? [{ href: "/admin/zone-templates", label: "Zone templates" }] : []),
-    ...(canReadZones ? [{ href: "/admin/import-export", label: "Import / Export" }] : []),
+    ...(navAccess.importExport ? [{ href: "/admin/import-export", label: "Import / Export" }] : []),
     ...(canReadTsig ? [{ href: "/admin/tsig-keys", label: "TSIG keys" }] : []),
     ...(canManageGslb ? [{ href: "/admin/gslb", label: "GSLB" }] : []),
-    ...(canReadAudit ? [{ href: "/admin/requests", label: "Request log" }] : []),
+    ...(navAccess.requestLog ? [{ href: "/admin/requests", label: "Request log" }] : []),
   ];
   const accessItems: NavItem[] = [
     ...(canReadUsers ? [{ href: "/admin/users", label: "Users" }] : []),

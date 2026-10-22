@@ -45,6 +45,7 @@ durability, not exhaustiveness.
 | 0022 | [Zone horizons: app-side split-horizon classification](./0022-zone-horizons.md)                                  | Accepted                   |
 | 0023 | [Zone authority is a separate permission from zone records](./0023-zone-authority-permissions.md)                | Accepted                   |
 | 0024 | [PowerGSLB integration: per-record GSLB behind the panel](./0024-powergslb-integration.md)                       | Proposed                   |
+| 0025 | [Zone-scoped roles grant zone access](./0025-zone-scoped-roles-grant-zone-access.md)                             | Proposed                   |
 
 > **Numbering note:** there is no ADR 0003 - that number was reserved for a decision that was
 > withdrawn before it was written. The gap is intentional; numbers are never reused.
