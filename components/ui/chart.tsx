@@ -22,6 +22,7 @@ import {
   TooltipComponent,
   DataZoomComponent,
 } from "echarts/components";
+import { LabelLayout } from "echarts/features";
 import { CanvasRenderer } from "echarts/renderers";
 import ReactECharts from "echarts-for-react/lib/core";
 import * as echarts from "echarts/core";
@@ -40,6 +41,7 @@ echartsUse([
   TitleComponent,
   TooltipComponent,
   DataZoomComponent,
+  LabelLayout,
   CanvasRenderer,
 ]);
 

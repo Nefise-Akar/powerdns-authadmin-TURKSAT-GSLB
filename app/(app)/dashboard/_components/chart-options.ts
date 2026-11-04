@@ -16,8 +16,23 @@
 
 /** Room on the right for a line's end label. */
 const END_LABEL_ROOM = 44;
-/** …and for "name value" end labels when several series share a chart. */
-const NAMED_END_LABEL_ROOM = 150;
+/** …and for "value name" end labels when several series share a chart. */
+const NAMED_END_LABEL_ROOM = 170;
+
+/**
+ * Backends often end on the same value (a primary and its secondaries hold the
+ * same zones), so their end labels would print on top of each other. The value
+ * leads so truncating a long name never hides it; `moveOverlap` stacks the
+ * labels instead of overlapping them.
+ */
+const NAMED_END_LABEL = {
+  show: true,
+  formatter: "{@[1]}  {a}",
+  color: "var(--foreground)",
+  fontSize: 12,
+  width: NAMED_END_LABEL_ROOM - 12,
+  overflow: "truncate" as const,
+};
 
 const VALUE_END_LABEL = {
   show: true,
@@ -153,7 +168,8 @@ export function multiSeriesOption(
     type: "line" as const,
     smooth: true,
     symbol: "none" as const,
-    endLabel: named ? { ...VALUE_END_LABEL, formatter: "{a}  {@[1]}" } : VALUE_END_LABEL,
+    endLabel: named ? NAMED_END_LABEL : VALUE_END_LABEL,
+    ...(named ? { labelLayout: { moveOverlap: "shiftY" as const } } : {}),
     data: entry.data,
   }));
 
