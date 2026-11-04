@@ -15,7 +15,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Settings } from "lucide-react";
-import { APP_DOCS_URL, APP_SOURCE_URL, APP_VERSION_LABEL } from "@/lib/app-meta";
+import { APP_VERSION_LABEL } from "@/lib/app-meta";
 import { getCurrentUser } from "@/lib/auth/get-current-user";
 import { checkMfaCompliance } from "@/lib/auth/mfa-compliance";
 import { listRoleMfaStatesForUser } from "@/lib/db/repositories/roles";
@@ -266,13 +266,7 @@ export default async function AppLayout({ children }: Readonly<{ children: React
         </Link>
       ) : null}
       <span aria-hidden className="bg-border mx-1 h-6 w-px" />
-      <UserMenu
-        email={current.user.email}
-        name={current.user.name}
-        version={APP_VERSION_LABEL}
-        docsUrl={APP_DOCS_URL}
-        sourceUrl={APP_SOURCE_URL}
-      />
+      <UserMenu email={current.user.email} name={current.user.name} version={APP_VERSION_LABEL} />
     </>
   );
 

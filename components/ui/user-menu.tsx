@@ -4,8 +4,8 @@
  * components/ui/user-menu.tsx
  *
  * Top-right account menu. The trigger is the avatar - initials only, no
- * photo. The menu shows the signed-in user's name + email, Profile, the docs
- * and source links (with the running version), and Sign out.
+ * photo. The menu shows the signed-in user's name, email and the running
+ * version, Profile, and Sign out.
  *
  * Implementation notes:
  *   - Hand-rolled `role="menu"` popover following the WAI-ARIA menu button
@@ -18,15 +18,13 @@
  */
 
 import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
-import { BookText, GitBranch, LogOut, User as UserIcon } from "lucide-react";
+import { LogOut, User as UserIcon } from "lucide-react";
 import { apiFetch } from "@/lib/client/api-fetch";
 
 interface UserMenuProps {
   email: string;
   name: string | null;
   version: string;
-  docsUrl: string;
-  sourceUrl: string;
 }
 
 /** Up to two initials from the name ("Bootstrap Admin" → "BA"), else the email's first letter. */
@@ -36,7 +34,7 @@ function initialsOf(name: string | null, email: string): string {
   return letters.join("").toUpperCase();
 }
 
-export function UserMenu({ email, name, version, docsUrl, sourceUrl }: UserMenuProps) {
+export function UserMenu({ email, name, version }: UserMenuProps) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -161,19 +159,13 @@ export function UserMenu({ email, name, version, docsUrl, sourceUrl }: UserMenuP
             <div className="text-meta text-muted-foreground truncate" title={email}>
               {email}
             </div>
+            <div className="text-mono-sm text-muted-foreground font-mono tabular-nums">
+              v{version}
+            </div>
           </div>
           <div className="py-1">
             <MenuLink href="/profile" icon={<UserIcon />}>
               Profile
-            </MenuLink>
-            <MenuLink href={docsUrl} icon={<BookText />} external>
-              Documentation
-            </MenuLink>
-            <MenuLink href={sourceUrl} icon={<GitBranch />} external>
-              Source code
-              <span className="text-mono-sm text-muted-foreground ml-auto font-mono tabular-nums">
-                v{version}
-              </span>
             </MenuLink>
           </div>
           <div className="border-border border-t py-1">
@@ -201,26 +193,17 @@ function MenuLink({
   href,
   icon,
   children,
-  external = false,
 }: {
   href: string;
   icon: React.ReactNode;
   children: React.ReactNode;
-  external?: boolean;
 }) {
   return (
-    <a
-      href={href}
-      role="menuitem"
-      tabIndex={-1}
-      className={MENU_ITEM}
-      {...(external ? { target: "_blank", rel: "noreferrer noopener" } : {})}
-    >
+    <a href={href} role="menuitem" tabIndex={-1} className={MENU_ITEM}>
       <span aria-hidden className="contents">
         {icon}
       </span>
       {children}
-      {external ? <span className="sr-only"> (opens in a new tab)</span> : null}
     </a>
   );
 }
