@@ -1,7 +1,7 @@
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="./public/brand/logo-wordmark-dark.png" />
-    <img src="./public/brand/logo-wordmark-light.png" alt="PowerDNS-AuthAdmin" width="440" />
+    <source media="(prefers-color-scheme: dark)" srcset="./public/brand/turksat-logo-dark.png" />
+    <img src="./public/brand/turksat-logo-light.png" alt="Türksat" width="440" />
   </picture>
 </p>
 

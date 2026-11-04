@@ -1,40 +1,26 @@
 /**
  * Browsers auto-request `/favicon.ico` for any document root, even when a
- * <link rel="icon"> points elsewhere. The real icon is `app/icon.svg`, which
+ * <link rel="icon"> points elsewhere. The real icon is `app/icon.png`, which
  * Next injects into <head>; this handler answers the legacy probe so we don't
  * leave a 404 in the access log.
  *
- * It serves the icon itself rather than an empty 204. A 204 is a *null-body*
- * status, and returning one from a route handler Next wants to prerender broke
- * two ways at once in production:
+ * It serves the icon itself rather than an empty 204: a null-body status broke
+ * Next's prerender cache for this route in production ("calculateSize returned
+ * 0", then "Invalid response status code 204" on replay).
  *
- *   - "LRUCache: calculateSize returned 0, but size must be > 0" - the response
- *     carries no bytes, so the prerender cache computed a zero size and
- *     refused to store it;
- *   - "TypeError: Response constructor: Invalid response status code 204" -
- *     replaying that cache entry reconstructs `new Response(body, { status })`
- *     with a non-null body, which the Response constructor rejects for 204.
- *
- * Serving real bytes with a 200 sidesteps both. SVG is correct here despite the
- * `.ico` name: browsers dispatch on Content-Type rather than the extension, and
- * anything old enough not to grok SVG uses the <link> in <head> instead.
- *
- * The markup is inlined rather than read from `app/icon.svg` at runtime,
- * because the production image is Next's `standalone` output - it ships
- * `.next/` and `node_modules/` but no source `app/` directory, so the read
- * would fail in the container and every request would fall through to a 404.
- * `favicon.test.ts` asserts this copy stays byte-identical to `app/icon.svg`,
- * so the two can't drift.
+ * The bytes are inlined because the production image is Next's `standalone`
+ * output, which ships no source `app/` directory to read from at runtime.
+ * `favicon.test.ts` asserts this copy stays byte-identical to `app/icon.png`.
  */
 
-export const ICON_SVG =
-  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><g fill="none" stroke="#4f8ef7" stroke-width="3.9" stroke-linecap="round" stroke-linejoin="round"><path d="M13.5 4.5c-3.2 0-3.2 2.2-3.2 5.5s-1.8 5-4.3 6c2.5 1 4.3 2.7 4.3 6s0 5.5 3.2 5.5"/><path d="M18.5 4.5c3.2 0 3.2 2.2 3.2 5.5s1.8 5 4.3 6c-2.5 1-4.3 2.7-4.3 6s0 5.5-3.2 5.5"/></g></svg>';
+export const ICON_PNG_BASE64 =
+  "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";
 
 export function GET(): Response {
-  return new Response(ICON_SVG, {
+  return new Response(Buffer.from(ICON_PNG_BASE64, "base64"), {
     status: 200,
     headers: {
-      "Content-Type": "image/svg+xml; charset=utf-8",
+      "Content-Type": "image/png",
       "Cache-Control": "public, max-age=86400",
     },
   });

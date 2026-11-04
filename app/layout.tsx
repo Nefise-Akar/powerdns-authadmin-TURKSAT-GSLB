@@ -39,7 +39,7 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: { default: siteName, template: `%s - ${siteName}` },
     description: "Self-hosted DNS administration UI for PowerDNS.",
-    // Favicon is the static `app/icon.svg`, auto-injected by Next.
+    // Favicon is the static `app/icon.png`, auto-injected by Next.
     robots: { index: false, follow: false },
   };
 }

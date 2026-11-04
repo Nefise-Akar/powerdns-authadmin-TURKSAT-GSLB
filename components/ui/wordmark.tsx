@@ -4,8 +4,8 @@
  * Brand wordmark with automatic light/dark swap.
  *
  * Source assets live in /public/brand/ as two PNGs:
- *   - logo-wordmark-light.png - dark ink on transparent (for light backgrounds)
- *   - logo-wordmark-dark.png  - light ink on transparent (for dark backgrounds)
+ *   - turksat-logo-light.png - dark ink on transparent (for light backgrounds)
+ *   - turksat-logo-dark.png  - light ink on transparent (for dark backgrounds)
  *
  * Both versions ship with the app (no external CDN per CONTRIBUTING.md).
  * The Tailwind `dark:` class on <html> picks which one is visible - there's
@@ -22,8 +22,8 @@
 
 import Image from "next/image";
 
-const INTRINSIC_WIDTH = 2880;
-const INTRINSIC_HEIGHT = 800;
+const INTRINSIC_WIDTH = 1000;
+const INTRINSIC_HEIGHT = 156;
 
 interface WordmarkProps {
   /** Wrapper width - any CSS length (e.g. 500, "500px", "100%", "auto"). */
@@ -37,12 +37,12 @@ interface WordmarkProps {
 }
 
 /**
- * Renders the PowerDNS-AuthAdmin wordmark, swapping the light- and dark-background
+ * Renders the Türksat wordmark, swapping the light- and dark-background
  * variants based on the active theme. Sizing is controlled by the parent
  * span - pass width / height / style as you would on any block element.
  */
 export function Wordmark({ width, height = "auto", className = "", style }: WordmarkProps) {
-  const alt = "PowerDNS-AuthAdmin";
+  const alt = "Türksat";
 
   return (
     <span
@@ -52,14 +52,14 @@ export function Wordmark({ width, height = "auto", className = "", style }: Word
       role="img"
     >
       <Image
-        src="/brand/logo-wordmark-light.png"
+        src="/brand/turksat-logo-light.png"
         alt=""
         width={INTRINSIC_WIDTH}
         height={INTRINSIC_HEIGHT}
         className="block h-auto w-full object-contain dark:hidden"
       />
       <Image
-        src="/brand/logo-wordmark-dark.png"
+        src="/brand/turksat-logo-dark.png"
         alt=""
         width={INTRINSIC_WIDTH}
         height={INTRINSIC_HEIGHT}

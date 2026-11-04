@@ -224,10 +224,10 @@ export default async function AppLayout({ children }: Readonly<{ children: React
       aria-label={`${appSettings.siteName} home`}
       className="focus-visible:shadow-focus-ring flex size-8 items-center justify-center rounded-md focus-visible:outline-hidden"
     >
-      {/* The `{}` mark (also the favicon), or the operator's own logo. */}
+      {/* The Türksat mark, or the operator's own logo. */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src={appSettings.brandLogoUrl ?? "/icon.svg"}
+        src={appSettings.brandLogoUrl ?? "/brand/turksat-mark.png"}
         alt=""
         referrerPolicy="no-referrer"
         className="max-h-8 max-w-8 object-contain"
